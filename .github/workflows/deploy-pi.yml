@@ -71,8 +71,8 @@ jobs:
 
       # ── 3. Rebuild images and restart containers ─────────────────────────────
       - name: Rebuild & restart Docker Compose services
-        working-directory: ${{ env.HOME }}/Projects/mda-master-thesis-workspace
         run: |
+          cd ~/Projects/mda-master-thesis-workspace
           docker compose build --pull
           docker compose up -d --remove-orphans
           echo "✓ Services restarted"
@@ -92,5 +92,6 @@ jobs:
 
       # ── 5. Summary ───────────────────────────────────────────────────────────
       - name: Print running services
-        working-directory: ${{ env.HOME }}/Projects/mda-master-thesis-workspace
-        run: docker compose ps
+        run: |
+          cd ~/Projects/mda-master-thesis-workspace
+          docker compose ps
