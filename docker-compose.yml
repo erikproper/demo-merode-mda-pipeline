@@ -95,6 +95,7 @@ services:
       BUS_PREFIX: big
       BUS_ENVIRONMENT_ID: dev
       BUS_AGENT_ID: demo-to-pim-agent
+      DEMO_PUBLISHER_AGENT_ID: api-server
     depends_on:
       mqtt-broker:
         condition: service_healthy
