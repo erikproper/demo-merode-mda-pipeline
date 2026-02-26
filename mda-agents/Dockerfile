@@ -30,7 +30,7 @@ RUN npx tsc
 # Copy JSON assets alongside compiled JS.
 # Agents load schemas and test data via fs.readFileSync(__dirname + "/schemas/...")
 # After tsc, __dirname resolves to /app/dist — so assets must live there too.
-RUN cp -r schemas dist/schemas && \
+RUN cp schemas/*.json dist/schemas/ && \
     mkdir -p dist/tests && \
     cp tests/rent-a-car-mock.json dist/tests/rent-a-car-mock.json
 
