@@ -632,6 +632,17 @@ async function main(): Promise<void> {
       console.log(`  entityTypes: ${model.entityTypes.length}`);
 
       // -----------------------------------------------------------------------
+      // Extract optional _target metadata (injected by api-server from headers)
+      // and remove it before schema validation (schemas use additionalProperties:false).
+      // -----------------------------------------------------------------------
+      const target = (model as any)._target as
+        { appId?: string; moduleName?: string; branch?: string } | undefined;
+      if (target) {
+        delete (model as any)._target;
+        console.log(`[demo-to-pim-agent]   _target: ${JSON.stringify(target)}`);
+      }
+
+      // -----------------------------------------------------------------------
       // Step 1: Validate incoming DemoModel against demo-schema.json (AJV)
       // -----------------------------------------------------------------------
       try {
@@ -674,7 +685,12 @@ async function main(): Promise<void> {
 
       // -----------------------------------------------------------------------
       // Step 4: Publish PimModel as artefact state on model.pim.created
+      // Forward _target so downstream agents can override their Mendix config.
+      // Injected AFTER PIM validation so the extra field doesn't break AJV.
       // -----------------------------------------------------------------------
+      if (target) {
+        (pimModel as any)._target = target;
+      }
       bus.publishPimState(PIM_ARTEFACT_ID, pimModel as unknown as PimModel);
       console.log(`[demo-to-pim-agent] ✓ Published PimModel to artefact "${PIM_ARTEFACT_ID}"`);
     },

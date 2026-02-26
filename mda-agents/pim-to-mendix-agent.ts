@@ -442,6 +442,7 @@ function buildMicroflowFromActivity(
 async function applyPimToMendix(
   pimModel:    PimModel,
   workingCopy: OnlineWorkingCopy,
+  moduleName = mendixConfig.moduleName,
 ): Promise<void> {
   const LOG = "[pim-to-mendix-agent]";
 
@@ -450,11 +451,11 @@ async function applyPimToMendix(
   const model = await workingCopy.openModel();
 
   // ---------- Locate module ----------
-  const mxModule = model.allModules().find(m => m.name === mendixConfig.moduleName);
+  const mxModule = model.allModules().find(m => m.name === moduleName);
   if (!mxModule) {
     const available = model.allModules().map(m => m.name).join(", ");
     throw new Error(
-      `Module "${mendixConfig.moduleName}" not found in working copy.\n` +
+      `Module "${moduleName}" not found in working copy.\n` +
       `Available modules: ${available}`,
     );
   }
@@ -465,6 +466,32 @@ async function applyPimToMendix(
   // which is required by Entity.createIn(), Association.createIn(), etc.
   const domainModel = await mxModule.domainModel.load();
   console.log(`${LOG} Domain model loaded.`);
+
+  // ---------- Clear previous pipeline run (idempotent re-generation) ----------
+  // Each run starts clean so entities/enumerations/microflows are never duplicated.
+  // Deletion order: microflows first (may reference entities), then associations,
+  // then entities, then enumerations.
+  const modulePrefix = moduleName + ".";
+
+  const prevMicroflows = model.allMicroflows().filter(
+    mf => (mf.qualifiedName ?? "").startsWith(modulePrefix),
+  );
+  prevMicroflows.forEach(mf => mf.delete());
+  console.log(`${LOG} ✓ Cleared ${prevMicroflows.length} microflow(s)`);
+
+  const prevAssociations = [...domainModel.associations];
+  prevAssociations.forEach(a => a.delete());
+  console.log(`${LOG} ✓ Cleared ${prevAssociations.length} association(s)`);
+
+  const prevEntities = [...domainModel.entities];
+  prevEntities.forEach(e => e.delete());
+  console.log(`${LOG} ✓ Cleared ${prevEntities.length} entity/entities`);
+
+  const prevEnumerations = model.allEnumerations().filter(
+    en => (en.qualifiedName ?? "").startsWith(modulePrefix),
+  );
+  prevEnumerations.forEach(en => en.delete());
+  console.log(`${LOG} ✓ Cleared ${prevEnumerations.length} enumeration(s)`);
 
   // Maps for cross-rule references
   const entityMap = new Map<string, domainmodels.Entity>();
@@ -759,7 +786,22 @@ async function main(): Promise<void> {
       console.log(`  enumerations:       ${pim.enumerations?.length ?? 0}`);
       console.log(`  primitiveTypes:     ${pim.primitiveTypes?.length ?? 0}`);
 
-      // ── Step 1: Validate payload ──────────────────────────────────────────
+      // ── Step 1: Extract optional _target and validate payload ────────────
+      // Strip _target before AJV validation (pimuml-schema uses additionalProperties:false).
+      // Values from _target override the module-level mendixConfig for this request.
+      const target = (pim as any)._target as
+        { appId?: string; moduleName?: string; branch?: string } | undefined;
+      if (target) {
+        delete (pim as any)._target;
+        console.log(`[pim-to-mendix-agent]   _target override: ${JSON.stringify(target)}`);
+      }
+
+      const effectiveConfig = {
+        appId:      target?.appId      ?? mendixConfig.appId,
+        moduleName: target?.moduleName ?? mendixConfig.moduleName,
+        branch:     target?.branch     ?? mendixConfig.branch,
+      };
+
       try {
         assertValid(validatePim, pim, "pimuml-schema.json");
         console.log("[pim-to-mendix-agent] ✓ Payload valid against pimuml-schema.json");
@@ -770,18 +812,20 @@ async function main(): Promise<void> {
       }
 
       // ── Step 2: Guard: credentials must be set ────────────────────────────
-      if (!mendixConfig.appId) {
+      if (!effectiveConfig.appId) {
         console.warn("[pim-to-mendix-agent] ⚠ MENDIX_APP_ID not set — skipping Mendix SDK transform");
         return;
       }
+
+      console.log(`[pim-to-mendix-agent]   target app="${effectiveConfig.appId}", module="${effectiveConfig.moduleName}", branch="${effectiveConfig.branch}"`);
 
       // ── Step 3: Create Mendix working copy ───────────────────────────────
       let workingCopy: OnlineWorkingCopy;
       try {
         console.log("[pim-to-mendix-agent] Creating temporary Mendix working copy …");
         const client = new MendixPlatformClient();
-        const app    = client.getApp(mendixConfig.appId);
-        workingCopy  = await app.createTemporaryWorkingCopy(mendixConfig.branch);
+        const app    = client.getApp(effectiveConfig.appId);
+        workingCopy  = await app.createTemporaryWorkingCopy(effectiveConfig.branch);
         console.log("[pim-to-mendix-agent] ✓ Working copy created");
       } catch (err) {
         console.error("[pim-to-mendix-agent] ✗ Failed to create working copy:", (err as Error).message);
@@ -790,7 +834,7 @@ async function main(): Promise<void> {
 
       // ── Step 4: Apply B1–B22 mapping rules ────────────────────────────────
       try {
-        await applyPimToMendix(pim, workingCopy);
+        await applyPimToMendix(pim, workingCopy, effectiveConfig.moduleName);
         console.log("[pim-to-mendix-agent] ✓ Mapping complete");
       } catch (err) {
         console.error("[pim-to-mendix-agent] ✗ Mapping error:", (err as Error).message);
@@ -801,10 +845,10 @@ async function main(): Promise<void> {
       // ── Step 5: Commit to Mendix ──────────────────────────────────────────
       try {
         console.log("[pim-to-mendix-agent] Committing to Mendix repository …");
-        await workingCopy.commitToRepository(mendixConfig.branch, {
+        await workingCopy.commitToRepository(effectiveConfig.branch, {
           commitMessage: `pim-to-mendix: pimUML → Mendix for "${pim.name}" (${timestamp})`,
         });
-        console.log(`[pim-to-mendix-agent] ✓ Committed to branch "${mendixConfig.branch}"`);
+        console.log(`[pim-to-mendix-agent] ✓ Committed to branch "${effectiveConfig.branch}"`);
       } catch (err) {
         console.error("[pim-to-mendix-agent] ✗ Commit failed:", (err as Error).message);
       }

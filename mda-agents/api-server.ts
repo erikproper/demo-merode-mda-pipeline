@@ -11,6 +11,11 @@
  *   POST /api/model       Accept DemoModel JSON → publish to bus as model.demo.raw
  *   GET  /health          Health check (always 200 when server is running)
  *
+ * Optional request headers (override per-request Mendix target):
+ *   X-Mendix-App-Id       Mendix App UUID (overrides MENDIX_APP_ID env var)
+ *   X-Mendix-Module-Name  Target module   (overrides MENDIX_MODULE_NAME env var)
+ *   X-Mendix-Branch       Branch name     (overrides MENDIX_BRANCH env var)
+ *
  * Environment variables:
  *   API_PORT              HTTP port (default: 3000)
  *   MQTT_BROKER           MQTT broker hostname (default: "localhost")
@@ -91,6 +96,22 @@ app.post("/api/model", (req: Request, res: Response) => {
       })),
     });
     return;
+  }
+
+  // Attach optional per-request Mendix target from HTTP headers.
+  // Injected AFTER schema validation so the extra field doesn't break AJV.
+  // Downstream agents strip _target before their own validation.
+  const appId      = req.headers["x-mendix-app-id"]      as string | undefined;
+  const moduleName = req.headers["x-mendix-module-name"] as string | undefined;
+  const branch     = req.headers["x-mendix-branch"]      as string | undefined;
+
+  if (appId || moduleName || branch) {
+    (payload as any)._target = {
+      ...(appId      && { appId }),
+      ...(moduleName && { moduleName }),
+      ...(branch     && { branch }),
+    };
+    console.log(`[api-server]   _target: ${JSON.stringify((payload as any)._target)}`);
   }
 
   // Publish to bus — retained, so agents receive it even if they start later
