@@ -61,7 +61,7 @@ echo ""
 echo "[4/4] Waiting for API server …"
 sleep 5
 
-HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000/health" || echo "000")
+HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3001/health" || echo "000")
 
 if [ "$HTTP_STATUS" = "200" ]; then
   echo "      ✓ API server is healthy"

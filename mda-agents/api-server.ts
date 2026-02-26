@@ -38,7 +38,7 @@ import type { DemoModel }              from "./schemas/types";
 // Configuration
 // =============================================================================
 
-const API_PORT   = parseInt(process.env.API_PORT ?? "3000", 10);
+const API_PORT   = parseInt(process.env.API_PORT ?? "3001", 10);
 const ARTEFACT_ID = "model.demo.raw";
 
 const config = {

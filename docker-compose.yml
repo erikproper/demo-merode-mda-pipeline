@@ -10,12 +10,12 @@
 #
 # Services:
 #   mqtt-broker       – Eclipse Mosquitto (the transport layer of the BIG Bus)
-#   api-server        – HTTP gateway: POST /api/model → publishes to bus (Port 3000)
+#   api-server        – HTTP gateway: POST /api/model → publishes to bus (Port 3001)
 #   transformer-agent – demo-to-pim-agent  (CIM/DEMO → PIM/pimUML)
 #   mendix-agent      – pim-to-mendix-agent (PIM/pimUML → Mendix PSM)
 #
 # Pipeline trigger via API (from anywhere):
-#   curl -X POST http://<pi-ip>:3000/api/model \
+#   curl -X POST http://<pi-ip>:3001/api/model \
 #        -H "Content-Type: application/json" \
 #        -d @your-model.json
 #
@@ -62,9 +62,9 @@ services:
     container_name: mda-api-server
     command: node dist/api-server.js
     ports:
-      - "3000:3000"   # HTTP API — accessible from host and external clients
+      - "3001:3001"   # HTTP API — accessible from host and external clients
     environment:
-      API_PORT: "3000"
+      API_PORT: "3001"
       MQTT_BROKER: mqtt-broker
       MQTT_PORT: "1883"
       MQTT_USER: admin
