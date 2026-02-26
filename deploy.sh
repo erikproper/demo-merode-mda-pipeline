@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-REPO_DIR="/Projects/mda-master-thesis-workspace"
+REPO_DIR="$HOME/Projects/mda-master-thesis-workspace"
 COMPOSE_FILE="$REPO_DIR/docker-compose.yml"
 ENV_FILE="$REPO_DIR/mda-agents/.env"
 

@@ -10,7 +10,7 @@
 #
 # One-time setup on the Raspberry Pi:
 #   1. Clone this repo:
-#        git clone https://github.com/<your-user>/<your-repo>.git /Projects/mda-master-thesis-workspace
+#        git clone https://github.com/<your-user>/<your-repo>.git ~/Projects/mda-master-thesis-workspace
 #
 #   2. Add mda.tlolab.com to your Cloudflare Tunnel config (see cloudflare-tunnel.md)
 #
@@ -45,7 +45,7 @@ jobs:
       # ── 1. Pull latest code ──────────────────────────────────────────────────
       - name: Pull latest main
         run: |
-          cd /Projects/mda-master-thesis-workspace
+          cd ~/Projects/mda-master-thesis-workspace
           git fetch origin main
           git reset --hard origin/main
           echo "✓ Code updated to $(git log -1 --oneline)"
@@ -54,7 +54,7 @@ jobs:
       # Keeps secrets out of the repo and the Docker image.
       - name: Write .env for mendix-agent
         run: |
-          cat > /Projects/mda-master-thesis-workspace/mda-agents/.env <<'ENVEOF'
+          cat > ~/Projects/mda-master-thesis-workspace/mda-agents/.env <<'ENVEOF'
           MQTT_BROKER=localhost
           MQTT_PORT=1883
           MQTT_USER=admin
@@ -70,7 +70,7 @@ jobs:
 
       # ── 3. Rebuild images and restart containers ─────────────────────────────
       - name: Rebuild & restart Docker Compose services
-        working-directory: /Projects/mda-master-thesis-workspace
+        working-directory: ~/Projects/mda-master-thesis-workspace
         run: |
           docker compose build --pull
           docker compose up -d --remove-orphans
@@ -85,11 +85,11 @@ jobs:
             echo "✓ API server healthy — https://mda.tlolab.com/health"
           else
             echo "✗ Health check failed (HTTP $STATUS)"
-            docker compose -f /Projects/mda-master-thesis-workspace/docker-compose.yml logs --tail=20
+            docker compose -f ~/Projects/mda-master-thesis-workspace/docker-compose.yml logs --tail=20
             exit 1
           fi
 
       # ── 5. Summary ───────────────────────────────────────────────────────────
       - name: Print running services
-        working-directory: /Projects/mda-master-thesis-workspace
+        working-directory: ~/Projects/mda-master-thesis-workspace
         run: docker compose ps
