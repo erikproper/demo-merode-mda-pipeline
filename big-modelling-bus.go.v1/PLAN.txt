@@ -1,0 +1,129 @@
+Commandlines:
+[ ] get ... coordination ... CHECK the topic/agend_ID logic
+
+[ ] wait option for get ==> waits for an update, insteqd of getting the current version, and then exit immediately
+[ ] handler ==> Requires handler gets timestamp as input "handler <timestamp>"
+[ ] monitor via in GO instead of mosquitto
+
+[ ] Code review
+
+[ ] README
+
+Principles
+- Separation of concerns across layers
+- Use packages, but wrap non-standard packages
+
+- Layer 1: 
+  - Three types 
+    - TConfig
+    - TRepository (FTP)
+    - TEventBus (MQTT)
+
+Info on where to get files is communicated via the bus. This enables flexibility regarding root path, and ftp servers.
+
+Note: We can even have "bridging actors" that operate between two different environments.
+
+MQTT's Quality of Service framework offers three distinct reliability levels, catering to various IoT use cases that require different levels of reliability based on their specific requirements.
+At most once (QoS 0): QoS 0 offers "fire and forget" messaging with no acknowledgment from the receiver.
+At least once (QoS 1): QoS 1 ensures that messages are delivered at least once by requiring a PUBACK acknowledgment.
+Exactly once (QoS 2): QoS 2 guarantees that each message is delivered exactly once by using a four-step handshake (PUBLISH, PUBREC, PUBREL, PUBCOMP).
+
+[ ] PlantUML2Bus / UML2CDM 
+
+[ ] Coordination
+- do/listen
+- task
+- raw_inputs (sequence) of path
+- raw_outputs (sequence) of path
+- json_inputs (sequence) of version + path (s/u/c??)
+- json_outputs (sequence) of version + path (s/u/c??)
+Replies with '{ "acknowledgement", "true" }'
+
+Also the PDF renderer .... "-coordinated" mode
+
+[ ] Keep alive at MQTT level. Laptop seems to drop the connection. 
+    => https://stackoverflow.com/questions/43759445/how-i-can-check-if-i-lose-connection-with-mqtt-broker 
+
+[ ] https://mermaid.live/
+
+[ ] Enable links between models. Does not need code on the bus side.  
+    This is controlled by the poster. Which can simply do this by having an external reference of an element.
+    For instance using a local elementID linking to a agentID + modelID + JSONVersion + elementID  combination
+    Note that the "modelling_bus/bus-version-1.0/experiment-12.10.2025" part of a model URL is always 
+    fixed within one experiment, and that the modelID can be composed of a model-versions-ID and a version-ID
+
+[ ] Extend ....
+
+-----
+Open modelling bus:
+- Read state first ==> auto triggers the statePosts handler?
+- Then follow updates and/or considerings
+
+Cleaning FTP server!! 
+
+	// ====> CHECK need to OS (Dos, Linux, ...) independent "/" for local files.
+
+
+On the editor side, this means we need to have:
+- currentState on the XXModel side
+- consideredState on the XXModel side
+
+For the WRITER, On the bus side, we need to have two JSON strings:
+- previousState
+- currentState
+but ... as the LISTENER needs the considered state as well, it makes sense to have a copy of that one as well
+
+With operators from XXModels downwards:
+- PostTheState: 
+  overwrite previousState with the new one
+  overwrite currentState with the new one
+  push the new state on the bus
+- PostTheUpdate:
+  overwrite currentState with the new one
+  push the delta between the previousState and the currentState to the bus
+- PostTheConsidered:
+  push the delta between the currentState and the consideredState to the bus
+
+We cannot be listening and writing at the same time.
+So, maybe split this into two typing contexts:
+- BusWriter
+- BusListener
+
+But ... maybe have operators:
+- PostTheState
+- PostTheUpdate
+- PostTheConsidered
+- FetchTheState
+- FetchTheConsidered
+and keep the previous/current/considered in sync between the endpoints, where we indeed have only one posting actor.
+
+
+Models:
+- MQTT (r=1): ~/models/<model id>/<json version>/{s,u,c}/"{ timestamp, link }"
+- FTP: ~/models/<model id>/<json version>/{s,u,c}/<timestamp>.json
+
+Files:
+- FTP: ~/files/<poster id>/<format>/<timestamp>.extension
+
+Messages:
+- MQTT (r=0): ~/messages/<sender id>/<receiver id>/json/<json version>/{" json "}
+
+
+Dummy model 1 (type + instances): => Bus
+Pause
+Dummy model 2 (add constraints): => Bus
+
+Client 1:
+- Model to LaTeX to viewer
+
+Client 2:
+- Model to Prolog
+
+Client 3:
+- https://github.com/qax-os/excelize
+
+
+sub/predicate/object
+
+
+https://go.dev/blog/publishing-go-modules

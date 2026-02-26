@@ -1,0 +1,3 @@
+TARGET="$GOPATH/pkg/mod/github.com/erikproper/big-modelling-bus.go.v1@$(cat ./current)"
+echo Target $TARGET
+rsync -arv --exclude .git --delete ./ $TARGET

@@ -1,0 +1,750 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pimuml-schema.json",
+  "title": "pimUML Model (PIM)",
+  "description": "Strict JSON Schema for the pimUML Platform-Independent Model. Covers the class diagram (Class, Property, Association, AssociationClass, Enumeration, PrimitiveType) and the state machine diagram (StateMachine, Region, State, Pseudostate, Transition, Trigger) according to UML 2.5.1.",
+  "type": "object",
+  "required": ["name"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the pimUML model"
+    },
+    "classes": {
+      "type": "array",
+      "description": "All Class elements of the class diagram",
+      "items": { "$ref": "#/$defs/Class" }
+    },
+    "associations": {
+      "type": "array",
+      "description": "All associations between classes",
+      "items": { "$ref": "#/$defs/Association" }
+    },
+    "associationClasses": {
+      "type": "array",
+      "description": "All AssociationClasses (A8: specialization of value type with event type)",
+      "items": { "$ref": "#/$defs/AssociationClass" }
+    },
+    "enumerations": {
+      "type": "array",
+      "description": "All Enumerations (from categorical value types, A1)",
+      "items": { "$ref": "#/$defs/Enumeration" }
+    },
+    "primitiveTypes": {
+      "type": "array",
+      "description": "All PrimitiveTypes (from non-categorical value types, A2)",
+      "items": { "$ref": "#/$defs/PrimitiveType" }
+    }
+  },
+  "$defs": {
+    "Class": {
+      "title": "Class",
+      "description": "UML Class (concrete or abstract). Inherits from EncapsulatedClassifier and BehavioredClassifier.",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the class (NamedElement.name)"
+        },
+        "isAbstract": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the class is abstract (A10: abstract parent)"
+        },
+        "ownedAttributes": {
+          "type": "array",
+          "description": "Attributes (Properties) directly owned by the class",
+          "items": { "$ref": "#/$defs/Property" }
+        },
+        "generalizations": {
+          "type": "array",
+          "description": "Generalization relationships from this class to its parent classes",
+          "items": { "$ref": "#/$defs/Generalization" }
+        },
+        "ownedBehaviors": {
+          "type": "array",
+          "description": "Behaviors owned by the class, typically StateMachines (BehavioredClassifier.ownedBehavior)",
+          "items": { "$ref": "#/$defs/StateMachine" }
+        },
+        "ownedActivities": {
+          "type": "array",
+          "description": "Activity Diagrams owned by the class, e.g. Set<entity>.<event> or Create<child> activities (A6, A7, A9)",
+          "items": { "$ref": "#/$defs/Activity" }
+        }
+      }
+    },
+    "Property": {
+      "title": "Property",
+      "description": "UML Property (attribute or association end). Inherits from StructuralFeature and ConnectableElement.",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the property (NamedElement.name)"
+        },
+        "type": {
+          "type": "string",
+          "description": "Reference to the type by name (a Class, PrimitiveType, or Enumeration)"
+        },
+        "isID": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this property is a logical identifier (A3: logical identifier)"
+        },
+        "aggregation": {
+          "type": "string",
+          "enum": ["none", "shared", "composite"],
+          "default": "none",
+          "description": "Aggregation kind: none | shared (A11) | composite"
+        },
+        "lower": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Lower multiplicity (MultiplicityElement.lower)"
+        },
+        "upper": {
+          "description": "Upper multiplicity: positive integer or '*' (MultiplicityElement.upper)",
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "string", "enum": ["*"] }
+          ]
+        },
+        "defaultValue": {
+          "description": "Default value of the property as a ValueSpecification",
+          "$ref": "#/$defs/ValueSpecification"
+        }
+      }
+    },
+    "Generalization": {
+      "title": "Generalization",
+      "description": "UML Generalization relationship. References the general (parent) class by name.",
+      "type": "object",
+      "required": ["general"],
+      "additionalProperties": false,
+      "properties": {
+        "general": {
+          "type": "string",
+          "description": "Name of the general (parent) class (Generalization.general)"
+        }
+      }
+    },
+    "Association": {
+      "title": "Association",
+      "description": "UML Association between two classes (A12: property type). Inherits from Classifier.",
+      "type": "object",
+      "required": ["memberEnds"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Optional name of the association (NamedElement.name)"
+        },
+        "memberEnds": {
+          "type": "array",
+          "description": "Exactly two association ends (Properties) with type and multiplicity",
+          "items": { "$ref": "#/$defs/Property" },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "AssociationClass": {
+      "title": "AssociationClass",
+      "description": "UML AssociationClass: combines Association and Class (A8: specialization of value type with event type and property type).",
+      "type": "object",
+      "required": ["name", "memberEnds"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the AssociationClass (NamedElement.name)"
+        },
+        "isAbstract": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the AssociationClass is abstract"
+        },
+        "ownedAttributes": {
+          "type": "array",
+          "description": "Attributes directly owned by the AssociationClass",
+          "items": { "$ref": "#/$defs/Property" }
+        },
+        "generalizations": {
+          "type": "array",
+          "description": "Generalization relationships of the AssociationClass",
+          "items": { "$ref": "#/$defs/Generalization" }
+        },
+        "memberEnds": {
+          "type": "array",
+          "description": "Exactly two association ends (inherited from Association)",
+          "items": { "$ref": "#/$defs/Property" },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "Enumeration": {
+      "title": "Enumeration",
+      "description": "UML Enumeration (DataType). Derived from categorical value types (A1).",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the enumeration (NamedElement.name)"
+        },
+        "literals": {
+          "type": "array",
+          "description": "Enumeration literals",
+          "items": { "$ref": "#/$defs/EnumerationLiteral" },
+          "minItems": 1
+        }
+      }
+    },
+    "EnumerationLiteral": {
+      "title": "EnumerationLiteral",
+      "description": "UML EnumerationLiteral. A single value within an Enumeration.",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the literal"
+        },
+        "qualifiedName": {
+          "type": "string",
+          "description": "Qualified name (EnumerationLiteral.qualifiedName, readOnly, e.g. 'MyEnum::value')"
+        }
+      }
+    },
+    "PrimitiveType": {
+      "title": "PrimitiveType",
+      "description": "UML PrimitiveType (DataType). Derived from non-categorical value types (A2), e.g. String, Integer.",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the primitive type (NamedElement.name)"
+        }
+      }
+    },
+    "StateMachine": {
+      "title": "StateMachine",
+      "description": "UML StateMachine (Behavior, inherits from Class). Represents the state machine diagram of an entity type (A3, A4, A6).",
+      "type": "object",
+      "required": ["name", "regions"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the state machine (NamedElement.name)"
+        },
+        "regions": {
+          "type": "array",
+          "description": "Regions of the state machine (at least 1 region required)",
+          "items": { "$ref": "#/$defs/Region" },
+          "minItems": 1
+        }
+      }
+    },
+    "Region": {
+      "title": "Region",
+      "description": "UML Region of a StateMachine or a composite State. Contains vertices and transitions.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Optional name of the region (NamedElement.name)"
+        },
+        "subvertices": {
+          "type": "array",
+          "description": "Vertices of the region: States and Pseudostates (Region.subvertex)",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/State" },
+              { "$ref": "#/$defs/Pseudostate" }
+            ]
+          }
+        },
+        "transitions": {
+          "type": "array",
+          "description": "Transitions within the region (Region.transition)",
+          "items": { "$ref": "#/$defs/Transition" }
+        }
+      }
+    },
+    "State": {
+      "title": "State",
+      "description": "UML State (Vertex). Can be simple or composite (with sub-regions). Discriminator: _type='State'.",
+      "type": "object",
+      "required": ["_type", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "_type": {
+          "type": "string",
+          "const": "State",
+          "description": "Type discriminator for oneOf disambiguation"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the state (NamedElement.name)"
+        },
+        "regions": {
+          "type": "array",
+          "description": "Sub-regions for composite states (State.region)",
+          "items": { "$ref": "#/$defs/Region" }
+        },
+        "entry": {
+          "description": "Entry behavior of the state (State.entry, e.g. an Alf expression)",
+          "$ref": "#/$defs/Behavior"
+        }
+      }
+    },
+    "Pseudostate": {
+      "title": "Pseudostate",
+      "description": "UML Pseudostate (Vertex). Represents control points such as initial state, fork, join, etc. Discriminator: _type='Pseudostate'.",
+      "type": "object",
+      "required": ["_type", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "_type": {
+          "type": "string",
+          "const": "Pseudostate",
+          "description": "Type discriminator for oneOf disambiguation"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "initial",
+            "deepHistory",
+            "shallowHistory",
+            "join",
+            "fork",
+            "junction",
+            "choice",
+            "entryPoint",
+            "exitPoint",
+            "terminate"
+          ],
+          "default": "initial",
+          "description": "Kind of pseudostate (PseudostateKind)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional name of the pseudostate (used for entryPoint/exitPoint)"
+        }
+      }
+    },
+    "Transition": {
+      "title": "Transition",
+      "description": "UML Transition between two vertices. Has an optional trigger and effect behavior.",
+      "type": "object",
+      "required": ["source", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Name of the source vertex (Transition.source)"
+        },
+        "target": {
+          "type": "string",
+          "description": "Name of the target vertex (Transition.target)"
+        },
+        "trigger": {
+          "description": "Optional trigger of the transition (Transition.trigger, 0..1)",
+          "$ref": "#/$defs/Trigger"
+        },
+        "effect": {
+          "description": "Optional effect behavior of the transition, e.g. an Alf expression (Transition.effect)",
+          "$ref": "#/$defs/Behavior"
+        }
+      }
+    },
+    "Trigger": {
+      "title": "Trigger",
+      "description": "UML Trigger of a transition (e.g. an Alf expression for an event condition, A6).",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the trigger (NamedElement.name)"
+        }
+      }
+    },
+    "Behavior": {
+      "title": "Behavior",
+      "description": "Simplified representation of an abstract UML Behavior. Contains an Alf expression or activity name.",
+      "type": "object",
+      "required": ["expression"],
+      "additionalProperties": false,
+      "properties": {
+        "expression": {
+          "type": "string",
+          "description": "Alf expression or activity name (e.g. 'Set<Entity>.<Event>')"
+        }
+      }
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "UML Activity (Behavior, inherits from Class). Represents an activity diagram with coordinated actions. Used for Set<entity>.<event> (A6), Create<child> (A7, A9). Maps to Mendix Microflow (B13).",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the activity (NamedElement.name)"
+        },
+        "parameters": {
+          "type": "array",
+          "description": "Input/output parameters of the activity (Activity.ownedParameter)",
+          "items": { "$ref": "#/$defs/Parameter" }
+        },
+        "nodes": {
+          "type": "array",
+          "description": "All nodes of the activity (Activity.node): control nodes, object nodes, actions",
+          "items": { "$ref": "#/$defs/ActivityNode" }
+        },
+        "edges": {
+          "type": "array",
+          "description": "Control flow edges connecting the nodes (Activity.edge). Maps to Sequence flow (B22).",
+          "items": { "$ref": "#/$defs/ControlFlow" }
+        }
+      }
+    },
+    "Parameter": {
+      "title": "Parameter",
+      "description": "UML Parameter of an Activity. Represents typed input or output data. Together with ActivityParameterNode maps to Mendix microflow Parameter (B16).",
+      "type": "object",
+      "required": ["name", "direction"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the parameter (NamedElement.name)"
+        },
+        "type": {
+          "type": "string",
+          "description": "Reference to the type by name (a Class, PrimitiveType, or Enumeration)"
+        },
+        "direction": {
+          "type": "string",
+          "enum": ["in", "out", "inout", "return"],
+          "description": "Parameter direction (ParameterDirectionKind)"
+        }
+      }
+    },
+    "ControlFlow": {
+      "title": "ControlFlow",
+      "description": "UML ControlFlow edge between two ActivityNodes. Vertices are referenced by name. Maps to Mendix Sequence flow (B22).",
+      "type": "object",
+      "required": ["source", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Name of the source ActivityNode"
+        },
+        "target": {
+          "type": "string",
+          "description": "Name of the target ActivityNode"
+        }
+      }
+    },
+    "ActivityNode": {
+      "title": "ActivityNode",
+      "description": "Abstract UML ActivityNode. Discriminated union via _type: InitialNode, ActivityFinalNode, ActivityParameterNode, CreateObjectAction, CreateLinkAction, AddStructuralFeatureValueAction, ValueSpecificationAction, ReadStructuralFeatureAction.",
+      "oneOf": [
+        { "$ref": "#/$defs/InitialNode" },
+        { "$ref": "#/$defs/ActivityFinalNode" },
+        { "$ref": "#/$defs/ActivityParameterNode" },
+        { "$ref": "#/$defs/CreateObjectAction" },
+        { "$ref": "#/$defs/CreateLinkAction" },
+        { "$ref": "#/$defs/AddStructuralFeatureValueAction" },
+        { "$ref": "#/$defs/ValueSpecificationAction" },
+        { "$ref": "#/$defs/ReadStructuralFeatureAction" }
+      ]
+    },
+    "InitialNode": {
+      "title": "InitialNode",
+      "description": "UML InitialNode (ControlNode). Entry point of an Activity. Discriminator: _type='InitialNode'. Maps to Mendix StartEvent (B14).",
+      "type": "object",
+      "required": ["_type", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "_type": {
+          "type": "string",
+          "const": "InitialNode",
+          "description": "Type discriminator for ActivityNode oneOf"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the node (NamedElement.name)"
+        }
+      }
+    },
+    "ActivityFinalNode": {
+      "title": "ActivityFinalNode",
+      "description": "UML ActivityFinalNode (FinalNode, ControlNode). Terminal node of an Activity. Discriminator: _type='ActivityFinalNode'. Maps to Mendix EndEvent (B15).",
+      "type": "object",
+      "required": ["_type", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "_type": {
+          "type": "string",
+          "const": "ActivityFinalNode",
+          "description": "Type discriminator for ActivityNode oneOf"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the node (NamedElement.name)"
+        }
+      }
+    },
+    "ActivityParameterNode": {
+      "title": "ActivityParameterNode",
+      "description": "UML ActivityParameterNode (ObjectNode). Connects an Activity's Parameter to the flow. Discriminator: _type='ActivityParameterNode'. Maps to Mendix Entity reference / Parameter (B16).",
+      "type": "object",
+      "required": ["_type", "name", "parameter"],
+      "additionalProperties": false,
+      "properties": {
+        "_type": {
+          "type": "string",
+          "const": "ActivityParameterNode",
+          "description": "Type discriminator for ActivityNode oneOf"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the node (NamedElement.name)"
+        },
+        "parameter": {
+          "type": "string",
+          "description": "Reference to the Parameter by name"
+        }
+      }
+    },
+    "CreateObjectAction": {
+      "title": "CreateObjectAction",
+      "description": "UML CreateObjectAction (Action). Creates a new instance of a classifier. Discriminator: _type='CreateObjectAction'. Maps to Mendix CreateObjectAction (B20).",
+      "type": "object",
+      "required": ["_type", "name", "classifier"],
+      "additionalProperties": false,
+      "properties": {
+        "_type": {
+          "type": "string",
+          "const": "CreateObjectAction",
+          "description": "Type discriminator for ActivityNode oneOf"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the action (NamedElement.name)"
+        },
+        "classifier": {
+          "type": "string",
+          "description": "Name of the Class to instantiate"
+        },
+        "result": {
+          "type": "string",
+          "description": "Name of the output pin carrying the new object (optional)"
+        }
+      }
+    },
+    "LinkEndData": {
+      "title": "LinkEndData",
+      "description": "UML LinkEndData: one end of a CreateLinkAction. Pairs an input pin (value) with an association end (Property).",
+      "type": "object",
+      "required": ["value", "end"],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "Name of the input pin providing the object for this end"
+        },
+        "end": {
+          "type": "string",
+          "description": "Name of the Association end (Property)"
+        }
+      }
+    },
+    "CreateLinkAction": {
+      "title": "CreateLinkAction",
+      "description": "UML CreateLinkAction (Action). Creates a link (instance of an Association) between two objects. Discriminator: _type='CreateLinkAction'. Maps to Mendix ChangeObjectAction (B19).",
+      "type": "object",
+      "required": ["_type", "name", "endData"],
+      "additionalProperties": false,
+      "properties": {
+        "_type": {
+          "type": "string",
+          "const": "CreateLinkAction",
+          "description": "Type discriminator for ActivityNode oneOf"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the action (NamedElement.name)"
+        },
+        "endData": {
+          "type": "array",
+          "description": "Exactly two link end data entries (one per association end)",
+          "items": { "$ref": "#/$defs/LinkEndData" },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "AddStructuralFeatureValueAction": {
+      "title": "AddStructuralFeatureValueAction",
+      "description": "UML AddStructuralFeatureValueAction (Action). Sets the value of a structural feature on an object. Discriminator: _type='AddStructuralFeatureValueAction'. Maps to Mendix ChangeObjectAction (B17, B18).",
+      "type": "object",
+      "required": ["_type", "name", "object", "structuralFeature", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "_type": {
+          "type": "string",
+          "const": "AddStructuralFeatureValueAction",
+          "description": "Type discriminator for ActivityNode oneOf"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the action (NamedElement.name)"
+        },
+        "object": {
+          "type": "string",
+          "description": "Name of the input pin providing the target object"
+        },
+        "structuralFeature": {
+          "type": "string",
+          "description": "Name of the Property to set"
+        },
+        "value": {
+          "type": "string",
+          "description": "Name of the input pin providing the new value"
+        }
+      }
+    },
+    "ValueSpecificationAction": {
+      "title": "ValueSpecificationAction",
+      "description": "UML ValueSpecificationAction (Action). Evaluates a literal value and places it on an output pin. Discriminator: _type='ValueSpecificationAction'. Maps to Mendix Change Object (B17).",
+      "type": "object",
+      "required": ["_type", "name", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "_type": {
+          "type": "string",
+          "const": "ValueSpecificationAction",
+          "description": "Type discriminator for ActivityNode oneOf"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the action (NamedElement.name)"
+        },
+        "value": {
+          "description": "The literal value to evaluate (ValueSpecification)",
+          "$ref": "#/$defs/ValueSpecification"
+        },
+        "result": {
+          "type": "string",
+          "description": "Name of the output pin (optional)"
+        }
+      }
+    },
+    "ReadStructuralFeatureAction": {
+      "title": "ReadStructuralFeatureAction",
+      "description": "UML ReadStructuralFeatureAction (Action). Reads the value of a structural feature from an object. Discriminator: _type='ReadStructuralFeatureAction'. Maps to Mendix CreateVariableAction (B21).",
+      "type": "object",
+      "required": ["_type", "name", "object", "structuralFeature"],
+      "additionalProperties": false,
+      "properties": {
+        "_type": {
+          "type": "string",
+          "const": "ReadStructuralFeatureAction",
+          "description": "Type discriminator for ActivityNode oneOf"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the action (NamedElement.name)"
+        },
+        "object": {
+          "type": "string",
+          "description": "Name of the input pin providing the target object"
+        },
+        "structuralFeature": {
+          "type": "string",
+          "description": "Name of the Property to read"
+        },
+        "result": {
+          "type": "string",
+          "description": "Name of the output pin for the read value (optional)"
+        }
+      }
+    },
+    "ValueSpecification": {
+      "title": "ValueSpecification",
+      "description": "Abstract UML ValueSpecification. Concrete types: LiteralBoolean, LiteralInteger, LiteralUnlimitedNatural.",
+      "oneOf": [
+        {
+          "title": "LiteralBoolean",
+          "description": "Boolean literal value (e.g. defaultValue=false for an event Boolean, A6)",
+          "type": "object",
+          "required": ["_type", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "_type": {
+              "type": "string",
+              "const": "LiteralBoolean"
+            },
+            "value": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "title": "LiteralInteger",
+          "description": "Integer literal value",
+          "type": "object",
+          "required": ["_type", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "_type": {
+              "type": "string",
+              "const": "LiteralInteger"
+            },
+            "value": {
+              "type": "integer"
+            }
+          }
+        },
+        {
+          "title": "LiteralUnlimitedNatural",
+          "description": "Natural number or '*' as a literal value (MultiplicityElement.upper)",
+          "type": "object",
+          "required": ["_type", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "_type": {
+              "type": "string",
+              "const": "LiteralUnlimitedNatural"
+            },
+            "value": {
+              "oneOf": [
+                { "type": "integer", "minimum": 0 },
+                { "type": "string", "const": "*" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

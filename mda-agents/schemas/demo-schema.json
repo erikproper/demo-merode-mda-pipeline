@@ -1,0 +1,222 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "demo-schema.json",
+  "title": "DEMO Fact Model (CIM)",
+  "description": "Strict JSON Schema for the DEMO Computation Independent Model (Fact Model). Models Entity Types, Value Types, Attribute Types, Event Types, Generalizations, Aggregations, and Property Types according to the DEMO methodology.",
+  "type": "object",
+  "required": ["name", "entityTypes"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the DEMO model"
+    },
+    "entityTypes": {
+      "type": "array",
+      "description": "All declared and derived entity types",
+      "items": { "$ref": "#/$defs/EntityType" }
+    },
+    "valueTypes": {
+      "type": "array",
+      "description": "All value types (categorical and non-categorical)",
+      "items": { "$ref": "#/$defs/ValueType" }
+    },
+    "generalizations": {
+      "type": "array",
+      "description": "Generalization relationships between entity types (A10)",
+      "items": { "$ref": "#/$defs/Generalization" }
+    },
+    "aggregations": {
+      "type": "array",
+      "description": "Aggregation relationships between entity types (A11)",
+      "items": { "$ref": "#/$defs/Aggregation" }
+    },
+    "propertyTypes": {
+      "type": "array",
+      "description": "Associations / property types with cardinalities (A12)",
+      "items": { "$ref": "#/$defs/PropertyType" }
+    }
+  },
+  "$defs": {
+    "EntityType": {
+      "title": "EntityType",
+      "description": "Declared (A3) or derived (A4) entity type",
+      "type": "object",
+      "required": ["name", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique name of the entity type"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["declared", "derived"],
+          "description": "Kind of entity type: 'declared' (A3) or 'derived' (A4)"
+        },
+        "derivationRule": {
+          "type": "string",
+          "description": "OCL expression or description of the derivation rule (required when kind=derived, A9)"
+        },
+        "attributes": {
+          "type": "array",
+          "description": "Attribute types of the entity type (A5)",
+          "items": { "$ref": "#/$defs/AttributeType" }
+        },
+        "events": {
+          "type": "array",
+          "description": "Event types of the entity type (A6)",
+          "items": { "$ref": "#/$defs/EventType" }
+        }
+      },
+      "if": {
+        "properties": { "kind": { "const": "derived" } }
+      },
+      "then": {
+        "required": ["derivationRule"]
+      }
+    },
+    "AttributeType": {
+      "title": "AttributeType",
+      "description": "Attribute of an entity type, references a value type (A5)",
+      "type": "object",
+      "required": ["name", "valueType"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the attribute"
+        },
+        "valueType": {
+          "type": "string",
+          "description": "Reference to the name of a ValueType"
+        }
+      }
+    },
+    "EventType": {
+      "title": "EventType",
+      "description": "Event type of an entity type (A6). Maps to a Boolean attribute plus state machine states.",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the event type"
+        }
+      }
+    },
+    "ValueType": {
+      "title": "ValueType",
+      "description": "Value type: categorical (A1) with literals, or non-categorical (A2) as a user-defined data type",
+      "type": "object",
+      "required": ["name", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the value type"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["categorical", "non-categorical"],
+          "description": "'categorical' (A1) maps to Enumeration; 'non-categorical' (A2) maps to a user-defined DataType"
+        },
+        "literals": {
+          "type": "array",
+          "description": "Enumeration values, required when kind=categorical (A1)",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "if": {
+        "properties": { "kind": { "const": "categorical" } }
+      },
+      "then": {
+        "required": ["literals"]
+      }
+    },
+    "Generalization": {
+      "title": "Generalization",
+      "description": "Generalization between two entity types (A10). The parent becomes abstract; the child inherits from the parent.",
+      "type": "object",
+      "required": ["parent", "child"],
+      "additionalProperties": false,
+      "properties": {
+        "parent": {
+          "type": "string",
+          "description": "Name of the general (abstract) entity type"
+        },
+        "child": {
+          "type": "string",
+          "description": "Name of the specialized entity type"
+        },
+        "specializationKind": {
+          "type": "string",
+          "enum": ["eventType", "derivationRule"],
+          "description": "Kind of specialization: via event type (A7) or derivation rule (A9)"
+        },
+        "eventType": {
+          "type": "string",
+          "description": "Name of the associated event type (only when specializationKind=eventType, A7)"
+        },
+        "propertyType": {
+          "type": "string",
+          "description": "Name of the property type (only for A8: specialization of value type with event type)"
+        }
+      }
+    },
+    "Aggregation": {
+      "title": "Aggregation",
+      "description": "Aggregation relationship between a whole entity type and a part entity type (A11)",
+      "type": "object",
+      "required": ["whole", "part"],
+      "additionalProperties": false,
+      "properties": {
+        "whole": {
+          "type": "string",
+          "description": "Name of the whole entity type"
+        },
+        "part": {
+          "type": "string",
+          "description": "Name of the part entity type"
+        }
+      }
+    },
+    "PropertyType": {
+      "title": "PropertyType",
+      "description": "Association / property type between entity types with cardinalities (A12)",
+      "type": "object",
+      "required": ["source", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Optional name of the association"
+        },
+        "source": {
+          "type": "string",
+          "description": "Name of the source entity type"
+        },
+        "target": {
+          "type": "string",
+          "description": "Name of the target entity type"
+        },
+        "lowerCardinality": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Lower cardinality (0 or a positive integer)"
+        },
+        "upperCardinality": {
+          "description": "Upper cardinality (positive integer or '*' for unlimited)",
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "string", "enum": ["*"] }
+          ]
+        }
+      }
+    }
+  }
+}

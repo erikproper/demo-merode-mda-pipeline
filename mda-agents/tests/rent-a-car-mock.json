@@ -1,0 +1,287 @@
+{
+  "name": "Rent-A-Car (RAC) DEMO Fact Model",
+
+  "entityTypes": [
+    {
+      "name": "Rental",
+      "kind": "declared",
+      "attributes": [
+        { "name": "startingDay",  "valueType": "Day" },
+        { "name": "endingDay",    "valueType": "Day" },
+        { "name": "carGroup",     "valueType": "CarGroup" }
+      ],
+      "events": [
+        { "name": "completed"    },
+        { "name": "carTaken"     },
+        { "name": "carReturned"  },
+        { "name": "depositPaid"  },
+        { "name": "invoicePaid"  }
+      ]
+    },
+
+    {
+      "name": "DepositPaidRental",
+      "kind": "derived",
+      "derivationRule": "A Rental for which the deposit has been paid (KT04: depositPaid). Maps to mapping rule A7: specialization of entity type Rental with event type depositPaid.",
+      "attributes": [
+        { "name": "depositAmount", "valueType": "Money" }
+      ]
+    },
+
+    {
+      "name": "TakenRental",
+      "kind": "derived",
+      "derivationRule": "A DepositPaidRental for which the car has been taken from the agreed pick-up branch (KT02: carTaken). Maps to mapping rule A7."
+    },
+
+    {
+      "name": "ReturnedRental",
+      "kind": "derived",
+      "derivationRule": "A TakenRental for which the car has been returned to an RAC branch (KT03: carReturned). Maps to mapping rule A7."
+    },
+
+    {
+      "name": "InvoicePaidRental",
+      "kind": "derived",
+      "derivationRule": "A ReturnedRental for which the final invoice has been paid (KT05: invoicePaid). Rental is considered complete at this point. Maps to mapping rule A7.",
+      "attributes": [
+        { "name": "invoiceAmount", "valueType": "Money" }
+      ]
+    },
+
+    {
+      "name": "Car",
+      "kind": "declared",
+      "attributes": [
+        { "name": "carGroup", "valueType": "CarGroup" }
+      ]
+    },
+
+    {
+      "name": "Branch",
+      "kind": "declared"
+    },
+
+    {
+      "name": "Person",
+      "kind": "declared"
+    },
+
+    {
+      "name": "Employee",
+      "kind": "declared"
+    },
+
+    {
+      "name": "DrivingLicence",
+      "kind": "declared",
+      "attributes": [
+        { "name": "expirationDay", "valueType": "Day" }
+      ]
+    },
+
+    {
+      "name": "Transport",
+      "kind": "declared",
+      "attributes": [
+        { "name": "day", "valueType": "Day" }
+      ],
+      "events": [
+        { "name": "completed" }
+      ]
+    },
+
+    {
+      "name": "CompletedTransport",
+      "kind": "derived",
+      "derivationRule": "A Transport that has been completed (KT06: completed). Maps to mapping rule A7: specialization of entity type Transport with event type completed."
+    },
+
+    {
+      "name": "YearlyCarGroup",
+      "kind": "derived",
+      "derivationRule": "Aggregate entity type derived from the CarGroup categorical value type combined with the Year non-categorical value type. Represents the rental parameters (daily rate, deposit) applicable to a specific car group in a specific year. Maps to mapping rule A11 (aggregation).",
+      "attributes": [
+        { "name": "yearlyDailyRentalRate",         "valueType": "Money" },
+        { "name": "yearlyStandardDepositAmount",   "valueType": "Money" }
+      ]
+    },
+
+    {
+      "name": "RentalYear",
+      "kind": "declared",
+      "attributes": [
+        { "name": "maxRentalDuration", "valueType": "Number" },
+        { "name": "rentalHorizon",     "valueType": "Number" },
+        { "name": "locationFee",       "valueType": "Money"  },
+        { "name": "lateReturnFee",     "valueType": "Money"  }
+      ],
+      "events": [
+        { "name": "transportManagingDayComplete" }
+      ]
+    },
+
+    {
+      "name": "ManagingDay",
+      "kind": "derived",
+      "derivationRule": "Nameless derived entity type: specialization of the Day value type upon the occurrence of event KT07 (transportManagingDayComplete), so that the value type Day may be transitively related to Employee via a property type (transport manager). Maps to mapping rule A8."
+    }
+  ],
+
+  "valueTypes": [
+    {
+      "name": "CarGroup",
+      "kind": "categorical",
+      "literals": ["economy", "compact", "intermediate", "fullSize", "premium", "luxury", "suv", "van"]
+    },
+    {
+      "name": "Day",
+      "kind": "non-categorical"
+    },
+    {
+      "name": "Year",
+      "kind": "non-categorical"
+    }
+  ],
+
+  "generalizations": [
+    {
+      "parent": "Rental",
+      "child": "DepositPaidRental",
+      "specializationKind": "eventType",
+      "eventType": "depositPaid"
+    },
+    {
+      "parent": "Rental",
+      "child": "TakenRental",
+      "specializationKind": "eventType",
+      "eventType": "carTaken"
+    },
+    {
+      "parent": "Rental",
+      "child": "ReturnedRental",
+      "specializationKind": "eventType",
+      "eventType": "carReturned"
+    },
+    {
+      "parent": "Rental",
+      "child": "InvoicePaidRental",
+      "specializationKind": "eventType",
+      "eventType": "invoicePaid"
+    },
+    {
+      "parent": "Transport",
+      "child": "CompletedTransport",
+      "specializationKind": "eventType",
+      "eventType": "completed"
+    }
+  ],
+
+  "aggregations": [
+    {
+      "whole": "YearlyCarGroup",
+      "part": "RentalYear"
+    }
+  ],
+
+  "propertyTypes": [
+    {
+      "name": "pickUpLocation",
+      "source": "Rental",
+      "target": "Branch",
+      "lowerCardinality": 1,
+      "upperCardinality": 1
+    },
+    {
+      "name": "returnLocation",
+      "source": "Rental",
+      "target": "Branch",
+      "lowerCardinality": 1,
+      "upperCardinality": 1
+    },
+    {
+      "name": "rentalCompleter",
+      "source": "Rental",
+      "target": "Employee",
+      "lowerCardinality": 1,
+      "upperCardinality": 1
+    },
+    {
+      "name": "renter",
+      "source": "Rental",
+      "target": "Person",
+      "lowerCardinality": 1,
+      "upperCardinality": 1
+    },
+    {
+      "name": "depositPayer",
+      "source": "Rental",
+      "target": "Person",
+      "lowerCardinality": 1,
+      "upperCardinality": 1
+    },
+    {
+      "name": "invoicePayer",
+      "source": "Rental",
+      "target": "Person",
+      "lowerCardinality": 1,
+      "upperCardinality": 1
+    },
+    {
+      "name": "driver",
+      "source": "Rental",
+      "target": "Person",
+      "lowerCardinality": 1,
+      "upperCardinality": 1
+    },
+    {
+      "name": "carOfRental",
+      "source": "TakenRental",
+      "target": "Car",
+      "lowerCardinality": 1,
+      "upperCardinality": 1
+    },
+    {
+      "name": "actualReturnLocation",
+      "source": "ReturnedRental",
+      "target": "Branch",
+      "lowerCardinality": 1,
+      "upperCardinality": 1
+    },
+    {
+      "name": "drivingLicence",
+      "source": "Person",
+      "target": "DrivingLicence",
+      "lowerCardinality": 0,
+      "upperCardinality": 1
+    },
+    {
+      "name": "fromBranch",
+      "source": "Transport",
+      "target": "Branch",
+      "lowerCardinality": 1,
+      "upperCardinality": 1
+    },
+    {
+      "name": "toBranch",
+      "source": "Transport",
+      "target": "Branch",
+      "lowerCardinality": 1,
+      "upperCardinality": 1
+    },
+    {
+      "name": "carOfTransport",
+      "source": "Transport",
+      "target": "Car",
+      "lowerCardinality": 1,
+      "upperCardinality": 1
+    },
+    {
+      "name": "transportManager",
+      "source": "ManagingDay",
+      "target": "Employee",
+      "lowerCardinality": 1,
+      "upperCardinality": 1
+    }
+  ]
+}

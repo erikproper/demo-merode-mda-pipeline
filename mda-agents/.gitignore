@@ -1,0 +1,9 @@
+node_modules/
+dist/
+
+# Local environment – contains secrets, never commit
+.env
+
+# Generated transformation outputs (re-created by running the pipeline)
+tests/rent-a-car-pim.json
+tests/rent-a-car-pim-from-bus.json
