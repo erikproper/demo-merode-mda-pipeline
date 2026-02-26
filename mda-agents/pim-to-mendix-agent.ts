@@ -242,10 +242,15 @@ function buildMicroflowFromActivity(
   console.log(`  [B13] Activity "${activity.name}" → Microflow`);
 
   const mf = microflows.Microflow.createIn(mxModule);
-  mf.name  = activity.name;
+  // Replace dots with underscores — Mendix does not allow dots in names (CE7247)
+  mf.name  = activity.name.replace(/\./g, "_");
 
   // name → canvas element  (for SequenceFlow wiring)
-  const nodeMap = new Map<string, microflows.MicroflowObject>();
+  const nodeMap     = new Map<string, microflows.MicroflowObject>();
+  // UML node name → Mendix variable name (resolves ActivityParameterNode aliases)
+  const varNameMap  = new Map<string, string>();
+  // Names of ActivityParameterNodes — these are not valid SequenceFlow nodes in Mendix
+  const paramNodeNames = new Set<string>();
 
   let x = 0;
 
@@ -274,6 +279,8 @@ function buildMicroflowFromActivity(
     }
 
     nodeMap.set(param.name, po);
+    varNameMap.set(param.name, param.name);  // param name is the Mendix variable name
+    paramNodeNames.add(param.name);          // parameters are not SequenceFlow nodes
     x += LAYOUT_STEP;
   }
 
@@ -305,9 +312,12 @@ function buildMicroflowFromActivity(
         const po  = nodeMap.get(apn.parameter);
         if (po) {
           nodeMap.set(node.name, po);   // alias: node name → param object
+          // Resolve to the Mendix parameter variable name
+          varNameMap.set(node.name, varNameMap.get(apn.parameter) ?? apn.parameter);
         } else {
           console.warn(`    ⚠ [B16] ActivityParameterNode "${node.name}": parameter "${apn.parameter}" not found in nodeMap`);
         }
+        paramNodeNames.add(node.name);  // not a valid SequenceFlow node in Mendix
         continue;   // no new canvas element
       }
 
@@ -328,6 +338,9 @@ function buildMicroflowFromActivity(
           action.entity             = ent;
           action.outputVariableName = n.result ?? `New${n.classifier}`;
           console.log(`      → entity: ${n.classifier}, output: "${action.outputVariableName}"`);
+          // Register output variable so downstream nodes can reference it
+          varNameMap.set(node.name, action.outputVariableName);
+          if (n.result) varNameMap.set(n.result, action.outputVariableName);
         } else {
           console.warn(`      ⚠ Entity "${n.classifier}" not found`);
         }
@@ -347,14 +360,16 @@ function buildMicroflowFromActivity(
         aa.caption = n.name;
         aa.autoGenerateCaption = false;
 
+        // Resolve ActivityParameterNode alias to actual Mendix variable name (CE0109)
         const action = microflows.ChangeObjectAction.createIn(aa);
-        action.changeVariableName = n.object;
+        action.changeVariableName = varNameMap.get(n.object) ?? n.object;
+        action.commit = microflows.CommitEnum.Yes;
 
         mfObj = aa;
         break;
       }
 
-      // B19: CreateLinkAction → ChangeObjectAction (set association)
+      // B19: CreateLinkAction → ChangeObjectAction stub (set association)
       case "CreateLinkAction": {
         const n = node as PimCreateLinkAction;
         console.log(`    [B19] CreateLinkAction "${n.name}"`);
@@ -365,28 +380,27 @@ function buildMicroflowFromActivity(
         aa.caption = n.name;
         aa.autoGenerateCaption = false;
 
+        // Resolve to a valid Mendix variable; commit avoids CE0032 (no items + no commit)
         const action = microflows.ChangeObjectAction.createIn(aa);
-        action.changeVariableName = n.endData[0]?.value ?? "";
+        const linkVar = varNameMap.get(n.endData[0]?.value ?? "") ??
+                        varNameMap.get(n.endData[1]?.value ?? "") ??
+                        (n.endData[0]?.value ?? "Variable");
+        action.changeVariableName = linkVar;
+        action.commit = microflows.CommitEnum.Yes;
 
         mfObj = aa;
         break;
       }
 
-      // B17: ValueSpecificationAction → ChangeObjectAction stub (value literal)
+      // B17: ValueSpecificationAction — represents a literal value (e.g. true/false).
+      // In Mendix microflows there is no separate "value node"; literals are inline
+      // expressions inside ChangeObjectAction items. Skip canvas element entirely.
       case "ValueSpecificationAction": {
         const n = node as PimValueSpecificationAction;
-        console.log(`    [B17] ValueSpecificationAction "${n.name}"`);
-
-        const aa = microflows.ActionActivity.createIn(mf.objectCollection);
-        aa.relativeMiddlePoint = { x, y: LAYOUT_Y };
-        aa.size = ACTION_SIZE;
-        aa.caption = n.name;
-        aa.autoGenerateCaption = false;
-
-        const action = microflows.ChangeObjectAction.createIn(aa);
-        action.changeVariableName = n.result ?? n.name;
-
-        mfObj = aa;
+        console.log(`    [B17] ValueSpecificationAction "${n.name}" → skipped (literal, no Mendix canvas node)`);
+        // Register the output pin so downstream nodes don't reference undefined names
+        if (n.result) varNameMap.set(n.result, n.result);
+        // No mfObj → not added to nodeMap → B22 skips edges to/from this node
         break;
       }
 
@@ -402,7 +416,8 @@ function buildMicroflowFromActivity(
         aa.autoGenerateCaption = false;
 
         const action = microflows.ChangeObjectAction.createIn(aa);
-        action.changeVariableName = n.object;
+        action.changeVariableName = varNameMap.get(n.object) ?? n.object;
+        action.commit = microflows.CommitEnum.Yes;
 
         mfObj = aa;
         break;
@@ -420,8 +435,16 @@ function buildMicroflowFromActivity(
   }
 
   // ---- B22: ControlFlow edges → SequenceFlows ----
+  // Edges that touch ActivityParameterNodes or skipped B17 nodes are omitted:
+  // MicroflowParameterObjects are not valid SequenceFlow endpoints in Mendix (CE0709).
   console.log(`    [B22] Wiring ${activity.edges?.length ?? 0} SequenceFlows …`);
   for (const edge of activity.edges ?? []) {
+    // Skip edges involving parameter nodes (not valid control-flow nodes in Mendix)
+    if (paramNodeNames.has(edge.source) || paramNodeNames.has(edge.target)) {
+      console.log(`      → Skipping param-node edge: "${edge.source}" → "${edge.target}"`);
+      continue;
+    }
+
     const origin      = nodeMap.get(edge.source);
     const destination = nodeMap.get(edge.target);
 
@@ -535,6 +558,10 @@ async function applyPimToMendix(
   // =========================================================================
   console.log(`\n${LOG} [B1/B2] Mapping ${pimModel.classes?.length ?? 0} Classes → Entities …`);
   for (const cls of pimModel.classes ?? []) {
+    if (entityMap.has(cls.name)) {
+      console.warn(`  ⚠ [B1] Entity "${cls.name}" already exists — skipping duplicate`);
+      continue;
+    }
     const abstract = cls.isAbstract === true;
     const rule     = abstract ? "B2" : "B1";
     console.log(`  [${rule}] Class "${cls.name}"${abstract ? " [abstract]" : ""}`);
@@ -616,13 +643,35 @@ async function applyPimToMendix(
     const entity = entityMap.get(cls.name);
     if (!entity) continue;
 
+    // Child entities (with generalizations) inherit the parent's logical id —
+    // do not re-declare it to avoid CE0069 "Duplicate member name 'id'".
+    const isChildEntity = (cls.generalizations?.length ?? 0) > 0;
+
     for (const prop of cls.ownedAttributes ?? []) {
-      const rule = prop.isID ? "B6" : "B8";
-      console.log(`  [${rule}] ${cls.name}.${prop.name}: ${prop.type ?? "?"}`);
+      // Mendix reserves 'id' as its own internal entity key (CE7247).
+      // Child entities inherit it from the parent, so skip it there too (CE0069).
+      if (prop.name === "id" && prop.isID) {
+        if (isChildEntity) {
+          console.log(`  [B6] Skipping inherited isID "id" on child entity "${cls.name}"`);
+          continue;
+        }
+        // On root entities rename to avoid the reserved word
+        // (logicalId carries the DEMO logical-identifier semantics)
+      }
+
+      const rule     = prop.isID ? "B6" : "B8";
+      const attrName = (prop.name === "id" && prop.isID) ? "logicalId" : prop.name;
+      console.log(`  [${rule}] ${cls.name}.${attrName}: ${prop.type ?? "?"}`);
 
       const attr = domainmodels.Attribute.createIn(entity);
-      attr.name  = prop.name;
+      attr.name  = attrName;
       attr.type  = makeAttributeType(prop.type, prop.isID === true, model, enumMap);
+
+      // Boolean attributes require an explicit default value in Mendix (CE7247)
+      if (attr.type instanceof domainmodels.BooleanAttributeType) {
+        const sv = domainmodels.StoredValue.createIn(attr);
+        sv.defaultValue = "false";
+      }
 
       console.log(`    → Attribute "${attr.name}" (${attr.type.structureTypeName})`);
     }
