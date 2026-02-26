@@ -1,0 +1,17 @@
+# Dependencies — rebuilt inside the container
+node_modules/
+
+# Compiled output — rebuilt by tsc in the builder stage
+dist/
+
+# Local environment file — secrets must NOT end up in the image
+# (Credentials are injected at runtime via docker-compose env_file)
+.env
+
+# Generated pipeline outputs — not needed inside the image
+tests/rent-a-car-pim.json
+tests/rent-a-car-pim-from-bus.json
+
+# Misc
+*.log
+.DS_Store

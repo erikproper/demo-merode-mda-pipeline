@@ -1,0 +1,160 @@
+# =============================================================================
+# docker-compose.yml  –  MDA Master Thesis Pipeline
+# Root of: mda-master-thesis-workspace/
+#
+# Architecture note:
+#   The "Modelling Bus" is NOT the Go library (big-modelling-bus.go.v1).
+#   That library is a reusable MQTT client SDK — it has no main() entry point.
+#   The actual bus transport is the MQTT broker (Eclipse Mosquitto).
+#   The TypeScript agents connect to it via the MQTT_BROKER env variable.
+#
+# Services:
+#   mqtt-broker       – Eclipse Mosquitto (the transport layer of the BIG Bus)
+#   api-server        – HTTP gateway: POST /api/model → publishes to bus (Port 3000)
+#   transformer-agent – demo-to-pim-agent  (CIM/DEMO → PIM/pimUML)
+#   mendix-agent      – pim-to-mendix-agent (PIM/pimUML → Mendix PSM)
+#
+# Pipeline trigger via API (from anywhere):
+#   curl -X POST http://<pi-ip>:3000/api/model \
+#        -H "Content-Type: application/json" \
+#        -d @your-model.json
+#
+# Pipeline trigger via one-shot container (opt-in via --profile publisher):
+#   docker compose --profile publisher run --rm demo-publisher
+#
+# Usage:
+#   docker compose up -d        # start all persistent services
+#   docker compose logs -f      # watch logs
+#   docker compose down         # stop everything
+#
+# ARM support (Raspberry Pi 4/5):
+#   Both eclipse-mosquitto:2 and node:18-alpine publish multi-arch manifests
+#   that include linux/arm64 — no platform flags required.
+# =============================================================================
+
+name: mda-thesis
+
+services:
+
+  # ── 1. MQTT Broker (Modelling Bus transport layer) ──────────────────────────
+  mqtt-broker:
+    image: eclipse-mosquitto:2
+    container_name: mda-mqtt-broker
+    ports:
+      - "1883:1883"   # MQTT  (external access from host / Studio Pro tools)
+      - "9001:9001"   # MQTT over WebSocket (optional browser clients)
+    volumes:
+      - ./mda-agents/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    restart: unless-stopped
+    networks:
+      - mda-bus
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-i", "healthcheck", "-W", "3"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── 2. API Server  (HTTP gateway → MQTT bus) ────────────────────────────────
+  api-server:
+    build:
+      context: ./mda-agents
+      dockerfile: Dockerfile
+    container_name: mda-api-server
+    command: node dist/api-server.js
+    ports:
+      - "3000:3000"   # HTTP API — accessible from host and external clients
+    environment:
+      API_PORT: "3000"
+      MQTT_BROKER: mqtt-broker
+      MQTT_PORT: "1883"
+      MQTT_USER: admin
+      MQTT_PASSWORD: admin
+      BUS_PREFIX: big
+      BUS_ENVIRONMENT_ID: dev
+      BUS_AGENT_ID: api-server
+    depends_on:
+      mqtt-broker:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - mda-bus
+
+  # ── 3. Transformer Agent  (CIM/DEMO → PIM/pimUML) ───────────────────────────
+  transformer-agent:
+    build:
+      context: ./mda-agents
+      dockerfile: Dockerfile
+    container_name: mda-transformer-agent
+    command: node dist/demo-to-pim-agent.js
+    environment:
+      # Overrides any MQTT_BROKER=localhost that might come from env_file
+      MQTT_BROKER: mqtt-broker
+      MQTT_PORT: "1883"
+      MQTT_USER: admin
+      MQTT_PASSWORD: admin
+      BUS_PREFIX: big
+      BUS_ENVIRONMENT_ID: dev
+      BUS_AGENT_ID: demo-to-pim-agent
+    depends_on:
+      mqtt-broker:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - mda-bus
+
+  # ── 4. Mendix Agent  (PIM/pimUML → Mendix PSM) ──────────────────────────────
+  mendix-agent:
+    build:
+      context: ./mda-agents
+      dockerfile: Dockerfile
+    container_name: mda-mendix-agent
+    command: node dist/pim-to-mendix-agent.js
+    environment:
+      # MQTT connection — overrides env_file values
+      MQTT_BROKER: mqtt-broker
+      MQTT_PORT: "1883"
+      MQTT_USER: admin
+      MQTT_PASSWORD: admin
+      BUS_PREFIX: big
+      BUS_ENVIRONMENT_ID: dev
+      BUS_AGENT_ID: pim-to-mendix-agent
+      # MENDIX_TOKEN and MENDIX_APP_ID come from env_file below
+    env_file:
+      # Contains MENDIX_TOKEN, MENDIX_APP_ID, MENDIX_MODULE_NAME, MENDIX_BRANCH.
+      # MQTT_BROKER=localhost in this file is overridden by `environment` above.
+      - ./mda-agents/.env
+    depends_on:
+      mqtt-broker:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - mda-bus
+
+  # ── 5. Demo Publisher  (one-shot pipeline trigger, opt-in via profile) ───────
+  # Usage: docker compose --profile publisher run --rm demo-publisher
+  demo-publisher:
+    build:
+      context: ./mda-agents
+      dockerfile: Dockerfile
+    container_name: mda-demo-publisher
+    command: node dist/demo-publisher.js
+    profiles:
+      - publisher
+    environment:
+      MQTT_BROKER: mqtt-broker
+      MQTT_PORT: "1883"
+      MQTT_USER: admin
+      MQTT_PASSWORD: admin
+      BUS_PREFIX: big
+      BUS_ENVIRONMENT_ID: dev
+      BUS_AGENT_ID: demo-publisher
+    depends_on:
+      mqtt-broker:
+        condition: service_healthy
+    networks:
+      - mda-bus
+
+# ── Shared network ─────────────────────────────────────────────────────────────
+networks:
+  mda-bus:
+    driver: bridge

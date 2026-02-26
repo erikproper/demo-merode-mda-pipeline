@@ -1,0 +1,54 @@
+# =============================================================================
+# .gitignore  –  MDA Master Thesis Workspace (root)
+# =============================================================================
+
+# ── Claude AI / IDE context ───────────────────────────────────────────────────
+.claude/
+
+# ── Secrets & local environment ──────────────────────────────────────────────
+# Never commit credentials — use .env.example as template
+.env
+*.env.local
+*.env.*.local
+
+# ── Node.js / TypeScript (mda-agents/) ───────────────────────────────────────
+node_modules/
+dist/
+*.js.map
+
+# Generated pipeline outputs (re-created by running the pipeline)
+mda-agents/tests/rent-a-car-pim.json
+mda-agents/tests/rent-a-car-pim-from-bus.json
+
+# ── Go (big-modelling-bus.go.v1/) ─────────────────────────────────────────────
+big-modelling-bus.go.v1/bin/
+big-modelling-bus.go.v1/*.exe
+big-modelling-bus.go.v1/*.test
+big-modelling-bus.go.v1/vendor/
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+# Local override files (never commit — use docker-compose.yml as base)
+docker-compose.override.yml
+docker-compose.local.yml
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ── Windows ───────────────────────────────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ── Editors & IDEs ────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*

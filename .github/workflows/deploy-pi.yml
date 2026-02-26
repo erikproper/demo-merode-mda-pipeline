@@ -1,0 +1,95 @@
+# =============================================================================
+# .github/workflows/deploy-pi.yml
+#
+# Automatically deploys the pipeline to the Raspberry Pi when a commit is
+# pushed to the `main` branch.
+#
+# Strategy: self-hosted GitHub Actions runner on the Pi.
+#   → Works even when the Pi is behind NAT (Cloudflare Tunnel handles ingress).
+#   → The runner polls GitHub for jobs, so it works from any network.
+#
+# One-time setup on the Raspberry Pi:
+#   1. Clone this repo:
+#        git clone https://github.com/<your-user>/<your-repo>.git /Projects/mda-master-thesis-workspace
+#
+#   2. Add mda.tlolab.com to your Cloudflare Tunnel config (see cloudflare-tunnel.md)
+#
+#   3. Register the self-hosted runner on the Pi:
+#        → GitHub repo → Settings → Actions → Runners → New self-hosted runner
+#        → Choose: Linux / ARM64
+#        → Follow the shown commands on the Pi (install into /Projects/actions-runner)
+#        → When asked for labels, add: raspberry-pi
+#        → Start as service: sudo ./svc.sh install && sudo ./svc.sh start
+#
+#   4. Add GitHub Secrets (repo → Settings → Secrets → Actions):
+#        MENDIX_TOKEN        your Mendix Personal Access Token
+#        MENDIX_APP_ID       your Mendix App UUID
+#
+# After that, every push to main automatically redeploys.
+# =============================================================================
+
+name: Deploy to Raspberry Pi
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Build & Deploy on Pi
+    # Runs directly on the Raspberry Pi (self-hosted runner with label "raspberry-pi")
+    runs-on: [self-hosted, raspberry-pi]
+
+    steps:
+      # ── 1. Pull latest code ──────────────────────────────────────────────────
+      - name: Pull latest main
+        run: |
+          cd /Projects/mda-master-thesis-workspace
+          git fetch origin main
+          git reset --hard origin/main
+          echo "✓ Code updated to $(git log -1 --oneline)"
+
+      # ── 2. Write .env from GitHub Secrets ────────────────────────────────────
+      # Keeps secrets out of the repo and the Docker image.
+      - name: Write .env for mendix-agent
+        run: |
+          cat > /Projects/mda-master-thesis-workspace/mda-agents/.env <<'ENVEOF'
+          MQTT_BROKER=localhost
+          MQTT_PORT=1883
+          MQTT_USER=admin
+          MQTT_PASSWORD=admin
+          BUS_PREFIX=big
+          BUS_ENVIRONMENT_ID=dev
+          MENDIX_TOKEN=${{ secrets.MENDIX_TOKEN }}
+          MENDIX_APP_ID=${{ secrets.MENDIX_APP_ID }}
+          MENDIX_MODULE_NAME=${{ vars.MENDIX_MODULE_NAME || 'MyFirstModule' }}
+          MENDIX_BRANCH=${{ vars.MENDIX_BRANCH || 'main' }}
+          ENVEOF
+          echo "✓ .env written"
+
+      # ── 3. Rebuild images and restart containers ─────────────────────────────
+      - name: Rebuild & restart Docker Compose services
+        working-directory: /Projects/mda-master-thesis-workspace
+        run: |
+          docker compose build --pull
+          docker compose up -d --remove-orphans
+          echo "✓ Services restarted"
+
+      # ── 4. Verify health ─────────────────────────────────────────────────────
+      - name: Health check
+        run: |
+          sleep 5
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/health)
+          if [ "$STATUS" = "200" ]; then
+            echo "✓ API server healthy — https://mda.tlolab.com/health"
+          else
+            echo "✗ Health check failed (HTTP $STATUS)"
+            docker compose -f /Projects/mda-master-thesis-workspace/docker-compose.yml logs --tail=20
+            exit 1
+          fi
+
+      # ── 5. Summary ───────────────────────────────────────────────────────────
+      - name: Print running services
+        working-directory: /Projects/mda-master-thesis-workspace
+        run: docker compose ps

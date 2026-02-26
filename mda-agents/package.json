@@ -8,6 +8,7 @@
     "demo-to-pim-agent": "ts-node -r dotenv/config demo-to-pim-agent.ts",
     "pim-to-mendix-agent": "ts-node -r dotenv/config pim-to-mendix-agent.ts",
     "pim-subscriber": "ts-node -r dotenv/config tests/pim-subscriber.ts",
+    "api-server": "ts-node -r dotenv/config api-server.ts",
     "broker:up": "docker compose up -d",
     "broker:down": "docker compose down",
     "broker:logs": "docker compose logs -f"
@@ -15,11 +16,13 @@
   "dependencies": {
     "ajv": "^6.12.6",
     "dotenv": "^17.3.1",
+    "express": "^5.2.1",
     "mendixmodelsdk": "^4.109.0",
     "mendixplatformsdk": "^5.2.0",
     "mqtt": "^5.10.1"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^20.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
