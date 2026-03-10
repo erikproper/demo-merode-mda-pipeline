@@ -83,15 +83,13 @@ console.log(`  primitiveTypes    : ${pim.primitiveTypes.length}`);
 
 console.log("\n  Classes generated:");
 for (const cls of pim.classes) {
-  const attrs   = cls.ownedAttributes?.length  ?? 0;
-  const regions = cls.ownedBehaviors?.[0]?.regions.length ?? 0;
-  const acts    = cls.ownedActivities?.length   ?? 0;
-  const abs     = cls.isAbstract ? " [abstract]" : "";
-  const gens    = cls.generalizations?.map(g => g.general).join(", ") ?? "";
+  const attrs = cls.ownedAttributes?.length ?? 0;
+  const abs   = cls.isAbstract ? " [abstract]" : "";
+  const gens  = cls.generalizations?.map(g => g.general).join(", ") ?? "";
   console.log(
     `    • ${cls.name}${abs}` +
     (gens ? ` extends ${gens}` : "") +
-    `  (attrs: ${attrs}, SM-regions: ${regions}, activities: ${acts})`
+    `  (attrs: ${attrs})`
   );
 }
 
