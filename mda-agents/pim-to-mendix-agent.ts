@@ -1,89 +1,56 @@
-/**
- * pim-to-mendix-agent.ts
- *
- * BIG Modelling Bus agent: pimUML (PIM) → Mendix (PSM)
- *
- * Pipeline:
- *   subscribe(model.pim.created)             ← PimModel artefact state
- *     → validate(pimuml-schema.json)         [AJV, Draft-07]
- *     → openWorkingCopy()                    [Mendix Platform SDK]
- *     → applyMappingRules(B1–B22)            [Table 11.1, 3_mapping_pim_to_mendix.md]
- *     → flushChanges() + commitToRepository  [Mendix Platform SDK]
- *
- * Mapping rules applied (Table 11.1):
- *   B1  Class                         → Entity (domain model)
- *   B2  Abstract Class                → Entity with documentation "[abstract]" (domain model)
- *   B3  Enumeration, EnumLiteral      → Enumeration + EnumerationValues (domain model)
- *   B4  User-defined data type        → Entity with documentation "[data type]" (domain model)
- *   B5  Association Class             → Entity + 2 Associations (domain model)
- *   B6  Property (isID == true)       → Attribute Integer (domain model)
- *   B7  Property (of Datatype)        → Attribute (domain model)
- *   B8  Property (of Class)           → Attribute (domain model)
- *   B9  Association                   → Association (domain model)
- *   B10 Generalization                → Generalization (domain model)
- *   B11 State Machine                 → ACR_ Microflow stub (microflow)
- *   B12 Region, Pseudostate           → [Workflow — not implemented, warns]
- *   B13 Activity                      → Microflow (microflow)
- *   B14 InitialNode                   → StartEvent (microflow)
- *   B15 ActivityFinalNode             → EndEvent (microflow)
- *   B16 Parameter/ActivityParamNode   → MicroflowParameterObject (microflow)
- *   B17 ValueSpecificationAction      → ChangeObjectAction stub (microflow)
- *   B18 AddStructuralFeatureValue     → ChangeObjectAction (microflow)
- *   B19 CreateLinkAction              → ChangeObjectAction stub (microflow)
- *   B20 CreateObjectAction            → CreateObjectAction (microflow)
- *   B21 ReadStructuralFeatureAction   → ChangeObjectAction stub (microflow)
- *   B22 Control flow                  → SequenceFlow (microflow)
- *   B23 Transition, Trigger           → [Workflow — not implemented, warns]
- *   B24 State entry activity          → [Workflow — not implemented, warns]
- *
- * Required environment variables:
- *   MENDIX_TOKEN          Mendix Personal Access Token (PAT) — used automatically by SDK
- *   MENDIX_APP_ID         App ID (UUID) — get from Developer Portal → General Settings
- *   MENDIX_MODULE_NAME    Target module name (default: "MyFirstModule")
- *   MENDIX_BRANCH         Branch name (default: "main" for Git, "trunk" for SVN)
- *
- * Optional environment variables (inherited from other agents):
- *   MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD
- *   BUS_PREFIX, BUS_ENVIRONMENT_ID, BUS_AGENT_ID
- *   PIM_PUBLISHER_AGENT_ID  (default: "demo-to-pim-agent")
- *
- * Run:
- *   npx ts-node pim-to-mendix-agent.ts
- */
+// Agent C — pimUML (PIM) → Mendix (PSM)
+//
+// Listens for a PIM model on the bus, validates it, opens a temporary
+// Mendix working copy, applies mapping rules B1–B22, and commits the result.
+//
+// Mapping rules (thesis Table 11.1):
+//   B1  Class                      → Entity
+//   B2  Abstract class             → Entity (documented as "[abstract]")
+//   B3  Enumeration                → Mendix Enumeration
+//   B4  PrimitiveType              → Entity (documented as "[data type]")
+//   B5  AssociationClass           → Entity + 2 Associations
+//   B6  Property (isID)            → Integer attribute "logicalId"
+//   B7  Property (data type)       → Attribute
+//   B8  Property (class type)      → Attribute
+//   B9  Association                → Mendix Association
+//   B10 Generalization             → Mendix Generalization
+//   B11 StateMachine               → ACR_ microflow stub
+//   B12 Region/Pseudostate         → not implemented (warns)
+//   B13 Activity                   → Microflow
+//   B14 InitialNode                → StartEvent
+//   B15 ActivityFinalNode          → EndEvent
+//   B16 Parameter/ActivityParamNode→ MicroflowParameterObject
+//   B17 ValueSpecificationAction   → skipped (literal, no Mendix canvas element)
+//   B18 AddStructuralFeatureValue  → ChangeObjectAction
+//   B19 CreateLinkAction           → ChangeObjectAction stub
+//   B20 CreateObjectAction         → CreateObjectAction
+//   B21 ReadStructuralFeatureAction→ ChangeObjectAction stub
+//   B22 ControlFlow edges          → SequenceFlow
+//   B23 Transition/Trigger         → not implemented (warns)
+//   B24 State entry activity       → not implemented (warns)
+//
+// Required env vars:
+//   MENDIX_TOKEN         personal access token
+//   MENDIX_APP_ID        app UUID (from Developer Portal)
+//   MENDIX_MODULE_NAME   target module (default: "MyFirstModule")
+//   MENDIX_BRANCH        branch (default: "main")
 
-import path    from "path";
-import fs      from "fs";
-import Ajv     from "ajv";
 import { IModel } from "mendixmodelsdk";
 import { domainmodels, enumerations, microflows, datatypes } from "mendixmodelsdk";
 import { MendixPlatformClient, OnlineWorkingCopy } from "mendixplatformsdk";
-import { BusClient }        from "./bus-client";
+import { BusClient } from "./bus-client";
 import type {
   PimModel,
-  PimClass,
   Activity,
-  ActivityNode,
-  CreateObjectAction     as PimCreateObjectAction,
+  CreateObjectAction             as PimCreateObjectAction,
   AddStructuralFeatureValueAction as PimAddStructuralFeatureValueAction,
-  CreateLinkAction       as PimCreateLinkAction,
-  ReadStructuralFeatureAction as PimReadStructuralFeatureAction,
-  ValueSpecificationAction as PimValueSpecificationAction,
+  CreateLinkAction               as PimCreateLinkAction,
+  ReadStructuralFeatureAction    as PimReadStructuralFeatureAction,
+  ValueSpecificationAction       as PimValueSpecificationAction,
 } from "./schemas/types";
+import { getBusConfig, makeValidator, assertValid, extractMeta } from "./agent-utils";
 
-// =============================================================================
-// Configuration
-// =============================================================================
-
-const config = {
-  broker:        process.env.MQTT_BROKER          ?? "localhost",
-  port:          parseInt(process.env.MQTT_PORT   ?? "1883", 10),
-  user:          process.env.MQTT_USER            ?? "admin",
-  password:      process.env.MQTT_PASSWORD        ?? "admin",
-  prefix:        process.env.BUS_PREFIX           ?? "big",
-  environmentID: process.env.BUS_ENVIRONMENT_ID  ?? "dev",
-  agentID:       process.env.BUS_AGENT_ID        ?? "pim-to-mendix-agent",
-  loadDelayMs:   300,
-};
+const config = getBusConfig("pim-to-mendix-agent");
 
 const mendixConfig = {
   appId:      process.env.MENDIX_APP_ID      ?? "",
@@ -91,125 +58,66 @@ const mendixConfig = {
   branch:     process.env.MENDIX_BRANCH      ?? "main",
 };
 
-/** Agent ID that publishes the PimModel on the bus. */
-const PIM_PUBLISHER_AGENT_ID = process.env.PIM_PUBLISHER_AGENT_ID ?? "demo-to-pim-agent";
-const PIM_ARTEFACT_ID        = "model.pim.created";
+const SOURCE_AGENT_ID = process.env.PIM_PUBLISHER_AGENT_ID ?? "demo-to-pim-agent";
+const IN_ARTEFACT     = "model.pim.created";
 
-// =============================================================================
-// JSON Schema validation (AJV)
-// =============================================================================
+const validatePim = makeValidator("pimuml-schema.json");
 
-const SCHEMAS_DIR = path.resolve(__dirname, "schemas");
-
-function loadSchema(filename: string): object {
-  return JSON.parse(fs.readFileSync(path.join(SCHEMAS_DIR, filename), "utf-8"));
-}
-
-const ajv       = new Ajv({ allErrors: true });
-const pimSchema = loadSchema("pimuml-schema.json");
-const validatePim = ajv.compile(pimSchema);
-
-function assertValid(
-  validator: Ajv.ValidateFunction,
-  data: unknown,
-  label: string,
-): void {
-  if (!validator(data)) {
-    const errors = validator.errors
-      ?.map(e => `  ${(e as any).dataPath || "/"} ${e.message}`)
-      .join("\n") ?? "";
-    throw new Error(`[${label}] Validation failed:\n${errors}`);
-  }
-}
-
-// =============================================================================
-// Layout helpers  (auto-position canvas elements left→right)
-// =============================================================================
-
+// Canvas layout constants for positioning elements left-to-right.
 const LAYOUT_Y    = 100;
 const LAYOUT_STEP = 200;
+const EVENT_SIZE  = { width: 20,  height: 20 };
+const ACTION_SIZE = { width: 120, height: 40 };
+const PARAM_SIZE  = { width: 120, height: 40 };
 
-const EVENT_SIZE  = { width: 20,  height: 20  };
-const ACTION_SIZE = { width: 120, height: 40  };
-const PARAM_SIZE  = { width: 120, height: 40  };
-
-// =============================================================================
-// Attribute type factory (B6 / B7 / B8)
-// =============================================================================
-
+// B6/B7/B8 — map a PIM property type string to a Mendix AttributeType.
 function makeAttributeType(
   typeName: string | undefined,
   isID:     boolean,
   model:    IModel,
   enumMap:  Map<string, enumerations.Enumeration>,
 ): domainmodels.AttributeType {
-
-  if (isID) {
-    // B6: isID → Integer attribute (logical identifier)
-    return domainmodels.IntegerAttributeType.create(model);
-  }
+  if (isID) return domainmodels.IntegerAttributeType.create(model);
 
   switch ((typeName ?? "").toLowerCase()) {
-    case "integer":                     return domainmodels.IntegerAttributeType.create(model);
-    case "long":                        return domainmodels.LongAttributeType.create(model);
-    case "boolean":                     return domainmodels.BooleanAttributeType.create(model);
-    case "decimal":
-    case "float":                       return domainmodels.DecimalAttributeType.create(model);
-    case "datetime":
-    case "date":                        return domainmodels.DateTimeAttributeType.create(model);
-    case "string":
-    case "":                            return domainmodels.StringAttributeType.create(model);
+    case "integer":            return domainmodels.IntegerAttributeType.create(model);
+    case "long":               return domainmodels.LongAttributeType.create(model);
+    case "boolean":            return domainmodels.BooleanAttributeType.create(model);
+    case "decimal": case "float":   return domainmodels.DecimalAttributeType.create(model);
+    case "datetime": case "date":   return domainmodels.DateTimeAttributeType.create(model);
+    case "string": case "":         return domainmodels.StringAttributeType.create(model);
   }
 
-  // Check whether the type name matches a known Mendix Enumeration (B3 → EnumerationAttributeType)
   const mxEnum = enumMap.get(typeName ?? "");
   if (mxEnum) {
-    const ea  = domainmodels.EnumerationAttributeType.create(model);
+    const ea = domainmodels.EnumerationAttributeType.create(model);
     ea.enumeration = mxEnum;
     return ea;
   }
 
-  // Unknown type: fall back to String
-  console.warn(`    ⚠ Unknown attribute type "${typeName}" → StringAttributeType (fallback)`);
+  console.warn(`    ⚠ unknown type "${typeName}" — falling back to String`);
   return domainmodels.StringAttributeType.create(model);
 }
 
-// =============================================================================
-// Datatype factory  (for microflow parameter variable types)
-// =============================================================================
-
+// Map a type name to a Mendix DataType (used for microflow parameter types).
 function makeDatatypeFromString(typeName: string, model: IModel): datatypes.DataType {
   switch (typeName.toLowerCase()) {
-    case "integer":    return datatypes.IntegerType.create(model);
-    case "long":       return datatypes.IntegerType.create(model); // closest match
-    case "boolean":    return datatypes.BooleanType.create(model);
-    case "decimal":
-    case "float":      return datatypes.DecimalType.create(model);
-    case "datetime":
-    case "date":       return datatypes.DateTimeType.create(model);
-    case "string":
-    default:           return datatypes.StringType.create(model);
+    case "integer": case "long": return datatypes.IntegerType.create(model);
+    case "boolean":              return datatypes.BooleanType.create(model);
+    case "decimal": case "float": return datatypes.DecimalType.create(model);
+    case "datetime": case "date": return datatypes.DateTimeType.create(model);
+    default:                      return datatypes.StringType.create(model);
   }
 }
 
-// =============================================================================
-// Microflow helpers
-// =============================================================================
-
-function addStartEvent(
-  mf: microflows.Microflow,
-  x:  number,
-): microflows.StartEvent {
+function addStartEvent(mf: microflows.Microflow, x: number): microflows.StartEvent {
   const ev = microflows.StartEvent.createIn(mf.objectCollection);
   ev.relativeMiddlePoint = { x, y: LAYOUT_Y };
   ev.size = EVENT_SIZE;
   return ev;
 }
 
-function addEndEvent(
-  mf: microflows.Microflow,
-  x:  number,
-): microflows.EndEvent {
+function addEndEvent(mf: microflows.Microflow, x: number): microflows.EndEvent {
   const ev = microflows.EndEvent.createIn(mf.objectCollection);
   ev.relativeMiddlePoint = { x, y: LAYOUT_Y };
   ev.size = EVENT_SIZE;
@@ -217,53 +125,44 @@ function addEndEvent(
 }
 
 function addSequenceFlow(
-  mf:          microflows.Microflow,
-  origin:      microflows.MicroflowObject,
-  destination: microflows.MicroflowObject,
-): microflows.SequenceFlow {
+  mf:   microflows.Microflow,
+  from: microflows.MicroflowObject,
+  to:   microflows.MicroflowObject,
+): void {
   const flow   = microflows.SequenceFlow.createIn(mf);
-  flow.origin      = origin;
-  flow.destination = destination;
-  return flow;
+  flow.origin      = from;
+  flow.destination = to;
 }
 
-// =============================================================================
-// B13–B22: Activity → Microflow
-// =============================================================================
-
+// B13–B22 — convert one PIM activity diagram into a Mendix microflow.
 function buildMicroflowFromActivity(
   activity: Activity,
-  mxModule: any,          // projects.IFolderBase (Module)
+  mxModule: any,
   entityMap: Map<string, domainmodels.Entity>,
   enumMap:   Map<string, enumerations.Enumeration>,
   model:     IModel,
 ): void {
-  const LOG = "[pim-to-mendix-agent]";
-  console.log(`  [B13] Activity "${activity.name}" → Microflow`);
+  console.log(`  [B13] "${activity.name}" → Microflow`);
 
   const mf = microflows.Microflow.createIn(mxModule);
-  // Replace dots with underscores — Mendix does not allow dots in names (CE7247)
-  mf.name  = activity.name.replace(/\./g, "_");
+  mf.name  = activity.name.replace(/\./g, "_"); // dots are not allowed in Mendix names
 
-  // name → canvas element  (for SequenceFlow wiring)
-  const nodeMap     = new Map<string, microflows.MicroflowObject>();
-  // UML node name → Mendix variable name (resolves ActivityParameterNode aliases)
-  const varNameMap  = new Map<string, string>();
-  // Names of ActivityParameterNodes — these are not valid SequenceFlow nodes in Mendix
+  // nodeMap: UML node name → Mendix canvas object (needed for SequenceFlow wiring)
+  // varNameMap: UML node name → Mendix variable name (needed for action references)
+  // paramNodeNames: parameter nodes are not valid SequenceFlow endpoints in Mendix
+  const nodeMap        = new Map<string, microflows.MicroflowObject>();
+  const varNameMap     = new Map<string, string>();
   const paramNodeNames = new Set<string>();
-
   let x = 0;
 
-  // ---- B16: Activity parameters → MicroflowParameterObject (shown left-hand side) ----
+  // B16 — parameters first, positioned on the left side of the canvas
   for (const param of activity.parameters ?? []) {
     if (param.direction !== "in" && param.direction !== "inout") continue;
 
-    console.log(`    [B16] Parameter "${param.name}" (${param.type ?? "?"}, ${param.direction})`);
-
-    const po  = microflows.MicroflowParameterObject.createIn(mf.objectCollection);
-    po.name   = param.name;
+    const po = microflows.MicroflowParameterObject.createIn(mf.objectCollection);
+    po.name  = param.name;
     po.relativeMiddlePoint = { x, y: LAYOUT_Y };
-    po.size   = PARAM_SIZE;
+    po.size  = PARAM_SIZE;
 
     if (param.type) {
       const ent = entityMap.get(param.type);
@@ -271,61 +170,53 @@ function buildMicroflowFromActivity(
         const ot  = datatypes.ObjectType.create(model);
         ot.entity = ent;
         po.variableType = ot;
-        console.log(`      → variableType: ObjectType(${param.type})`);
       } else {
         po.variableType = makeDatatypeFromString(param.type, model);
-        console.log(`      → variableType: ${param.type}`);
       }
     }
 
     nodeMap.set(param.name, po);
-    varNameMap.set(param.name, param.name);  // param name is the Mendix variable name
-    paramNodeNames.add(param.name);          // parameters are not SequenceFlow nodes
+    varNameMap.set(param.name, param.name);
+    paramNodeNames.add(param.name);
     x += LAYOUT_STEP;
   }
 
-  // ---- B14 / B15 / B17–B21: Activity nodes ----
+  // B14/B15/B17–B21 — one pass through the activity nodes
   for (const node of activity.nodes ?? []) {
     let mfObj: microflows.MicroflowObject | null = null;
 
     switch (node._type) {
 
-      // B14: InitialNode → StartEvent
+      // B14
       case "InitialNode": {
-        console.log(`    [B14] InitialNode "${node.name}" → StartEvent`);
-        const ev = addStartEvent(mf, x);
-        mfObj = ev;
+        mfObj = addStartEvent(mf, x);
         break;
       }
 
-      // B15: ActivityFinalNode → EndEvent
+      // B15
       case "ActivityFinalNode": {
-        console.log(`    [B15] ActivityFinalNode "${node.name}" → EndEvent`);
-        const ev = addEndEvent(mf, x);
-        mfObj = ev;
+        mfObj = addEndEvent(mf, x);
         break;
       }
 
-      // B16: ActivityParameterNode → map to already-created parameter object
+      // B16 — the ActivityParameterNode is just an alias for an already-created parameter.
+      // No new canvas element — just register the alias so edges can reference it.
       case "ActivityParameterNode": {
-        const apn = node as { _type: string; name: string; parameter: string };
+        const apn = node as { name: string; parameter: string };
         const po  = nodeMap.get(apn.parameter);
         if (po) {
-          nodeMap.set(node.name, po);   // alias: node name → param object
-          // Resolve to the Mendix parameter variable name
+          nodeMap.set(node.name, po);
           varNameMap.set(node.name, varNameMap.get(apn.parameter) ?? apn.parameter);
         } else {
-          console.warn(`    ⚠ [B16] ActivityParameterNode "${node.name}": parameter "${apn.parameter}" not found in nodeMap`);
+          console.warn(`    ⚠ [B16] parameter "${apn.parameter}" not found for node "${node.name}"`);
         }
-        paramNodeNames.add(node.name);  // not a valid SequenceFlow node in Mendix
-        continue;   // no new canvas element
+        paramNodeNames.add(node.name);
+        continue;
       }
 
-      // B20: CreateObjectAction → Mendix CreateObjectAction
+      // B20
       case "CreateObjectAction": {
-        const n = node as PimCreateObjectAction;
-        console.log(`    [B20] CreateObjectAction "${n.name}" (${n.classifier})`);
-
+        const n  = node as PimCreateObjectAction;
         const aa = microflows.ActionActivity.createIn(mf.objectCollection);
         aa.relativeMiddlePoint = { x, y: LAYOUT_Y };
         aa.size = ACTION_SIZE;
@@ -337,78 +228,62 @@ function buildMicroflowFromActivity(
         if (ent) {
           action.entity             = ent;
           action.outputVariableName = n.result ?? `New${n.classifier}`;
-          console.log(`      → entity: ${n.classifier}, output: "${action.outputVariableName}"`);
-          // Register output variable so downstream nodes can reference it
           varNameMap.set(node.name, action.outputVariableName);
           if (n.result) varNameMap.set(n.result, action.outputVariableName);
         } else {
-          console.warn(`      ⚠ Entity "${n.classifier}" not found`);
+          console.warn(`      ⚠ entity "${n.classifier}" not found`);
         }
-
         mfObj = aa;
         break;
       }
 
-      // B18: AddStructuralFeatureValueAction → ChangeObjectAction
+      // B18
       case "AddStructuralFeatureValueAction": {
-        const n = node as PimAddStructuralFeatureValueAction;
-        console.log(`    [B18] AddStructuralFeatureValueAction "${n.name}" (${n.object}.${n.structuralFeature})`);
-
+        const n  = node as PimAddStructuralFeatureValueAction;
         const aa = microflows.ActionActivity.createIn(mf.objectCollection);
         aa.relativeMiddlePoint = { x, y: LAYOUT_Y };
         aa.size = ACTION_SIZE;
         aa.caption = n.name;
         aa.autoGenerateCaption = false;
 
-        // Resolve ActivityParameterNode alias to actual Mendix variable name (CE0109)
         const action = microflows.ChangeObjectAction.createIn(aa);
+        // varNameMap resolves UML node names to actual Mendix variable names (fixes CE0109)
         action.changeVariableName = varNameMap.get(n.object) ?? n.object;
         action.commit = microflows.CommitEnum.Yes;
-
         mfObj = aa;
         break;
       }
 
-      // B19: CreateLinkAction → ChangeObjectAction stub (set association)
+      // B19
       case "CreateLinkAction": {
-        const n = node as PimCreateLinkAction;
-        console.log(`    [B19] CreateLinkAction "${n.name}"`);
-
+        const n  = node as PimCreateLinkAction;
         const aa = microflows.ActionActivity.createIn(mf.objectCollection);
         aa.relativeMiddlePoint = { x, y: LAYOUT_Y };
         aa.size = ACTION_SIZE;
         aa.caption = n.name;
         aa.autoGenerateCaption = false;
 
-        // Resolve to a valid Mendix variable; commit avoids CE0032 (no items + no commit)
         const action = microflows.ChangeObjectAction.createIn(aa);
-        const linkVar = varNameMap.get(n.endData[0]?.value ?? "") ??
-                        varNameMap.get(n.endData[1]?.value ?? "") ??
-                        (n.endData[0]?.value ?? "Variable");
-        action.changeVariableName = linkVar;
+        action.changeVariableName =
+          varNameMap.get(n.endData[0]?.value ?? "") ??
+          varNameMap.get(n.endData[1]?.value ?? "") ??
+          (n.endData[0]?.value ?? "Variable");
         action.commit = microflows.CommitEnum.Yes;
-
         mfObj = aa;
         break;
       }
 
-      // B17: ValueSpecificationAction — represents a literal value (e.g. true/false).
-      // In Mendix microflows there is no separate "value node"; literals are inline
-      // expressions inside ChangeObjectAction items. Skip canvas element entirely.
+      // B17 — ValueSpecificationAction has no Mendix equivalent as a standalone node.
+      // Literals are used inline in action expressions. Just register the output pin.
       case "ValueSpecificationAction": {
         const n = node as PimValueSpecificationAction;
-        console.log(`    [B17] ValueSpecificationAction "${n.name}" → skipped (literal, no Mendix canvas node)`);
-        // Register the output pin so downstream nodes don't reference undefined names
         if (n.result) varNameMap.set(n.result, n.result);
-        // No mfObj → not added to nodeMap → B22 skips edges to/from this node
         break;
       }
 
-      // B21: ReadStructuralFeatureAction → ChangeObjectAction stub (retrieve)
+      // B21
       case "ReadStructuralFeatureAction": {
-        const n = node as PimReadStructuralFeatureAction;
-        console.log(`    [B21] ReadStructuralFeatureAction "${n.name}" (${n.object}.${n.structuralFeature})`);
-
+        const n  = node as PimReadStructuralFeatureAction;
         const aa = microflows.ActionActivity.createIn(mf.objectCollection);
         aa.relativeMiddlePoint = { x, y: LAYOUT_Y };
         aa.size = ACTION_SIZE;
@@ -418,13 +293,12 @@ function buildMicroflowFromActivity(
         const action = microflows.ChangeObjectAction.createIn(aa);
         action.changeVariableName = varNameMap.get(n.object) ?? n.object;
         action.commit = microflows.CommitEnum.Yes;
-
         mfObj = aa;
         break;
       }
 
       default:
-        console.warn(`    ⚠ Unknown ActivityNode._type "${(node as any)._type}" — skipped`);
+        console.warn(`    ⚠ unknown node type "${(node as any)._type}" — skipped`);
         continue;
     }
 
@@ -434,485 +308,294 @@ function buildMicroflowFromActivity(
     }
   }
 
-  // ---- B22: ControlFlow edges → SequenceFlows ----
-  // Edges that touch ActivityParameterNodes or skipped B17 nodes are omitted:
-  // MicroflowParameterObjects are not valid SequenceFlow endpoints in Mendix (CE0709).
-  console.log(`    [B22] Wiring ${activity.edges?.length ?? 0} SequenceFlows …`);
+  // B22 — wire SequenceFlows between nodes.
+  // Parameter nodes (and skipped B17 nodes) are not valid endpoints in Mendix (CE0709).
   for (const edge of activity.edges ?? []) {
-    // Skip edges involving parameter nodes (not valid control-flow nodes in Mendix)
-    if (paramNodeNames.has(edge.source) || paramNodeNames.has(edge.target)) {
-      console.log(`      → Skipping param-node edge: "${edge.source}" → "${edge.target}"`);
+    if (paramNodeNames.has(edge.source) || paramNodeNames.has(edge.target)) continue;
+
+    const from = nodeMap.get(edge.source);
+    const to   = nodeMap.get(edge.target);
+    if (!from || !to) {
+      console.warn(`      ⚠ cannot wire "${edge.source}" → "${edge.target}" (node not found)`);
       continue;
     }
-
-    const origin      = nodeMap.get(edge.source);
-    const destination = nodeMap.get(edge.target);
-
-    if (!origin || !destination) {
-      console.warn(`      ⚠ Cannot wire "${edge.source}" → "${edge.target}" (node missing in nodeMap)`);
-      continue;
-    }
-
-    addSequenceFlow(mf, origin, destination);
-    console.log(`      → ${edge.source} → ${edge.target}`);
+    addSequenceFlow(mf, from, to);
   }
 }
 
-// =============================================================================
-// Main transformation: PIM → Mendix (B1–B24)
-// =============================================================================
-
+// Apply all B1–B22 mapping rules to produce a Mendix domain model + microflows.
 async function applyPimToMendix(
   pimModel:    PimModel,
   workingCopy: OnlineWorkingCopy,
   moduleName = mendixConfig.moduleName,
 ): Promise<void> {
-  const LOG = "[pim-to-mendix-agent]";
-
-  // ---------- Open model ----------
-  console.log(`${LOG} Opening model …`);
   const model = await workingCopy.openModel();
 
-  // ---------- Locate module ----------
   const mxModule = model.allModules().find(m => m.name === moduleName);
   if (!mxModule) {
     const available = model.allModules().map(m => m.name).join(", ");
-    throw new Error(
-      `Module "${moduleName}" not found in working copy.\n` +
-      `Available modules: ${available}`,
-    );
+    throw new Error(`Module "${moduleName}" not found. Available: ${available}`);
   }
-  console.log(`${LOG} Target module: "${mxModule.name}"`);
+  console.log(`[pim-to-mendix] target module: "${moduleName}"`);
 
-  // ---------- Load domain model ----------
-  // IDomainModel.load() returns Promise<DomainModel> (the concrete type),
-  // which is required by Entity.createIn(), Association.createIn(), etc.
   const domainModel = await mxModule.domainModel.load();
-  console.log(`${LOG} Domain model loaded.`);
 
-  // ---------- Clear previous pipeline run (idempotent re-generation) ----------
-  // Each run starts clean so entities/enumerations/microflows are never duplicated.
-  // Deletion order: microflows first (may reference entities), then associations,
-  // then entities, then enumerations.
-  const modulePrefix = moduleName + ".";
+  // Delete everything from a previous run so we start clean each time.
+  // Order matters: delete microflows first (they reference entities), then
+  // associations, then entities, then enumerations.
+  const prefix = moduleName + ".";
 
-  const prevMicroflows = model.allMicroflows().filter(
-    mf => (mf.qualifiedName ?? "").startsWith(modulePrefix),
-  );
-  prevMicroflows.forEach(mf => mf.delete());
-  console.log(`${LOG} ✓ Cleared ${prevMicroflows.length} microflow(s)`);
+  const oldMicroflows = model.allMicroflows().filter(mf => (mf.qualifiedName ?? "").startsWith(prefix));
+  oldMicroflows.forEach(mf => mf.delete());
+  console.log(`[pim-to-mendix] cleared ${oldMicroflows.length} microflow(s)`);
 
-  const prevAssociations = [...domainModel.associations];
-  prevAssociations.forEach(a => a.delete());
-  console.log(`${LOG} ✓ Cleared ${prevAssociations.length} association(s)`);
+  const oldAssocs = [...domainModel.associations];
+  oldAssocs.forEach(a => a.delete());
 
-  const prevEntities = [...domainModel.entities];
-  prevEntities.forEach(e => e.delete());
-  console.log(`${LOG} ✓ Cleared ${prevEntities.length} entity/entities`);
+  const oldEntities = [...domainModel.entities];
+  oldEntities.forEach(e => e.delete());
+  console.log(`[pim-to-mendix] cleared ${oldEntities.length} entity/entities, ${oldAssocs.length} association(s)`);
 
-  const prevEnumerations = model.allEnumerations().filter(
-    en => (en.qualifiedName ?? "").startsWith(modulePrefix),
-  );
-  prevEnumerations.forEach(en => en.delete());
-  console.log(`${LOG} ✓ Cleared ${prevEnumerations.length} enumeration(s)`);
+  const oldEnums = model.allEnumerations().filter(en => (en.qualifiedName ?? "").startsWith(prefix));
+  oldEnums.forEach(en => en.delete());
+  console.log(`[pim-to-mendix] cleared ${oldEnums.length} enumeration(s)`);
 
-  // Maps for cross-rule references
   const entityMap = new Map<string, domainmodels.Entity>();
   const enumMap   = new Map<string, enumerations.Enumeration>();
 
-  // Layout state for domain model (simple grid: 5 columns, auto rows)
+  // Simple grid layout: 5 entities per row, auto-incrementing position.
   let entityCount = 0;
-  const ENTITY_COL_COUNT = 5;
-  const ENTITY_X_STEP    = 220;
-  const ENTITY_Y_STEP    = 130;
+  const entityPos = () => {
+    const col = entityCount % 5;
+    const row = Math.floor(entityCount++ / 5);
+    return { x: col * 220, y: row * 130 };
+  };
 
-  function entityLocation(): { x: number; y: number } {
-    const col = entityCount % ENTITY_COL_COUNT;
-    const row = Math.floor(entityCount / ENTITY_COL_COUNT);
-    entityCount++;
-    return { x: col * ENTITY_X_STEP, y: row * ENTITY_Y_STEP };
-  }
-
-  // =========================================================================
-  // B3: Enumeration → Mendix Enumeration (must happen before B1/B2 attributes)
-  // =========================================================================
-  console.log(`\n${LOG} [B3] Mapping ${pimModel.enumerations?.length ?? 0} Enumerations …`);
+  // B3 — enumerations must be created before attributes that reference them
   for (const pimEnum of pimModel.enumerations ?? []) {
-    console.log(`  [B3] "${pimEnum.name}" (${pimEnum.literals?.length ?? 0} literals)`);
-
     const mxEnum = enumerations.Enumeration.createIn(mxModule);
     mxEnum.name  = pimEnum.name;
-
     for (const lit of pimEnum.literals ?? []) {
-      const val  = enumerations.EnumerationValue.createIn(mxEnum);
-      val.name   = lit.name;
-      console.log(`    → "${lit.name}"`);
+      enumerations.EnumerationValue.createIn(mxEnum).name = lit.name;
     }
-
     enumMap.set(pimEnum.name, mxEnum);
-    console.log(`  ✓ Enumeration "${pimEnum.name}" created`);
+    console.log(`  [B3] Enumeration "${pimEnum.name}"`);
   }
 
-  // =========================================================================
-  // B1 / B2: Class → Entity  (concrete and abstract)
-  // =========================================================================
-  console.log(`\n${LOG} [B1/B2] Mapping ${pimModel.classes?.length ?? 0} Classes → Entities …`);
+  // B1/B2 — classes → entities
   for (const cls of pimModel.classes ?? []) {
     if (entityMap.has(cls.name)) {
-      console.warn(`  ⚠ [B1] Entity "${cls.name}" already exists — skipping duplicate`);
+      console.warn(`  ⚠ [B1] "${cls.name}" already exists — skipping duplicate`);
       continue;
     }
-    const abstract = cls.isAbstract === true;
-    const rule     = abstract ? "B2" : "B1";
-    console.log(`  [${rule}] Class "${cls.name}"${abstract ? " [abstract]" : ""}`);
-
-    const entity   = domainmodels.Entity.createIn(domainModel);
-    entity.name    = cls.name;
-    entity.location = entityLocation();
-
-    // B2: Mendix has no native abstract flag — record it in documentation
-    if (abstract) {
-      entity.documentation = "[abstract]";
-    }
-
+    const entity = domainmodels.Entity.createIn(domainModel);
+    entity.name     = cls.name;
+    entity.location = entityPos();
+    if (cls.isAbstract) entity.documentation = "[abstract]";
     entityMap.set(cls.name, entity);
-    console.log(`  ✓ Entity "${cls.name}" created`);
+    console.log(`  [${cls.isAbstract ? "B2" : "B1"}] Entity "${cls.name}"`);
   }
 
-  // =========================================================================
-  // B4: PrimitiveType → Entity (user-defined data type)
-  // =========================================================================
-  console.log(`\n${LOG} [B4] Mapping ${pimModel.primitiveTypes?.length ?? 0} PrimitiveTypes → Entities …`);
+  // B4 — primitive types → entities (marked as data types)
   for (const pt of pimModel.primitiveTypes ?? []) {
-    if (entityMap.has(pt.name)) {
-      console.warn(`  ⚠ [B4] Entity "${pt.name}" already exists — skipping`);
-      continue;
-    }
-    console.log(`  [B4] PrimitiveType "${pt.name}"`);
-
-    const entity           = domainmodels.Entity.createIn(domainModel);
-    entity.name            = pt.name;
-    entity.location        = entityLocation();
-    entity.documentation   = "[user-defined data type]";
-
+    if (entityMap.has(pt.name)) continue;
+    const entity = domainmodels.Entity.createIn(domainModel);
+    entity.name          = pt.name;
+    entity.location      = entityPos();
+    entity.documentation = "[user-defined data type]";
     entityMap.set(pt.name, entity);
-    console.log(`  ✓ Entity "${pt.name}" created`);
+    console.log(`  [B4] Entity "${pt.name}" (data type)`);
   }
 
-  // =========================================================================
-  // B5: AssociationClass → Entity + 2 Associations
-  // =========================================================================
-  console.log(`\n${LOG} [B5] Mapping ${pimModel.associationClasses?.length ?? 0} AssociationClasses …`);
+  // B5 — association classes → entity + two associations
   for (const ac of pimModel.associationClasses ?? []) {
-    console.log(`  [B5] AssociationClass "${ac.name}"`);
-
-    // Create entity for the association class (if not already present)
     if (!entityMap.has(ac.name)) {
-      const entity         = domainmodels.Entity.createIn(domainModel);
+      const entity = domainmodels.Entity.createIn(domainModel);
       entity.name          = ac.name;
-      entity.location      = entityLocation();
+      entity.location      = entityPos();
       entity.documentation = "[association class]";
       entityMap.set(ac.name, entity);
-      console.log(`    ✓ Entity "${ac.name}" created (association class body)`);
     }
-
     const acEntity = entityMap.get(ac.name)!;
-
-    // Create one association per memberEnd
     for (const end of ac.memberEnds) {
       const endEntity = entityMap.get(end.type ?? "");
-      if (!endEntity) {
-        console.warn(`    ⚠ [B5] Entity "${end.type}" not found — skipping association end`);
-        continue;
-      }
+      if (!endEntity) { console.warn(`    ⚠ [B5] entity "${end.type}" not found`); continue; }
       const assoc  = domainmodels.Association.createIn(domainModel);
       assoc.name   = `${ac.name}_${end.type}`;
       assoc.parent = acEntity;
       assoc.child  = endEntity;
       assoc.type   = domainmodels.AssociationType.Reference;
       assoc.owner  = domainmodels.AssociationOwner.Default;
-      console.log(`    → Association "${assoc.name}"`);
     }
+    console.log(`  [B5] AssociationClass "${ac.name}"`);
   }
 
-  // =========================================================================
-  // B6 / B7 / B8: Properties → Attributes
-  // =========================================================================
-  console.log(`\n${LOG} [B6/B7/B8] Mapping Class attributes …`);
+  // B6/B7/B8 — properties → attributes
   for (const cls of pimModel.classes ?? []) {
     const entity = entityMap.get(cls.name);
     if (!entity) continue;
 
-    // Child entities (with generalizations) inherit the parent's logical id —
-    // do not re-declare it to avoid CE0069 "Duplicate member name 'id'".
-    const isChildEntity = (cls.generalizations?.length ?? 0) > 0;
+    // Child entities (those with a generalization) inherit the parent's id — don't re-add it.
+    const isChild = (cls.generalizations?.length ?? 0) > 0;
 
     for (const prop of cls.ownedAttributes ?? []) {
-      // Mendix reserves 'id' as its own internal entity key (CE7247).
-      // Child entities inherit it from the parent, so skip it there too (CE0069).
-      if (prop.name === "id" && prop.isID) {
-        if (isChildEntity) {
-          console.log(`  [B6] Skipping inherited isID "id" on child entity "${cls.name}"`);
-          continue;
-        }
-        // On root entities rename to avoid the reserved word
-        // (logicalId carries the DEMO logical-identifier semantics)
+      if (prop.name === "id" && prop.isID && isChild) {
+        console.log(`  [B6] skipping inherited "id" on child "${cls.name}"`);
+        continue;
       }
 
-      const rule     = prop.isID ? "B6" : "B8";
+      // Mendix reserves the word "id" — rename it to logicalId on root entities.
       const attrName = (prop.name === "id" && prop.isID) ? "logicalId" : prop.name;
-      console.log(`  [${rule}] ${cls.name}.${attrName}: ${prop.type ?? "?"}`);
-
       const attr = domainmodels.Attribute.createIn(entity);
       attr.name  = attrName;
       attr.type  = makeAttributeType(prop.type, prop.isID === true, model, enumMap);
 
-      // Boolean attributes require an explicit default value in Mendix (CE7247)
+      // Boolean attributes require an explicit default value in Mendix (CE7247).
       if (attr.type instanceof domainmodels.BooleanAttributeType) {
-        const sv = domainmodels.StoredValue.createIn(attr);
-        sv.defaultValue = "false";
+        domainmodels.StoredValue.createIn(attr).defaultValue = "false";
       }
-
-      console.log(`    → Attribute "${attr.name}" (${attr.type.structureTypeName})`);
+      console.log(`  [B${prop.isID ? "6" : "8"}] ${cls.name}.${attrName}`);
     }
   }
 
-  // =========================================================================
-  // B9: Association → Mendix Association
-  // =========================================================================
-  console.log(`\n${LOG} [B9] Mapping ${pimModel.associations?.length ?? 0} Associations …`);
+  // B9 — associations
   for (const assoc of pimModel.associations ?? []) {
     const [end1, end2] = assoc.memberEnds;
-
     const parentEnt = entityMap.get(end1.type ?? "");
     const childEnt  = entityMap.get(end2.type ?? "");
-
     if (!parentEnt || !childEnt) {
-      const missing = !parentEnt ? end1.type : end2.type;
-      console.warn(`  ⚠ [B9] Association "${assoc.name ?? "(unnamed)"}": entity "${missing}" not found — skipping`);
+      console.warn(`  ⚠ [B9] "${assoc.name ?? "?"}" skipped — entity not found`);
       continue;
     }
-
     const mxAssoc = domainmodels.Association.createIn(domainModel);
-    const name    = assoc.name ?? `${end1.type ?? "X"}_${end2.type ?? "Y"}`;
-    mxAssoc.name  = name;
-
-    // parent side  =  end1,   child side = end2
+    mxAssoc.name   = assoc.name ?? `${end1.type}_${end2.type}`;
     mxAssoc.parent = parentEnt;
     mxAssoc.child  = childEnt;
-
-    // Many-to-many → ReferenceSet; otherwise → Reference
-    const isMany2Many = (end1.upper === "*" || end1.upper === undefined) &&
-                        (end2.upper === "*" || end2.upper === undefined);
-    mxAssoc.type  = isMany2Many
-      ? domainmodels.AssociationType.ReferenceSet
-      : domainmodels.AssociationType.Reference;
+    const isM2M = (end1.upper === "*" || end1.upper === undefined) &&
+                  (end2.upper === "*" || end2.upper === undefined);
+    mxAssoc.type  = isM2M ? domainmodels.AssociationType.ReferenceSet : domainmodels.AssociationType.Reference;
     mxAssoc.owner = domainmodels.AssociationOwner.Default;
-
-    console.log(`  [B9] "${name}": ${end1.type} → ${end2.type} (${mxAssoc.type})`);
+    console.log(`  [B9] Association "${mxAssoc.name}"`);
   }
 
-  // =========================================================================
-  // B10: Generalization → Mendix Generalization
-  // =========================================================================
-  console.log(`\n${LOG} [B10] Mapping generalizations …`);
+  // B10 — generalizations
   for (const cls of pimModel.classes ?? []) {
     const childEnt = entityMap.get(cls.name);
     if (!childEnt) continue;
-
     for (const gen of cls.generalizations ?? []) {
       const parentEnt = entityMap.get(gen.general);
-      if (!parentEnt) {
-        console.warn(`  ⚠ [B10] Parent "${gen.general}" not found for "${cls.name}" — skipping`);
-        continue;
-      }
-
+      if (!parentEnt) { console.warn(`  ⚠ [B10] parent "${gen.general}" not found`); continue; }
+      domainmodels.Generalization.createIn(childEnt).generalization = parentEnt;
       console.log(`  [B10] ${cls.name} extends ${gen.general}`);
-      const mxGen = domainmodels.Generalization.createIn(childEnt);
-      // The Generalization element has a "generalization" property that references the parent entity
-      mxGen.generalization = parentEnt;
-      console.log(`    ✓ Generalization created`);
     }
   }
 
-  // =========================================================================
-  // B11: StateMachine → ACR_ Microflow stub
-  // B12/B23/B24: Workflow features → not implemented (warns)
-  // =========================================================================
-  console.log(`\n${LOG} [B11] Mapping State Machines → ACR_ Microflows …`);
+  // B11 — state machines → ACR_ microflow stubs
   for (const cls of pimModel.classes ?? []) {
     for (const sm of cls.ownedBehaviors ?? []) {
       const mfName = `ACR_${cls.name}_${sm.name}`;
-      console.log(`  [B11] StateMachine "${sm.name}" of "${cls.name}" → Microflow "${mfName}"`);
-
       const mf = microflows.Microflow.createIn(mxModule);
       mf.name  = mfName;
+      addSequenceFlow(mf, addStartEvent(mf, 0), addEndEvent(mf, LAYOUT_STEP));
 
-      const start = addStartEvent(mf, 0);
-      const end   = addEndEvent(mf, LAYOUT_STEP);
-      addSequenceFlow(mf, start, end);
-
-      // B12/B23/B24 check: warn if non-trivial regions/states/transitions present
-      let hasNonTrivial = false;
-      for (const region of sm.regions) {
-        if ((region.subvertices?.length ?? 0) > 1 || (region.transitions?.length ?? 0) > 0) {
-          hasNonTrivial = true;
-          break;
-        }
+      const hasDetails = sm.regions.some(r =>
+        (r.subvertices?.length ?? 0) > 1 || (r.transitions?.length ?? 0) > 0,
+      );
+      if (hasDetails) {
+        console.warn(`  ⚠ [B12/B23/B24] "${sm.name}" has states/transitions — workflow mapping not yet implemented`);
       }
-      if (hasNonTrivial) {
-        console.warn(
-          `  ⚠ [B12/B23/B24] StateMachine "${sm.name}" has Regions/States/Transitions — ` +
-          `Workflow mapping is not yet implemented. The ACR_ microflow is a stub.`,
-        );
-      }
-
-      console.log(`  ✓ Microflow "${mfName}" created (stub)`);
+      console.log(`  [B11] Microflow "${mfName}" (stub)`);
     }
   }
 
-  // =========================================================================
-  // B13–B22: Activity → Microflow (detailed mapping)
-  // =========================================================================
-  console.log(`\n${LOG} [B13] Mapping Activities → Microflows …`);
+  // B13–B22 — activities → microflows
   for (const cls of pimModel.classes ?? []) {
     for (const activity of cls.ownedActivities ?? []) {
       buildMicroflowFromActivity(activity, mxModule, entityMap, enumMap, model);
-      console.log(`  ✓ Microflow "${activity.name}" created`);
     }
   }
 
-  console.log(`\n${LOG} All B1–B22 mappings applied.`);
-
-  // Flush all pending changes to the working copy server before committing
-  console.log(`${LOG} Flushing model changes …`);
+  console.log("[pim-to-mendix] all rules applied — flushing changes …");
   await model.flushChanges();
-  console.log(`${LOG} ✓ Changes flushed.`);
 }
 
-// =============================================================================
-// Agent main
-// =============================================================================
+async function main() {
+  console.log("[pim-to-mendix] starting");
+  console.log(`[pim-to-mendix] Mendix target: app="${mendixConfig.appId || "(not set)"}", module="${mendixConfig.moduleName}", branch="${mendixConfig.branch}"`);
 
-async function main(): Promise<void> {
-  console.log("[pim-to-mendix-agent] Starting …");
-  console.log(`[pim-to-mendix-agent] Will subscribe to "${PIM_ARTEFACT_ID}" from "${PIM_PUBLISHER_AGENT_ID}"`);
-  console.log(`[pim-to-mendix-agent] Mendix target: app="${mendixConfig.appId || "(not set)"}", module="${mendixConfig.moduleName}", branch="${mendixConfig.branch}"`);
-
-  if (!mendixConfig.appId) {
-    console.warn(
-      "[pim-to-mendix-agent] ⚠ MENDIX_APP_ID is not set.\n" +
-      "  Mendix SDK calls will be skipped. Set MENDIX_APP_ID to enable PSM generation.",
-    );
-  }
-  if (!process.env.MENDIX_TOKEN) {
-    console.warn(
-      "[pim-to-mendix-agent] ⚠ MENDIX_TOKEN is not set.\n" +
-      "  The Mendix SDK will not be able to authenticate. Set MENDIX_TOKEN to enable PSM generation.",
-    );
-  }
+  if (!mendixConfig.appId)        console.warn("[pim-to-mendix] ⚠ MENDIX_APP_ID not set — will skip Mendix transform");
+  if (!process.env.MENDIX_TOKEN)  console.warn("[pim-to-mendix] ⚠ MENDIX_TOKEN not set — SDK will not authenticate");
 
   const bus = new BusClient(config);
+  await bus.connect();
+  console.log(`[pim-to-mendix] connected to ${config.broker}:${config.port}`);
 
-  try {
-    await bus.connect();
-    console.log(`[pim-to-mendix-agent] Connected to MQTT broker ${config.broker}:${config.port}`);
-  } catch (err) {
-    console.error("[pim-to-mendix-agent] ✗ MQTT connection failed:", err);
-    process.exit(1);
-  }
+  bus.subscribePimState(SOURCE_AGENT_ID, IN_ARTEFACT, async (rawModel: PimModel, timestamp: string) => {
+    console.log(`\n${"─".repeat(60)}`);
+    console.log(`[pim-to-mendix] received model at ${timestamp}`);
 
-  bus.subscribePimState(
-    PIM_PUBLISHER_AGENT_ID,
-    PIM_ARTEFACT_ID,
-    async (pim: PimModel, timestamp: string) => {
-      console.log(`\n${"=".repeat(60)}`);
-      console.log(`[pim-to-mendix-agent] Received PimModel at ${timestamp}`);
-      console.log(`  name:               "${pim.name}"`);
-      console.log(`  classes:            ${pim.classes?.length ?? 0}`);
-      console.log(`  associations:       ${pim.associations?.length ?? 0}`);
-      console.log(`  associationClasses: ${pim.associationClasses?.length ?? 0}`);
-      console.log(`  enumerations:       ${pim.enumerations?.length ?? 0}`);
-      console.log(`  primitiveTypes:     ${pim.primitiveTypes?.length ?? 0}`);
+    // Strip metadata before schema validation, then use it to build effectiveConfig.
+    const { clean: pim, meta } = extractMeta(rawModel);
+    if (meta._target) console.log(`[pim-to-mendix]   target override: ${JSON.stringify(meta._target)}`);
 
-      // ── Step 1: Extract optional _target and validate payload ────────────
-      // Strip _target before AJV validation (pimuml-schema uses additionalProperties:false).
-      // Values from _target override the module-level mendixConfig for this request.
-      const target = (pim as any)._target as
-        { appId?: string; moduleName?: string; branch?: string } | undefined;
-      if (target) {
-        delete (pim as any)._target;
-        console.log(`[pim-to-mendix-agent]   _target override: ${JSON.stringify(target)}`);
-      }
+    try {
+      assertValid(validatePim, pim, "pimuml-schema.json");
+    } catch (err) {
+      console.error("[pim-to-mendix] invalid input:", (err as Error).message);
+      return;
+    }
 
-      const effectiveConfig = {
-        appId:      target?.appId      ?? mendixConfig.appId,
-        moduleName: target?.moduleName ?? mendixConfig.moduleName,
-        branch:     target?.branch     ?? mendixConfig.branch,
-      };
+    // _target values from the HTTP request take priority over env var defaults.
+    const effectiveConfig = {
+      appId:      meta._target?.appId      ?? mendixConfig.appId,
+      moduleName: meta._target?.moduleName ?? mendixConfig.moduleName,
+      branch:     meta._target?.branch     ?? mendixConfig.branch,
+    };
 
-      try {
-        assertValid(validatePim, pim, "pimuml-schema.json");
-        console.log("[pim-to-mendix-agent] ✓ Payload valid against pimuml-schema.json");
-      } catch (err) {
-        console.error("[pim-to-mendix-agent] ✗ Validation failed — aborting transformation");
-        console.error((err as Error).message);
-        return;
-      }
+    if (!effectiveConfig.appId) {
+      console.warn("[pim-to-mendix] no appId — skipping");
+      return;
+    }
 
-      // ── Step 2: Guard: credentials must be set ────────────────────────────
-      if (!effectiveConfig.appId) {
-        console.warn("[pim-to-mendix-agent] ⚠ MENDIX_APP_ID not set — skipping Mendix SDK transform");
-        return;
-      }
+    console.log(`[pim-to-mendix]   → app="${effectiveConfig.appId}", module="${effectiveConfig.moduleName}", branch="${effectiveConfig.branch}"`);
 
-      console.log(`[pim-to-mendix-agent]   target app="${effectiveConfig.appId}", module="${effectiveConfig.moduleName}", branch="${effectiveConfig.branch}"`);
+    let workingCopy: OnlineWorkingCopy;
+    try {
+      console.log("[pim-to-mendix] creating working copy …");
+      const app   = new MendixPlatformClient().getApp(effectiveConfig.appId);
+      workingCopy = await app.createTemporaryWorkingCopy(effectiveConfig.branch);
+      console.log("[pim-to-mendix] working copy ready");
+    } catch (err) {
+      console.error("[pim-to-mendix] failed to create working copy:", (err as Error).message);
+      return;
+    }
 
-      // ── Step 3: Create Mendix working copy ───────────────────────────────
-      let workingCopy: OnlineWorkingCopy;
-      try {
-        console.log("[pim-to-mendix-agent] Creating temporary Mendix working copy …");
-        const client = new MendixPlatformClient();
-        const app    = client.getApp(effectiveConfig.appId);
-        workingCopy  = await app.createTemporaryWorkingCopy(effectiveConfig.branch);
-        console.log("[pim-to-mendix-agent] ✓ Working copy created");
-      } catch (err) {
-        console.error("[pim-to-mendix-agent] ✗ Failed to create working copy:", (err as Error).message);
-        return;
-      }
+    try {
+      await applyPimToMendix(pim, workingCopy, effectiveConfig.moduleName);
+    } catch (err) {
+      console.error("[pim-to-mendix] mapping failed:", (err as Error).message);
+      console.error((err as Error).stack ?? "");
+      return;
+    }
 
-      // ── Step 4: Apply B1–B22 mapping rules ────────────────────────────────
-      try {
-        await applyPimToMendix(pim, workingCopy, effectiveConfig.moduleName);
-        console.log("[pim-to-mendix-agent] ✓ Mapping complete");
-      } catch (err) {
-        console.error("[pim-to-mendix-agent] ✗ Mapping error:", (err as Error).message);
-        console.error((err as Error).stack ?? "");
-        return;
-      }
+    try {
+      await workingCopy.commitToRepository(effectiveConfig.branch, {
+        commitMessage: `pim-to-mendix: generated from "${pim.name}" (${timestamp})`,
+      });
+      console.log(`[pim-to-mendix] committed to branch "${effectiveConfig.branch}"`);
+    } catch (err) {
+      console.error("[pim-to-mendix] commit failed:", (err as Error).message);
+    }
 
-      // ── Step 5: Commit to Mendix ──────────────────────────────────────────
-      try {
-        console.log("[pim-to-mendix-agent] Committing to Mendix repository …");
-        await workingCopy.commitToRepository(effectiveConfig.branch, {
-          commitMessage: `pim-to-mendix: pimUML → Mendix for "${pim.name}" (${timestamp})`,
-        });
-        console.log(`[pim-to-mendix-agent] ✓ Committed to branch "${effectiveConfig.branch}"`);
-      } catch (err) {
-        console.error("[pim-to-mendix-agent] ✗ Commit failed:", (err as Error).message);
-      }
+    console.log(`${"─".repeat(60)}\n`);
+  });
 
-      console.log(`${"=".repeat(60)}\n`);
-    },
-  );
-
-  console.log("[pim-to-mendix-agent] Listening … (Ctrl+C to stop)");
+  console.log("[pim-to-mendix] listening … (Ctrl+C to stop)");
 }
 
-// Only start when run directly (not when imported by tests)
 if (require.main === module) {
   main().catch(err => {
-    console.error("[pim-to-mendix-agent] Unhandled error:", err);
+    console.error("[pim-to-mendix] unhandled error:", err);
     process.exit(1);
   });
 }

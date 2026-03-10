@@ -1,12 +1,7 @@
-# =============================================================================
-# .github/workflows/deploy-pi.yml
-#
-# Automatically deploys the pipeline to the Raspberry Pi when a commit is
-# pushed to the `main` branch.
+# Automatically deploys the pipeline to the Raspberry Pi on every push to main.
 #
 # Strategy: self-hosted GitHub Actions runner on the Pi.
-#   → Works even when the Pi is behind NAT (Cloudflare Tunnel handles ingress).
-#   → The runner polls GitHub for jobs, so it works from any network.
+# The runner polls GitHub for jobs, so it works from any network (no open ports needed).
 #
 # One-time setup on the Raspberry Pi:
 #   1. Clone this repo:
@@ -14,19 +9,14 @@
 #
 #   2. Add mda.tlolab.com to your Cloudflare Tunnel config (see cloudflare-tunnel.md)
 #
-#   3. Register the self-hosted runner on the Pi:
-#        → GitHub repo → Settings → Actions → Runners → New self-hosted runner
-#        → Choose: Linux / ARM64
-#        → Follow the shown commands on the Pi (install into /Projects/actions-runner)
-#        → When asked for labels, add: raspberry-pi
-#        → Start as service: sudo ./svc.sh install && sudo ./svc.sh start
+#   3. Register the self-hosted runner:
+#        GitHub repo → Settings → Actions → Runners → New self-hosted runner
+#        Choose: Linux / ARM64, label: raspberry-pi
+#        Start as service: sudo ./svc.sh install && sudo ./svc.sh start
 #
 #   4. Add GitHub Secrets (repo → Settings → Secrets → Actions):
 #        MENDIX_TOKEN        your Mendix Personal Access Token
 #        MENDIX_APP_ID       your Mendix App UUID
-#
-# After that, every push to main automatically redeploys.
-# =============================================================================
 
 name: Deploy to Raspberry Pi
 
@@ -39,20 +29,16 @@ on:
 jobs:
   deploy:
     name: Build & Deploy on Pi
-    # Runs directly on the Raspberry Pi (self-hosted runner with label "raspberry-pi")
     runs-on: [self-hosted, raspberry-pi]
 
     steps:
-      # ── 1. Pull latest code ──────────────────────────────────────────────────
       - name: Pull latest main
         run: |
           cd ~/Projects/mda-master-thesis-workspace
           git fetch origin main
           git reset --hard origin/main
-          echo "✓ Code updated to $(git log -1 --oneline)"
+          echo "Code updated to $(git log -1 --oneline)"
 
-      # ── 2. Write .env from GitHub Secrets ────────────────────────────────────
-      # Keeps secrets out of the repo and the Docker image.
       - name: Write .env for mendix-agent
         run: |
           cat > ~/Projects/mda-master-thesis-workspace/mda-agents/.env <<'ENVEOF'
@@ -67,30 +53,27 @@ jobs:
           MENDIX_MODULE_NAME=${{ vars.MENDIX_MODULE_NAME || 'MyFirstModule' }}
           MENDIX_BRANCH=${{ vars.MENDIX_BRANCH || 'main' }}
           ENVEOF
-          echo "✓ .env written"
+          echo ".env written"
 
-      # ── 3. Rebuild images and restart containers ─────────────────────────────
       - name: Rebuild & restart Docker Compose services
         run: |
           cd ~/Projects/mda-master-thesis-workspace
           docker compose build --pull
           docker compose up -d --remove-orphans
-          echo "✓ Services restarted"
+          echo "Services restarted"
 
-      # ── 4. Verify health ─────────────────────────────────────────────────────
       - name: Health check
         run: |
           sleep 5
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health)
           if [ "$STATUS" = "200" ]; then
-            echo "✓ API server healthy — https://mda.tlolab.com/health"
+            echo "API server healthy — https://mda.tlolab.com/health"
           else
-            echo "✗ Health check failed (HTTP $STATUS)"
+            echo "Health check failed (HTTP $STATUS)"
             docker compose -f ~/Projects/mda-master-thesis-workspace/docker-compose.yml logs --tail=20
             exit 1
           fi
 
-      # ── 5. Summary ───────────────────────────────────────────────────────────
       - name: Print running services
         run: |
           cd ~/Projects/mda-master-thesis-workspace
