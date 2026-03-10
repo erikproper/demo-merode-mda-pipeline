@@ -36,7 +36,7 @@
 //   MENDIX_BRANCH        branch (default: "main")
 
 import { IModel } from "mendixmodelsdk";
-import { domainmodels, enumerations, microflows, datatypes } from "mendixmodelsdk";
+import { domainmodels, enumerations, microflows, datatypes, texts } from "mendixmodelsdk";
 import { MendixPlatformClient, OnlineWorkingCopy } from "mendixplatformsdk";
 import { BusClient } from "./bus-client";
 import type {
@@ -429,7 +429,12 @@ async function applyPimToMendix(
     const mxEnum = enumerations.Enumeration.createIn(mxModule);
     mxEnum.name  = pimEnum.name;
     for (const lit of pimEnum.literals ?? []) {
-      enumerations.EnumerationValue.createIn(mxEnum).name = lit.name;
+      const enumVal = enumerations.EnumerationValue.createIn(mxEnum);
+      enumVal.name = lit.name;
+      // CW0263: set a caption so Mendix doesn't warn about empty labels
+      const translation = texts.Translation.createIn(enumVal.caption);
+      translation.languageCode = "en_US";
+      translation.text         = lit.name;
     }
     enumMap.set(pimEnum.name, mxEnum);
     console.log(`  [B3] Enumeration "${pimEnum.name}"`);
