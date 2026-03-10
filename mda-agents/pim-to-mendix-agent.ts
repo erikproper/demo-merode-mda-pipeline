@@ -314,10 +314,12 @@ function buildMicroflowFromActivity(
       }
 
       // B17 — ValueSpecificationAction has no Mendix equivalent as a standalone node.
-      // Literals are used inline in action expressions. Just register the output pin.
+      // Literals are used inline in action expressions. Just register the output pin,
+      // and mark as non-flow so B22 resolves through it (same as ActivityParameterNode).
       case "ValueSpecificationAction": {
         const n = node as PimValueSpecificationAction;
         if (n.result) varNameMap.set(n.result, n.result);
+        paramNodeNames.add(node.name);
         break;
       }
 
