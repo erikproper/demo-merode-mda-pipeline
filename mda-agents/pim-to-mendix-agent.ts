@@ -124,6 +124,46 @@ function addEndEvent(mf: microflows.Microflow, x: number): microflows.EndEvent {
   return ev;
 }
 
+// B22 helpers — resolve through ActivityParameterNodes to find real control-flow endpoints.
+// In UML, control flow can route through parameter nodes (data pins), but in Mendix
+// SequenceFlows can only connect StartEvent/EndEvent/ActionActivity — never parameters.
+// These functions walk backward/forward through the edge list to find the nearest real node.
+function resolveRealSource(
+  name: string,
+  edges: Array<{ source: string; target: string }>,
+  paramNodeNames: Set<string>,
+  visited = new Set<string>(),
+): string | null {
+  if (visited.has(name)) return null;
+  visited.add(name);
+  if (!paramNodeNames.has(name)) return name;
+  for (const e of edges) {
+    if (e.target === name) {
+      const resolved = resolveRealSource(e.source, edges, paramNodeNames, visited);
+      if (resolved) return resolved;
+    }
+  }
+  return null;
+}
+
+function resolveRealTarget(
+  name: string,
+  edges: Array<{ source: string; target: string }>,
+  paramNodeNames: Set<string>,
+  visited = new Set<string>(),
+): string | null {
+  if (visited.has(name)) return null;
+  visited.add(name);
+  if (!paramNodeNames.has(name)) return name;
+  for (const e of edges) {
+    if (e.source === name) {
+      const resolved = resolveRealTarget(e.target, edges, paramNodeNames, visited);
+      if (resolved) return resolved;
+    }
+  }
+  return null;
+}
+
 function addSequenceFlow(
   mf:   microflows.Microflow,
   from: microflows.MicroflowObject,
@@ -308,15 +348,26 @@ function buildMicroflowFromActivity(
     }
   }
 
-  // B22 — wire SequenceFlows between nodes.
-  // Parameter nodes (and skipped B17 nodes) are not valid endpoints in Mendix (CE0709).
-  for (const edge of activity.edges ?? []) {
-    if (paramNodeNames.has(edge.source) || paramNodeNames.has(edge.target)) continue;
+  // B22 — wire SequenceFlows, resolving through any ActivityParameterNodes in the path.
+  // Mendix only allows StartEvent/EndEvent/ActionActivity as SequenceFlow endpoints.
+  const allEdges  = activity.edges ?? [];
+  const seenFlows = new Set<string>();
 
-    const from = nodeMap.get(edge.source);
-    const to   = nodeMap.get(edge.target);
+  for (const edge of allEdges) {
+    const sourceName = resolveRealSource(edge.source, allEdges, paramNodeNames) ?? edge.source;
+    const targetName = resolveRealTarget(edge.target, allEdges, paramNodeNames) ?? edge.target;
+
+    if (paramNodeNames.has(sourceName) || paramNodeNames.has(targetName)) continue;
+    if (sourceName === targetName) continue;
+
+    const flowKey = `${sourceName}→${targetName}`;
+    if (seenFlows.has(flowKey)) continue;
+    seenFlows.add(flowKey);
+
+    const from = nodeMap.get(sourceName);
+    const to   = nodeMap.get(targetName);
     if (!from || !to) {
-      console.warn(`      ⚠ cannot wire "${edge.source}" → "${edge.target}" (node not found)`);
+      console.warn(`      ⚠ cannot wire "${sourceName}" → "${targetName}" (node not found)`);
       continue;
     }
     addSequenceFlow(mf, from, to);
@@ -468,7 +519,13 @@ async function applyPimToMendix(
       continue;
     }
     const mxAssoc = domainmodels.Association.createIn(domainModel);
-    mxAssoc.name   = assoc.name ?? `${end1.type}_${end2.type}`;
+    let assocName = assoc.name ?? `${end1.type}_${end2.type}`;
+    // CE0065: Mendix checks entity/association names case-insensitively — rename if collision
+    const lowerName = assocName.toLowerCase();
+    if ([...entityMap.keys()].some(e => e.toLowerCase() === lowerName)) {
+      assocName = `${end1.type}_${end2.type}`;
+    }
+    mxAssoc.name   = assocName;
     mxAssoc.parent = parentEnt;
     mxAssoc.child  = childEnt;
     const isM2M = (end1.upper === "*" || end1.upper === undefined) &&
