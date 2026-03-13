@@ -2,17 +2,15 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "pimuml-schema.json",
   "title": "pimUML Model (PIM)",
-  "description": "JSON Schema for the pimUML Platform-Independent Model. Covers the class diagram: Class, Property, Association, AssociationClass, Enumeration, PrimitiveType.",
   "type": "object",
   "required": ["name"],
   "additionalProperties": false,
   "properties": {
-    "name":               { "type": "string" },
-    "classes":            { "type": "array", "items": { "$ref": "#/$defs/Class" } },
-    "associations":       { "type": "array", "items": { "$ref": "#/$defs/Association" } },
-    "associationClasses": { "type": "array", "items": { "$ref": "#/$defs/AssociationClass" } },
-    "enumerations":       { "type": "array", "items": { "$ref": "#/$defs/Enumeration" } },
-    "primitiveTypes":     { "type": "array", "items": { "$ref": "#/$defs/PrimitiveType" } }
+    "name": { "type": "string" },
+    "classes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Class" }
+    }
   },
   "$defs": {
     "Class": {
@@ -20,10 +18,11 @@
       "required": ["name"],
       "additionalProperties": false,
       "properties": {
-        "name":             { "type": "string" },
-        "isAbstract":       { "type": "boolean", "default": false },
-        "ownedAttributes":  { "type": "array", "items": { "$ref": "#/$defs/Property" } },
-        "generalizations":  { "type": "array", "items": { "$ref": "#/$defs/Generalization" } }
+        "name": { "type": "string" },
+        "ownedAttributes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Property" }
+        }
       }
     },
     "Property": {
@@ -31,77 +30,9 @@
       "required": ["name"],
       "additionalProperties": false,
       "properties": {
-        "name":         { "type": "string" },
-        "type":         { "type": "string" },
-        "isID":         { "type": "boolean", "default": false },
-        "aggregation":  { "type": "string", "enum": ["none", "shared", "composite"], "default": "none" },
-        "lower":        { "type": "integer", "minimum": 0 },
-        "upper":        { "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "string", "enum": ["*"] }] },
-        "defaultValue": { "$ref": "#/$defs/ValueSpecification" }
+        "name": { "type": "string" },
+        "type": { "type": "string" }
       }
-    },
-    "Generalization": {
-      "type": "object",
-      "required": ["general"],
-      "additionalProperties": false,
-      "properties": {
-        "general": { "type": "string" }
-      }
-    },
-    "Association": {
-      "type": "object",
-      "required": ["memberEnds"],
-      "additionalProperties": false,
-      "properties": {
-        "name":       { "type": "string" },
-        "memberEnds": { "type": "array", "items": { "$ref": "#/$defs/Property" }, "minItems": 2, "maxItems": 2 }
-      }
-    },
-    "AssociationClass": {
-      "type": "object",
-      "required": ["name", "memberEnds"],
-      "additionalProperties": false,
-      "properties": {
-        "name":            { "type": "string" },
-        "isAbstract":      { "type": "boolean", "default": false },
-        "ownedAttributes": { "type": "array", "items": { "$ref": "#/$defs/Property" } },
-        "generalizations": { "type": "array", "items": { "$ref": "#/$defs/Generalization" } },
-        "memberEnds":      { "type": "array", "items": { "$ref": "#/$defs/Property" }, "minItems": 2, "maxItems": 2 }
-      }
-    },
-    "Enumeration": {
-      "type": "object",
-      "required": ["name"],
-      "additionalProperties": false,
-      "properties": {
-        "name":     { "type": "string" },
-        "literals": { "type": "array", "items": { "$ref": "#/$defs/EnumerationLiteral" }, "minItems": 1 }
-      }
-    },
-    "EnumerationLiteral": {
-      "type": "object",
-      "required": ["name"],
-      "additionalProperties": false,
-      "properties": {
-        "name":          { "type": "string" },
-        "qualifiedName": { "type": "string" }
-      }
-    },
-    "PrimitiveType": {
-      "type": "object",
-      "required": ["name"],
-      "additionalProperties": false,
-      "properties": {
-        "name": { "type": "string" }
-      }
-    },
-    "ValueSpecification": {
-      "oneOf": [
-        { "type": "object", "required": ["_type", "value"], "additionalProperties": false,
-          "properties": { "_type": { "type": "string", "const": "LiteralBoolean" }, "value": { "type": "boolean" } } },
-        { "type": "object", "required": ["_type", "value"], "additionalProperties": false,
-          "properties": { "_type": { "type": "string", "const": "LiteralInteger" }, "value": { "type": "integer" } } }
-      ]
     }
   }
 }
