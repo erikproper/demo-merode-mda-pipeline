@@ -7,10 +7,10 @@ import path from "path";
 import fs   from "fs";
 import { BusClient } from "./bus-client";
 import type { DemoModel } from "./schemas/types";
-import { getBusConfig } from "./agent-utils";
+import { getBusConfig, attachMeta } from "./agent-utils";
 
 const config      = getBusConfig("demo-publisher");
-const ARTEFACT_ID = "model.demo.raw";
+const ARTEFACT_ID = "model.cim.raw";
 
 async function main() {
   const mockPath = path.resolve(__dirname, "tests", "rent-a-car-mock.json");
@@ -27,8 +27,9 @@ async function main() {
   await bus.connect();
   console.log(`[demo-publisher] connected to ${config.broker}:${config.port}`);
 
-  bus.publishDemoState(ARTEFACT_ID, model);
-  console.log(`[demo-publisher] published to "${ARTEFACT_ID}"`);
+  const enriched = attachMeta(model, { _source: { format: "demo" } });
+  bus.publishCimState(ARTEFACT_ID, enriched);
+  console.log(`[demo-publisher] published to "${ARTEFACT_ID}" (format: demo)`);
 
   await bus.disconnect();
   console.log("[demo-publisher] done");
