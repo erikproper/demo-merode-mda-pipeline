@@ -52,12 +52,14 @@ async function applyPimToMendix(
   console.log("[pim-to-mendix] cleared previous model");
 
   // B1 + B7 — classes → entities with attributes
+  const entityMap = new Map<string, domainmodels.Entity>();
   let x = 0;
   for (const cls of pimModel.classes ?? []) {
     const entity    = domainmodels.Entity.createIn(domainModel);
     entity.name     = cls.name;
     entity.location = { x, y: 0 };
     x += 220;
+    entityMap.set(cls.name, entity);
 
     for (const prop of cls.ownedAttributes ?? []) {
       const attr = domainmodels.Attribute.createIn(entity);
@@ -67,6 +69,29 @@ async function applyPimToMendix(
     }
 
     console.log(`  [B1] Entity "${cls.name}"`);
+  }
+
+  // B9 — associations → Mendix associations
+  for (const assoc of pimModel.associations ?? []) {
+    const end0 = assoc.memberEnds[0];
+    const end1 = assoc.memberEnds[1];
+
+    // parent = the "one" side (upper === 1), child = the "many" side (upper === "*")
+    const [parentEnd, childEnd] = end0.upper === "*" ? [end1, end0] : [end0, end1];
+
+    const parentEntity = entityMap.get(parentEnd.type);
+    const childEntity  = entityMap.get(childEnd.type);
+
+    if (!parentEntity || !childEntity) {
+      console.warn(`  [B9] skipping "${assoc.name}" — entity not found`);
+      continue;
+    }
+
+    const mxAssoc  = domainmodels.Association.createIn(domainModel);
+    mxAssoc.name   = assoc.name;
+    mxAssoc.parent = parentEntity;
+    mxAssoc.child  = childEntity;
+    console.log(`  [B9] Association "${assoc.name}": ${parentEnd.type} → ${childEnd.type}`);
   }
 
   await model.flushChanges();

@@ -20,5 +20,21 @@
         { "name": "name", "valueType": "String" }
       ]
     }
+  ],
+  "factTypes": [
+    {
+      "name": "RentalInvolvesCar",
+      "roles": [
+        { "name": "rental", "entityType": "Rental", "lower": 0, "upper": "*" },
+        { "name": "car",    "entityType": "Car",    "lower": 1, "upper": 1  }
+      ]
+    },
+    {
+      "name": "RentalMadeByPerson",
+      "roles": [
+        { "name": "rental", "entityType": "Rental", "lower": 0, "upper": "*" },
+        { "name": "renter", "entityType": "Person", "lower": 1, "upper": 1  }
+      ]
+    }
   ]
 }

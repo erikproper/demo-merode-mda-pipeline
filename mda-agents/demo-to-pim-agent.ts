@@ -1,7 +1,8 @@
 // Agent B — DEMO (CIM) → pimUML (PIM)
 //
-// Rule A3: Each entity type in DEMO becomes a class in PIM.
-// Rule A5: Each attribute of an entity type becomes a property on that class.
+// Rule A3:  Each entity type in DEMO becomes a class in PIM.
+// Rule A5:  Each attribute of an entity type becomes a property on that class.
+// Rule A12: Each fact type becomes an association with two member ends.
 
 import { BusClient } from "./bus-client";
 import type { DemoModel, PimModel } from "./schemas/types";
@@ -19,12 +20,33 @@ const validatePim  = makeValidator("pimuml-schema.json");
 function transform(demo: DemoModel): PimModel {
   return {
     name: `${demo.name} – pimUML`,
+
+    // A3 + A5: entity types → classes with attributes
     classes: demo.entityTypes.map(et => ({
       name: et.name,
       ownedAttributes: (et.attributes ?? []).map(a => ({
         name: a.name,
         type: a.valueType ?? "String",
       })),
+    })),
+
+    // A12: fact types → associations
+    associations: (demo.factTypes ?? []).map(ft => ({
+      name: ft.name,
+      memberEnds: [
+        {
+          name:  ft.roles[0].name,
+          type:  ft.roles[0].entityType,
+          lower: ft.roles[0].lower ?? 0,
+          upper: ft.roles[0].upper ?? "*",
+        },
+        {
+          name:  ft.roles[1].name,
+          type:  ft.roles[1].entityType,
+          lower: ft.roles[1].lower ?? 1,
+          upper: ft.roles[1].upper ?? 1,
+        },
+      ],
     })),
   };
 }
@@ -49,7 +71,7 @@ async function main() {
     }
 
     const pimModel = transform(model);
-    console.log(`[demo-to-pim] transformed: ${pimModel.classes?.length ?? 0} classes`);
+    console.log(`[demo-to-pim] transformed: ${pimModel.classes?.length ?? 0} classes, ${pimModel.associations?.length ?? 0} associations`);
 
     try {
       assertValid(validatePim, pimModel, "pimuml-schema.json");

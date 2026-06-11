@@ -10,6 +10,10 @@
     "classes": {
       "type": "array",
       "items": { "$ref": "#/$defs/Class" }
+    },
+    "associations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Association" }
     }
   },
   "$defs": {
@@ -32,6 +36,36 @@
       "properties": {
         "name": { "type": "string" },
         "type": { "type": "string" }
+      }
+    },
+    "Association": {
+      "type": "object",
+      "required": ["name", "memberEnds"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "memberEnds": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/AssociationEnd" }
+        }
+      }
+    },
+    "AssociationEnd": {
+      "type": "object",
+      "required": ["name", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "lower": { "type": "integer", "minimum": 0 },
+        "upper": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "string",  "enum": ["*"] }
+          ]
+        }
       }
     }
   }

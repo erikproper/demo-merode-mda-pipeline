@@ -10,6 +10,10 @@
     "entityTypes": {
       "type": "array",
       "items": { "$ref": "#/$defs/EntityType" }
+    },
+    "factTypes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/FactType" }
     }
   },
   "$defs": {
@@ -32,6 +36,36 @@
       "properties": {
         "name":      { "type": "string" },
         "valueType": { "type": "string" }
+      }
+    },
+    "FactType": {
+      "type": "object",
+      "required": ["name", "roles"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "roles": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/Role" }
+        }
+      }
+    },
+    "Role": {
+      "type": "object",
+      "required": ["name", "entityType"],
+      "additionalProperties": false,
+      "properties": {
+        "name":       { "type": "string" },
+        "entityType": { "type": "string" },
+        "lower":      { "type": "integer", "minimum": 0 },
+        "upper": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "string",  "enum": ["*"] }
+          ]
+        }
       }
     }
   }
