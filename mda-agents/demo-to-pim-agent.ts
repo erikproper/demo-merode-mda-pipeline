@@ -1,8 +1,5 @@
-// Agent B — DEMO (CIM) → pimUML (PIM)
-//
-// Rule A3:  Each entity type in DEMO becomes a class in PIM.
-// Rule A5:  Each attribute of an entity type becomes a property on that class.
-// Rule A12: Each fact type becomes an association with two member ends.
+// demo-to-pim-agent
+// Listens on the bus for DEMO Fact Models and transforms them into pimUML models.
 
 import { BusClient } from "./bus-client";
 import type { DemoModel, PimModel } from "./schemas/types";
@@ -21,7 +18,7 @@ function transform(demo: DemoModel): PimModel {
   return {
     name: `${demo.name} – pimUML`,
 
-    // A3 + A5: entity types → classes with attributes
+    // each entity type becomes a class, its attributes become properties
     classes: demo.entityTypes.map(et => ({
       name: et.name,
       ownedAttributes: (et.attributes ?? []).map(a => ({
@@ -30,7 +27,7 @@ function transform(demo: DemoModel): PimModel {
       })),
     })),
 
-    // A12: fact types → associations
+    // each fact type becomes an association between two classes
     associations: (demo.factTypes ?? []).map(ft => ({
       name: ft.name,
       memberEnds: [

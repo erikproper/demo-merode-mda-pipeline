@@ -1,10 +1,7 @@
-// Agent C — pimUML (PIM) → Mendix (PSM)
-//
-// Rule B1: Each class in PIM becomes a Mendix Entity.
-// Rule B7: Each property on a class becomes a Mendix Attribute.
+// pim-to-mendix-agent
+// Listens on the bus for pimUML models and writes them into a Mendix app via the Platform SDK.
 
-import { IModel } from "mendixmodelsdk";
-import { domainmodels } from "mendixmodelsdk";
+import { IModel, domainmodels } from "mendixmodelsdk";
 import { MendixPlatformClient, OnlineWorkingCopy } from "mendixplatformsdk";
 import { BusClient } from "./bus-client";
 import type { PimModel } from "./schemas/types";
@@ -51,7 +48,7 @@ async function applyPimToMendix(
   model.allEnumerations().filter(en => (en.qualifiedName ?? "").startsWith(prefix)).forEach(en => en.delete());
   console.log("[pim-to-mendix] cleared previous model");
 
-  // B1 + B7 — classes → entities with attributes
+  // classes → Mendix entities with attributes
   const entityMap = new Map<string, domainmodels.Entity>();
   let x = 0;
   for (const cls of pimModel.classes ?? []) {
@@ -65,13 +62,13 @@ async function applyPimToMendix(
       const attr = domainmodels.Attribute.createIn(entity);
       attr.name  = prop.name;
       attr.type  = makeAttributeType(prop.type, model);
-      console.log(`  [B7] ${cls.name}.${prop.name} : ${prop.type ?? "String"}`);
+      console.log(`  + attribute ${cls.name}.${prop.name} : ${prop.type ?? "String"}`);
     }
 
-    console.log(`  [B1] Entity "${cls.name}"`);
+    console.log(`  + entity "${cls.name}"`);
   }
 
-  // B9 — associations → Mendix associations
+  // associations → Mendix associations
   for (const assoc of pimModel.associations ?? []) {
     const end0 = assoc.memberEnds[0];
     const end1 = assoc.memberEnds[1];
@@ -83,7 +80,7 @@ async function applyPimToMendix(
     const childEntity  = entityMap.get(childEnd.type);
 
     if (!parentEntity || !childEntity) {
-      console.warn(`  [B9] skipping "${assoc.name}" — entity not found`);
+      console.warn(`  skipping association "${assoc.name}" — entity not found`);
       continue;
     }
 
@@ -91,7 +88,7 @@ async function applyPimToMendix(
     mxAssoc.name   = assoc.name;
     mxAssoc.parent = parentEntity;
     mxAssoc.child  = childEntity;
-    console.log(`  [B9] Association "${assoc.name}": ${parentEnd.type} → ${childEnd.type}`);
+    console.log(`  + association "${assoc.name}": ${parentEnd.type} → ${childEnd.type}`);
   }
 
   await model.flushChanges();

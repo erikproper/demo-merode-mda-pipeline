@@ -1,29 +1,21 @@
-// Shared helpers used by all pipeline agents.
-// Keeps the individual agent files focused on their transformation logic.
+// Shared helpers used by all agents in the pipeline.
 
 import path from "path";
 import fs   from "fs";
 import Ajv  from "ajv";
 import type { BusConfig } from "./bus-client";
 
-// Routing metadata that travels with every message through the pipeline.
-// _source tells downstream agents what format the input was (e.g. "demo").
-// _target carries optional Mendix connection details set by the HTTP caller.
-//
-// Both fields are stripped before JSON schema validation (schemas use
-// additionalProperties: false) and re-attached afterwards.
+// Metadata that travels with every message through the pipeline.
+// Stripped before schema validation (additionalProperties: false), re-attached after.
 export interface PipelineMeta {
-  _source?: { format: string };
+  _source?: { format: string };  // which CIM language the model came from, e.g. "demo"
   _target?: {
-    system?:     string;  // future use — output system, e.g. "mendix"
-    appId?:      string;
+    appId?:      string;         // Mendix app UUID
     moduleName?: string;
     branch?:     string;
   };
 }
 
-// Build MQTT config from environment variables.
-// The agentId is used as the MQTT client identifier unless BUS_AGENT_ID is set.
 export function getBusConfig(agentId: string): BusConfig & { loadDelayMs: number } {
   return {
     broker:        process.env.MQTT_BROKER        ?? "localhost",
@@ -40,13 +32,11 @@ export function getBusConfig(agentId: string): BusConfig & { loadDelayMs: number
 const SCHEMAS_DIR = path.resolve(__dirname, "schemas");
 const ajv = new Ajv({ allErrors: true });
 
-// Load a JSON schema file and compile it into a reusable validator.
 export function makeValidator(filename: string): Ajv.ValidateFunction {
   const schema = JSON.parse(fs.readFileSync(path.join(SCHEMAS_DIR, filename), "utf-8"));
   return ajv.compile(schema);
 }
 
-// Run validation and throw a readable error listing all failures.
 export function assertValid(validate: Ajv.ValidateFunction, data: unknown, label: string): void {
   if (!validate(data)) {
     const errors = validate.errors
@@ -56,23 +46,19 @@ export function assertValid(validate: Ajv.ValidateFunction, data: unknown, label
   }
 }
 
-// Strip _source and _target from a payload so it passes schema validation.
-// Returns both the cleaned payload and the extracted metadata separately.
+// Remove _source/_target before schema validation, return them separately.
 export function extractMeta<T extends object>(payload: T): { clean: T; meta: PipelineMeta } {
-  const raw = payload as any;
+  const raw   = payload as any;
   const meta: PipelineMeta = {};
-
   if (raw._source !== undefined) meta._source = raw._source;
   if (raw._target !== undefined) meta._target = raw._target;
-
   const clean = { ...payload } as any;
   delete clean._source;
   delete clean._target;
-
   return { clean: clean as T, meta };
 }
 
-// Re-attach _source and _target to a payload after validation.
+// Re-attach _source/_target after validation.
 export function attachMeta<T extends object>(payload: T, meta: PipelineMeta): T {
   if (meta._source !== undefined) (payload as any)._source = meta._source;
   if (meta._target !== undefined) (payload as any)._target = meta._target;
