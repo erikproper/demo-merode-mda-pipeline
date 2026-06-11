@@ -15,6 +15,7 @@ import type { DemoModel, PimModel } from "./schemas/types";
 
 const BUS_VERSION = "bus-version-1.0";
 
+export const CIM_JSON_VERSION    = "cim-v1.0-v1.0";
 export const DEMO_JSON_VERSION   = "demo-v1.0-v1.0";
 export const PIMUML_JSON_VERSION = "pimuml-v1.0-v1.0";
 
@@ -227,6 +228,12 @@ export class BusClient {
 
   subscribeCoordination(coordinationID: string, handler: (payload: unknown, timestamp: string) => void) {
     this.subscribeRaw(this.cfg.agentID, this.coordPath(coordinationID), (payload, ts) => handler(payload, ts));
+  }
+
+  // Generic CIM input — all input formats share one topic; agents filter by _source.format.
+  publishCimState(artefactID: string, model: object) { this.publishArtefactState(artefactID, CIM_JSON_VERSION, model); }
+  subscribeCimState<T>(fromAgentID: string, artefactID: string, handler: (model: T, ts: string) => void) {
+    this.subscribeArtefactState<T>(fromAgentID, artefactID, CIM_JSON_VERSION, handler);
   }
 
   // Typed shortcuts for DemoModel and PimModel.

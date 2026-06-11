@@ -10,8 +10,8 @@ import { getBusConfig, makeValidator, assertValid, extractMeta, attachMeta } fro
 
 const config = getBusConfig("demo-to-pim-agent");
 
-const SOURCE_AGENT_ID = process.env.DEMO_PUBLISHER_AGENT_ID ?? "demo-publisher";
-const IN_ARTEFACT     = "model.demo.raw";
+const SOURCE_AGENT_ID = process.env.DEMO_PUBLISHER_AGENT_ID ?? "api-server";
+const IN_ARTEFACT     = "model.cim.raw";
 const OUT_ARTEFACT    = "model.pim.created";
 
 const validateDemo = makeValidator("demo-schema.json");
@@ -58,10 +58,15 @@ async function main() {
   await bus.connect();
   console.log(`[demo-to-pim] connected to ${config.broker}:${config.port}`);
 
-  bus.subscribeDemoState(SOURCE_AGENT_ID, IN_ARTEFACT, (rawModel: DemoModel, timestamp: string) => {
-    console.log(`[demo-to-pim] received model at ${timestamp}`);
-
+  bus.subscribeCimState<DemoModel>(SOURCE_AGENT_ID, IN_ARTEFACT, (rawModel: DemoModel, timestamp: string) => {
     const { clean: model, meta } = extractMeta(rawModel);
+
+    if (meta._source?.format !== "demo") {
+      console.log(`[demo-to-pim] ignoring format "${meta._source?.format}"`);
+      return;
+    }
+
+    console.log(`[demo-to-pim] received demo model at ${timestamp}`);
 
     try {
       assertValid(validateDemo, model, "demo-schema.json");

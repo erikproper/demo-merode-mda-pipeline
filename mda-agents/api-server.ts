@@ -1,75 +1,73 @@
-// HTTP entry point for the MDA pipeline.
+// HTTP gateway for the MDA pipeline.
 //
-// Accepts a DEMO model as JSON, validates it against the schema, and
-// publishes it to the MQTT bus so the downstream agents pick it up.
+// Accepts any CIM model as JSON and routes it onto the bus.
+// Format-specific validation happens inside each CIM agent.
 //
 // Endpoints:
-//   POST /api/model  — submit a DEMO model
-//   GET  /health     — check if the server is running
+//   POST /api/model  — submit a CIM model
+//   GET  /health     — liveness check
 //
-// Optional request headers (all override the env var defaults):
-//   X-Input-Format        input format, default "demo"
-//   X-Mendix-App-Id       Mendix app UUID
+// Required headers:
+//   X-Input-Format        format of the input model: "demo" | "merode"
+//
+// Optional headers:
+//   X-Mendix-App-Id       target Mendix app UUID
 //   X-Mendix-Module-Name  target module in Mendix
-//   X-Mendix-Branch       branch name, default "main"
-//   X-Output-Target       output system (future use)
-//
-// Example:
-//   curl -X POST http://localhost:3001/api/model \
-//        -H "Content-Type: application/json" \
-//        -d @rent-a-car.json
+//   X-Mendix-Branch       target branch, default "main"
 
 import express, { Request, Response } from "express";
-import { BusClient }    from "./bus-client";
-import type { DemoModel } from "./schemas/types";
-import { getBusConfig, makeValidator, assertValid, attachMeta } from "./agent-utils";
+import { BusClient }  from "./bus-client";
+import { getBusConfig, attachMeta } from "./agent-utils";
 
 const PORT        = parseInt(process.env.API_PORT ?? "3001", 10);
-const ARTEFACT_ID = "model.demo.raw";
+const ARTEFACT_ID = "model.cim.raw";
 
-const busConfig    = getBusConfig("api-server");
-const bus          = new BusClient(busConfig);
-const validateDemo = makeValidator("demo-schema.json");
+// Add new formats here when a new CIM agent is added.
+const SUPPORTED_FORMATS = ["demo", "merode"];
 
-const app = express();
+const busConfig = getBusConfig("api-server");
+const bus       = new BusClient(busConfig);
+const app       = express();
 app.use(express.json({ limit: "10mb" }));
 
 app.post("/api/model", (req: Request, res: Response) => {
-  const payload = req.body as DemoModel;
-  console.log(`[api] received "${(payload as any)?.name ?? "?"}"`);
+  const payload = req.body;
+  const format  = ((req.headers["x-input-format"] as string) ?? "").toLowerCase();
 
-  // Validate before adding any extra fields — the schema rejects unknown properties.
-  try {
-    assertValid(validateDemo, payload, "demo-schema.json");
-  } catch (err) {
-    console.error("[api] invalid payload:", (err as Error).message);
-    res.status(400).json({ ok: false, error: (err as Error).message });
+  if (!format) {
+    res.status(400).json({ ok: false, error: `Missing header: X-Input-Format. Supported: ${SUPPORTED_FORMATS.join(", ")}` });
+    return;
+  }
+  if (!SUPPORTED_FORMATS.includes(format)) {
+    res.status(400).json({ ok: false, error: `Unknown format "${format}". Supported: ${SUPPORTED_FORMATS.join(", ")}` });
+    return;
+  }
+  if (!payload || typeof payload !== "object" || typeof (payload as any).name !== "string") {
+    res.status(400).json({ ok: false, error: "Body must be a JSON object with a 'name' field" });
     return;
   }
 
-  // Read routing info from HTTP headers and attach it to the payload.
-  // This happens after validation so the extra fields don't break the schema check.
   const h = req.headers;
   const target: Record<string, string> = {};
-  if (h["x-mendix-app-id"])       target.appId      = h["x-mendix-app-id"]       as string;
-  if (h["x-mendix-module-name"])  target.moduleName = h["x-mendix-module-name"]  as string;
-  if (h["x-mendix-branch"])       target.branch     = h["x-mendix-branch"]       as string;
-  if (h["x-output-target"])       target.system     = h["x-output-target"]       as string;
+  if (h["x-mendix-app-id"])      target.appId      = h["x-mendix-app-id"]      as string;
+  if (h["x-mendix-module-name"]) target.moduleName = h["x-mendix-module-name"] as string;
+  if (h["x-mendix-branch"])      target.branch     = h["x-mendix-branch"]      as string;
 
-  const enriched = attachMeta({ ...payload } as DemoModel, {
-    _source: { format: (h["x-input-format"] as string) ?? "demo" },
+  const enriched = attachMeta(payload as object, {
+    _source: { format },
     _target: Object.keys(target).length > 0 ? target : undefined,
   });
 
   const timestamp = new Date().toISOString();
-  bus.publishDemoState(ARTEFACT_ID, enriched);
-  console.log(`[api] published to ${ARTEFACT_ID} at ${timestamp}`);
+  bus.publishCimState(ARTEFACT_ID, enriched);
+  console.log(`[api] published "${(payload as any).name}" (format: ${format}) to ${ARTEFACT_ID}`);
 
   res.status(202).json({
     ok:        true,
+    format,
     artefactID: ARTEFACT_ID,
     timestamp,
-    message:   "Model received. The pipeline will run in the background.",
+    message:   "Model accepted. Processing in the background.",
   });
 });
 
@@ -84,10 +82,7 @@ app.use((_req, res) => {
 async function main() {
   await bus.connect();
   console.log(`[api] connected to MQTT at ${busConfig.broker}:${busConfig.port}`);
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[api] listening on port ${PORT}`);
-  });
+  app.listen(PORT, "0.0.0.0", () => console.log(`[api] listening on port ${PORT}`));
 }
 
 if (require.main === module) {
