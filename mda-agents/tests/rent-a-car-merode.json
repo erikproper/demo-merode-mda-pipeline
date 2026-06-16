@@ -1,0 +1,46 @@
+{
+  "name": "Rent-A-Car",
+  "objectTypes": [
+    {
+      "name": "Rental",
+      "attributes": [
+        { "name": "startingDay", "type": "String" },
+        { "name": "endingDay",   "type": "String" }
+      ]
+    },
+    {
+      "name": "Car",
+      "attributes": [
+        { "name": "licensePlate", "type": "String" }
+      ]
+    },
+    {
+      "name": "Person",
+      "attributes": [
+        { "name": "name", "type": "String" }
+      ]
+    }
+  ],
+  "existenceDependencies": [
+    {
+      "name": "RentalDependsOnCar",
+      "dependent": "Rental",
+      "master": "Car",
+      "lower": 1,
+      "upper": 1
+    },
+    {
+      "name": "RentalDependsOnPerson",
+      "dependent": "Rental",
+      "master": "Person",
+      "lower": 1,
+      "upper": 1
+    }
+  ],
+  "businessEventTypes": [
+    { "name": "startRental",    "objectType": "Rental" },
+    { "name": "completeRental", "objectType": "Rental" },
+    { "name": "registerCar",    "objectType": "Car"    },
+    { "name": "registerPerson", "objectType": "Person" }
+  ]
+}

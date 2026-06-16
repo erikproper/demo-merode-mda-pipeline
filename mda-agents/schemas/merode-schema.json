@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "merode-schema.json",
+  "title": "MERODE Model (CIM)",
+  "type": "object",
+  "required": ["name", "objectTypes"],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string" },
+    "objectTypes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ObjectType" }
+    },
+    "existenceDependencies": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ExistenceDependency" }
+    },
+    "businessEventTypes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/BusinessEventType" }
+    }
+  },
+  "$defs": {
+    "ObjectType": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "attributes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Attribute" }
+        }
+      }
+    },
+    "Attribute": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" }
+      }
+    },
+    "ExistenceDependency": {
+      "type": "object",
+      "required": ["name", "dependent", "master"],
+      "additionalProperties": false,
+      "properties": {
+        "name":      { "type": "string" },
+        "dependent": { "type": "string" },
+        "master":    { "type": "string" },
+        "lower": { "type": "integer", "minimum": 0 },
+        "upper": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "string",  "enum": ["*"] }
+          ]
+        }
+      }
+    },
+    "BusinessEventType": {
+      "type": "object",
+      "required": ["name", "objectType"],
+      "additionalProperties": false,
+      "properties": {
+        "name":       { "type": "string" },
+        "objectType": { "type": "string" }
+      }
+    }
+  }
+}

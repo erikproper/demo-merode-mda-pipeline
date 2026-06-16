@@ -65,6 +65,27 @@ services:
     networks:
       - mda-bus
 
+  merode-agent:
+    build:
+      context: ./mda-agents
+      dockerfile: Dockerfile
+    container_name: mda-merode-agent
+    command: node dist/merode-to-pim-agent.js
+    environment:
+      MQTT_BROKER: mqtt-broker
+      MQTT_PORT: "1883"
+      MQTT_USER: admin
+      MQTT_PASSWORD: admin
+      BUS_PREFIX: big
+      BUS_ENVIRONMENT_ID: dev
+      BUS_AGENT_ID: merode-to-pim-agent
+    depends_on:
+      mqtt-broker:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - mda-bus
+
   mendix-agent:
     build:
       context: ./mda-agents

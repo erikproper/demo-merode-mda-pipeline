@@ -28,6 +28,40 @@ export interface DemoModel {
   factTypes?: FactType[];
 }
 
+// MERODE types
+
+export interface MerodeAttribute {
+  name: string;
+  type?: string;
+}
+
+export interface MerodeObjectType {
+  name: string;
+  attributes?: MerodeAttribute[];
+}
+
+export interface MerodeExistenceDependency {
+  name: string;
+  dependent: string;
+  master: string;
+  lower?: number;
+  upper?: number | "*";
+}
+
+export interface MerodeBusinessEventType {
+  name: string;
+  objectType: string;
+}
+
+export interface MerodeModel {
+  name: string;
+  objectTypes: MerodeObjectType[];
+  existenceDependencies?: MerodeExistenceDependency[];
+  businessEventTypes?: MerodeBusinessEventType[];
+}
+
+// pimUML types
+
 export interface Property {
   name: string;
   type?: string;
