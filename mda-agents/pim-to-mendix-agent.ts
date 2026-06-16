@@ -107,6 +107,13 @@ async function main() {
 
     const { clean: pim, meta } = extractMeta(rawModel);
 
+    if (meta._trace && meta._trace.length > 0) {
+      console.log(`[pim-to-mendix] trace (${meta._trace.length} entries):`);
+      for (const entry of meta._trace) {
+        console.log(`  ${entry.sourceType} "${entry.sourceName}" → ${entry.targetType} "${entry.targetName}"`);
+      }
+    }
+
     try {
       assertValid(validatePim, pim, "pimuml-schema.json");
     } catch (err) {

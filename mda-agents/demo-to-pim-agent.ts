@@ -3,7 +3,7 @@
 
 import { BusClient } from "./bus-client";
 import type { DemoModel, PimModel } from "./schemas/types";
-import { getBusConfig, makeValidator, assertValid, extractMeta, attachMeta } from "./agent-utils";
+import { getBusConfig, makeValidator, assertValid, extractMeta, attachMeta, TraceEntry } from "./agent-utils";
 
 const config = getBusConfig("demo-to-pim-agent");
 
@@ -14,38 +14,34 @@ const OUT_ARTEFACT    = "model.pim.created";
 const validateDemo = makeValidator("demo-schema.json");
 const validatePim  = makeValidator("pimuml-schema.json");
 
-function transform(demo: DemoModel): PimModel {
-  return {
-    name: `${demo.name} – pimUML`,
+function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
+  const trace: TraceEntry[] = [];
 
-    // each entity type becomes a class, its attributes become properties
-    classes: demo.entityTypes.map(et => ({
+  // each entity type becomes a class, its attributes become properties
+  const classes = demo.entityTypes.map(et => {
+    trace.push({ sourceType: "EntityType", sourceName: et.name, targetType: "Class", targetName: et.name });
+    return {
       name: et.name,
-      ownedAttributes: (et.attributes ?? []).map(a => ({
-        name: a.name,
-        type: a.valueType ?? "String",
-      })),
-    })),
+      ownedAttributes: (et.attributes ?? []).map(a => {
+        trace.push({ sourceType: "AttributeType", sourceName: `${et.name}.${a.name}`, targetType: "Property", targetName: `${et.name}.${a.name}` });
+        return { name: a.name, type: a.valueType ?? "String" };
+      }),
+    };
+  });
 
-    // each fact type becomes an association between two classes
-    associations: (demo.factTypes ?? []).map(ft => ({
+  // each fact type becomes an association between two classes
+  const associations = (demo.factTypes ?? []).map(ft => {
+    trace.push({ sourceType: "FactType", sourceName: ft.name, targetType: "Association", targetName: ft.name });
+    return {
       name: ft.name,
       memberEnds: [
-        {
-          name:  ft.roles[0].name,
-          type:  ft.roles[0].entityType,
-          lower: ft.roles[0].lower ?? 0,
-          upper: ft.roles[0].upper ?? "*",
-        },
-        {
-          name:  ft.roles[1].name,
-          type:  ft.roles[1].entityType,
-          lower: ft.roles[1].lower ?? 1,
-          upper: ft.roles[1].upper ?? 1,
-        },
-      ],
-    })),
-  };
+        { name: ft.roles[0].name, type: ft.roles[0].entityType, lower: ft.roles[0].lower ?? 0, upper: ft.roles[0].upper ?? "*" },
+        { name: ft.roles[1].name, type: ft.roles[1].entityType, lower: ft.roles[1].lower ?? 1, upper: ft.roles[1].upper ?? 1 },
+      ] as [any, any],
+    };
+  });
+
+  return { pim: { name: `${demo.name} – pimUML`, classes, associations }, trace };
 }
 
 async function main() {
@@ -72,8 +68,8 @@ async function main() {
       return;
     }
 
-    const pimModel = transform(model);
-    console.log(`[demo-to-pim] transformed: ${pimModel.classes?.length ?? 0} classes, ${pimModel.associations?.length ?? 0} associations`);
+    const { pim: pimModel, trace } = transform(model);
+    console.log(`[demo-to-pim] transformed: ${pimModel.classes?.length ?? 0} classes, ${pimModel.associations?.length ?? 0} associations, ${trace.length} trace entries`);
 
     try {
       assertValid(validatePim, pimModel, "pimuml-schema.json");
@@ -82,7 +78,7 @@ async function main() {
       return;
     }
 
-    bus.publishPimState(OUT_ARTEFACT, attachMeta(pimModel, meta));
+    bus.publishPimState(OUT_ARTEFACT, attachMeta(pimModel, { ...meta, _trace: trace }));
     console.log(`[demo-to-pim] published to "${OUT_ARTEFACT}"`);
   });
 

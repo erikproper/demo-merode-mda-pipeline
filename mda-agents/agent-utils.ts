@@ -5,6 +5,14 @@ import fs   from "fs";
 import Ajv  from "ajv";
 import type { BusConfig } from "./bus-client";
 
+// One trace entry documents a single transformation step.
+export interface TraceEntry {
+  sourceType: string;  // e.g. "EntityType", "FactType", "ObjectType"
+  sourceName: string;  // e.g. "Rental", "RentalInvolvesCar"
+  targetType: string;  // e.g. "Class", "Association", "NotMapped"
+  targetName: string;  // e.g. "Rental", "RentalInvolvesCar"
+}
+
 // Metadata that travels with every message through the pipeline.
 // Stripped before schema validation (additionalProperties: false), re-attached after.
 export interface PipelineMeta {
@@ -14,6 +22,7 @@ export interface PipelineMeta {
     moduleName?: string;
     branch?:     string;
   };
+  _trace?: TraceEntry[];         // transformation trace for evaluation (RQ4)
 }
 
 export function getBusConfig(agentId: string): BusConfig & { loadDelayMs: number } {
@@ -46,21 +55,24 @@ export function assertValid(validate: Ajv.ValidateFunction, data: unknown, label
   }
 }
 
-// Remove _source/_target before schema validation, return them separately.
+// Remove _source/_target/_trace before schema validation, return them separately.
 export function extractMeta<T extends object>(payload: T): { clean: T; meta: PipelineMeta } {
   const raw   = payload as any;
   const meta: PipelineMeta = {};
   if (raw._source !== undefined) meta._source = raw._source;
   if (raw._target !== undefined) meta._target = raw._target;
+  if (raw._trace  !== undefined) meta._trace  = raw._trace;
   const clean = { ...payload } as any;
   delete clean._source;
   delete clean._target;
+  delete clean._trace;
   return { clean: clean as T, meta };
 }
 
-// Re-attach _source/_target after validation.
+// Re-attach _source/_target/_trace after validation.
 export function attachMeta<T extends object>(payload: T, meta: PipelineMeta): T {
   if (meta._source !== undefined) (payload as any)._source = meta._source;
   if (meta._target !== undefined) (payload as any)._target = meta._target;
+  if (meta._trace  !== undefined) (payload as any)._trace  = meta._trace;
   return payload;
 }

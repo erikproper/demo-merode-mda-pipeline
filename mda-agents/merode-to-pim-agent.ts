@@ -3,7 +3,7 @@
 
 import { BusClient } from "./bus-client";
 import type { MerodeModel, PimModel } from "./schemas/types";
-import { getBusConfig, makeValidator, assertValid, extractMeta, attachMeta } from "./agent-utils";
+import { getBusConfig, makeValidator, assertValid, extractMeta, attachMeta, TraceEntry } from "./agent-utils";
 
 const config = getBusConfig("merode-to-pim-agent");
 
@@ -14,29 +14,39 @@ const OUT_ARTEFACT    = "model.pim.created";
 const validateMerode = makeValidator("merode-schema.json");
 const validatePim    = makeValidator("pimuml-schema.json");
 
-function transform(merode: MerodeModel): PimModel {
-  return {
-    name: `${merode.name} – pimUML`,
+function transform(merode: MerodeModel): { pim: PimModel; trace: TraceEntry[] } {
+  const trace: TraceEntry[] = [];
 
-    // each object type becomes a class, its attributes become properties
-    classes: merode.objectTypes.map(ot => ({
+  // each object type becomes a class, its attributes become properties
+  const classes = merode.objectTypes.map(ot => {
+    trace.push({ sourceType: "ObjectType", sourceName: ot.name, targetType: "Class", targetName: ot.name });
+    return {
       name: ot.name,
-      ownedAttributes: (ot.attributes ?? []).map(a => ({
-        name: a.name,
-        type: a.type ?? "String",
-      })),
-    })),
+      ownedAttributes: (ot.attributes ?? []).map(a => {
+        trace.push({ sourceType: "Attribute", sourceName: `${ot.name}.${a.name}`, targetType: "Property", targetName: `${ot.name}.${a.name}` });
+        return { name: a.name, type: a.type ?? "String" };
+      }),
+    };
+  });
 
-    // each existence dependency becomes an association
-    // the dependent object is the "many" side (0..*), the master is the "one" side (1..1)
-    associations: (merode.existenceDependencies ?? []).map(dep => ({
+  // each existence dependency becomes an association (dependent = many side, master = one side)
+  const associations = (merode.existenceDependencies ?? []).map(dep => {
+    trace.push({ sourceType: "ExistenceDependency", sourceName: dep.name, targetType: "Association", targetName: dep.name });
+    return {
       name: dep.name,
       memberEnds: [
-        { name: "dependent", type: dep.dependent, lower: 0,          upper: "*"       },
+        { name: "dependent", type: dep.dependent, lower: 0,             upper: "*"            },
         { name: "master",    type: dep.master,    lower: dep.lower ?? 1, upper: dep.upper ?? 1 },
-      ],
-    })),
-  };
+      ] as [any, any],
+    };
+  });
+
+  // business event types are not yet mapped to pimUML — recorded as NotMapped for evaluation
+  for (const bet of merode.businessEventTypes ?? []) {
+    trace.push({ sourceType: "BusinessEventType", sourceName: bet.name, targetType: "NotMapped", targetName: "-" });
+  }
+
+  return { pim: { name: `${merode.name} – pimUML`, classes, associations }, trace };
 }
 
 async function main() {
@@ -63,8 +73,8 @@ async function main() {
       return;
     }
 
-    const pimModel = transform(model);
-    console.log(`[merode-to-pim] transformed: ${pimModel.classes?.length ?? 0} classes, ${pimModel.associations?.length ?? 0} associations`);
+    const { pim: pimModel, trace } = transform(model);
+    console.log(`[merode-to-pim] transformed: ${pimModel.classes?.length ?? 0} classes, ${pimModel.associations?.length ?? 0} associations, ${trace.length} trace entries`);
 
     try {
       assertValid(validatePim, pimModel, "pimuml-schema.json");
@@ -73,7 +83,7 @@ async function main() {
       return;
     }
 
-    bus.publishPimState(OUT_ARTEFACT, attachMeta(pimModel, meta));
+    bus.publishPimState(OUT_ARTEFACT, attachMeta(pimModel, { ...meta, _trace: trace }));
     console.log(`[merode-to-pim] published to "${OUT_ARTEFACT}"`);
   });
 
