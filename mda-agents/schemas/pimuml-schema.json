@@ -71,7 +71,8 @@
       "required": ["name", "memberEnds"],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string" },
+        "name":          { "type": "string" },
+        "isAggregation": { "type": "boolean" },
         "memberEnds": {
           "type": "array",
           "minItems": 2,

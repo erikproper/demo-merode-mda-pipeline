@@ -129,7 +129,10 @@ async function applyPimToMendix(
     mxAssoc.name   = assoc.name;
     mxAssoc.parent = parentEntity;
     mxAssoc.child  = childEntity;
-    console.log(`  + association "${assoc.name}": ${parentEnd.type} → ${childEnd.type}`);
+    if (assoc.isAggregation) {
+      mxAssoc.owner = domainmodels.AssociationOwner.Both;
+    }
+    console.log(`  + ${assoc.isAggregation ? "aggregation" : "association"} "${assoc.name}": ${parentEnd.type} → ${childEnd.type}`);
   }
 
   await model.flushChanges();

@@ -55,11 +55,13 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     cls.ownedAttributes.push({ name: et.name, type: "Boolean", defaultValue: "false" });
   }
 
-  // each fact type becomes an association between two classes (A12)
+  // each fact type becomes an association between two classes (A12, A11)
   const associations = (demo.factTypes ?? []).map(ft => {
-    trace.push({ sourceType: "FactType", sourceName: ft.name, targetType: "Association", targetName: ft.name });
+    const targetType = ft.isAggregation ? "Aggregation" : "Association";
+    trace.push({ sourceType: "FactType", sourceName: ft.name, targetType, targetName: ft.name });
     return {
       name: ft.name,
+      isAggregation: ft.isAggregation ?? false,
       memberEnds: [
         { name: ft.roles[0].name, type: ft.roles[0].entityType, lower: ft.roles[0].lower ?? 0, upper: ft.roles[0].upper ?? "*" },
         { name: ft.roles[1].name, type: ft.roles[1].entityType, lower: ft.roles[1].lower ?? 1, upper: ft.roles[1].upper ?? 1 },

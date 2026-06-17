@@ -25,6 +25,7 @@ export interface Role {
 
 export interface FactType {
   name: string;
+  isAggregation?: boolean;
   roles: [Role, Role];
 }
 
@@ -97,6 +98,7 @@ export interface AssociationEnd {
 
 export interface PimAssociation {
   name: string;
+  isAggregation?: boolean;
   memberEnds: [AssociationEnd, AssociationEnd];
 }
 

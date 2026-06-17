@@ -12,6 +12,12 @@
       ]
     },
     {
+      "name": "RentalLine",
+      "attributes": [
+        { "name": "quantity", "valueType": "Integer" }
+      ]
+    },
+    {
       "name": "Vehicle",
       "isAbstract": true,
       "attributes": [
@@ -37,6 +43,14 @@
     { "name": "rentalCompleted", "entityType": "Rental" }
   ],
   "factTypes": [
+    {
+      "name": "RentalHasLines",
+      "isAggregation": true,
+      "roles": [
+        { "name": "rental",     "entityType": "Rental",     "lower": 1, "upper": 1  },
+        { "name": "rentalLine", "entityType": "RentalLine",  "lower": 0, "upper": "*" }
+      ]
+    },
     {
       "name": "RentalInvolvesCar",
       "roles": [

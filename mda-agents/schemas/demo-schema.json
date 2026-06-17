@@ -72,7 +72,8 @@
       "required": ["name", "roles"],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string" },
+        "name":          { "type": "string" },
+        "isAggregation": { "type": "boolean" },
         "roles": {
           "type": "array",
           "minItems": 2,
