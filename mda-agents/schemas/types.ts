@@ -36,6 +36,7 @@ export interface EntityType {
   isDerived?: boolean;
   derivationExpression?: string;
   parent?: string;
+  triggerEventType?: string;
   attributes?: AttributeType[];
 }
 
@@ -110,6 +111,7 @@ export interface PimAssociation {
   isAggregation?: boolean;
   isDerived?: boolean;
   derivationExpression?: string;
+  triggerEvent?: string;
   memberEnds: [AssociationEnd, AssociationEnd];
 }
 

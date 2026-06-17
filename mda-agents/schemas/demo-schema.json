@@ -54,6 +54,7 @@
         "isDerived":            { "type": "boolean" },
         "derivationExpression": { "type": "string" },
         "parent":               { "type": "string" },
+        "triggerEventType":     { "type": "string" },
         "attributes": {
           "type": "array",
           "items": { "$ref": "#/$defs/AttributeType" }

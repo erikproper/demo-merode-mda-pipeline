@@ -50,9 +50,9 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
   });
 
   // generalizations → parent-child relationships between classes (A10)
-  // only non-derived specializations; derived ones with parent are handled as A9 below
+  // only non-derived, non-event-triggered specializations
   const generalizations = demo.entityTypes
-    .filter(et => et.parent !== undefined && !et.isDerived)
+    .filter(et => et.parent !== undefined && !et.isDerived && !et.triggerEventType)
     .map(et => {
       trace.push({ sourceType: "EntityType", sourceName: et.name, targetType: "Generalization", targetName: `${et.parent} → ${et.name}` });
       const parentClass = classes.find(c => c.name === et.parent);
@@ -68,6 +68,23 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     cls.ownedAttributes = cls.ownedAttributes ?? [];
     cls.ownedAttributes.push({ name: et.name, type: "Boolean", defaultValue: "false" });
   }
+
+  // event-triggered specializations → directed association + trigger reference (A7)
+  // state machine behavior (entry activity, Create<child>) is NotMapped in Mendix
+  const eventTriggeredAssociations = demo.entityTypes
+    .filter(et => et.parent !== undefined && et.triggerEventType)
+    .map(et => {
+      trace.push({ sourceType: "EntityType", sourceName: et.name, targetType: "EventTriggeredAssociation", targetName: `${et.name}IsA${et.parent}` });
+      trace.push({ sourceType: "EventType", sourceName: et.triggerEventType!, targetType: "NotMapped", targetName: "StateMachineBehavior" });
+      return {
+        name: `${et.name}IsA${et.parent}`,
+        triggerEvent: et.triggerEventType,
+        memberEnds: [
+          { name: "specialization", type: et.name,    lower: 0, upper: "*" },
+          { name: "parent",         type: et.parent!, lower: 1, upper: 1   },
+        ] as [any, any],
+      };
+    });
 
   // derived specializations → directed associations with OCL expression (A9)
   const derivedAssociations = demo.entityTypes
@@ -100,6 +117,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
       };
     }),
     ...derivedAssociations,
+    ...eventTriggeredAssociations,
   ];
 
   return { pim: { name: `${demo.name} – pimUML`, enumerations, dataTypes, classes, associations, generalizations }, trace };

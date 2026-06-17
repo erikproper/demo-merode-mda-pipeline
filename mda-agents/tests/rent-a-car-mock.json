@@ -44,6 +44,11 @@
       "isDerived": true,
       "derivationExpression": "Person.rentals->size() > 10",
       "parent": "Person"
+    },
+    {
+      "name": "ActiveRental",
+      "parent": "Rental",
+      "triggerEventType": "rentalStarted"
     }
   ],
   "eventTypes": [

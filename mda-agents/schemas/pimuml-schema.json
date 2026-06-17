@@ -91,6 +91,7 @@
         "isAggregation":        { "type": "boolean" },
         "isDerived":            { "type": "boolean" },
         "derivationExpression": { "type": "string" },
+        "triggerEvent":         { "type": "string" },
         "memberEnds": {
           "type": "array",
           "minItems": 2,
