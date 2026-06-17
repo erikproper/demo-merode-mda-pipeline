@@ -14,6 +14,7 @@ export interface DemoEventType {
 export interface AttributeType {
   name: string;
   valueType?: string;
+  derivationRule?: string;
 }
 
 export interface Role {
@@ -87,6 +88,8 @@ export interface Property {
   name: string;
   type?: string;
   defaultValue?: string;
+  isDerived?: boolean;
+  derivationRule?: string;
 }
 
 export interface AssociationEnd {

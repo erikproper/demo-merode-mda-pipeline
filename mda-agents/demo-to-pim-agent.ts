@@ -29,8 +29,14 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
   const classes = demo.entityTypes.map(et => {
     trace.push({ sourceType: "EntityType", sourceName: et.name, targetType: "Class", targetName: et.name });
     const ownedAttributes: Property[] = (et.attributes ?? []).map(a => {
-      trace.push({ sourceType: "AttributeType", sourceName: `${et.name}.${a.name}`, targetType: "Property", targetName: `${et.name}.${a.name}` });
-      return { name: a.name, type: a.valueType ?? "String" };
+      const isDerived = a.derivationRule !== undefined;
+      trace.push({
+        sourceType: isDerived ? "DerivedAttributeType" : "AttributeType",
+        sourceName: `${et.name}.${a.name}`,
+        targetType: isDerived ? "DerivedProperty" : "Property",
+        targetName: `${et.name}.${a.name}`,
+      });
+      return { name: a.name, type: a.valueType ?? "String", isDerived, derivationRule: a.derivationRule };
     });
     return { name: et.name, isAbstract: et.isAbstract ?? false, ownedAttributes };
   });

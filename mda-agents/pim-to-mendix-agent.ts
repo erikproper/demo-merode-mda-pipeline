@@ -84,6 +84,10 @@ async function applyPimToMendix(
     if (cls.isAbstract) console.log(`  (abstract) "${cls.name}" — Mendix has no abstract entities; marked in pimUML only`);
 
     for (const prop of cls.ownedAttributes ?? []) {
+      if (prop.isDerived) {
+        console.log(`  ~ derived attribute "${cls.name}.${prop.name}" not mapped — Mendix has no OCL; rule: ${prop.derivationRule}`);
+        continue;
+      }
       const attr = domainmodels.Attribute.createIn(entity);
       attr.name  = prop.name;
       attr.type  = makeAttributeType(prop.type, model, enumMap);

@@ -8,7 +8,8 @@
       "name": "Rental",
       "attributes": [
         { "name": "startingDay", "valueType": "String" },
-        { "name": "endingDay",   "valueType": "String" }
+        { "name": "endingDay",   "valueType": "String" },
+        { "name": "totalDays",   "valueType": "Integer", "derivationRule": "self.endingDay - self.startingDay" }
       ]
     },
     {

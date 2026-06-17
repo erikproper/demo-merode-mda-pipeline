@@ -63,8 +63,9 @@
       "required": ["name"],
       "additionalProperties": false,
       "properties": {
-        "name":      { "type": "string" },
-        "valueType": { "type": "string" }
+        "name":           { "type": "string" },
+        "valueType":      { "type": "string" },
+        "derivationRule": { "type": "string" }
       }
     },
     "FactType": {

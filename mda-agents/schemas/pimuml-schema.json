@@ -61,9 +61,11 @@
       "required": ["name"],
       "additionalProperties": false,
       "properties": {
-        "name":         { "type": "string" },
-        "type":         { "type": "string" },
-        "defaultValue": { "type": "string" }
+        "name":           { "type": "string" },
+        "type":           { "type": "string" },
+        "defaultValue":   { "type": "string" },
+        "isDerived":      { "type": "boolean" },
+        "derivationRule": { "type": "string" }
       }
     },
     "Association": {
