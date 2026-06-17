@@ -33,6 +33,8 @@ export interface FactType {
 export interface EntityType {
   name: string;
   isAbstract?: boolean;
+  isDerived?: boolean;
+  derivationExpression?: string;
   parent?: string;
   attributes?: AttributeType[];
 }
@@ -117,6 +119,8 @@ export interface PimGeneralization {
 export interface PimClass {
   name: string;
   isAbstract?: boolean;
+  isDerived?: boolean;
+  derivationExpression?: string;
   ownedAttributes?: Property[];
 }
 

@@ -38,6 +38,12 @@
       "attributes": [
         { "name": "name", "valueType": "String" }
       ]
+    },
+    {
+      "name": "PremiumCustomer",
+      "isDerived": true,
+      "derivationExpression": "Person.rentals->size() > 10",
+      "parent": "Person"
     }
   ],
   "eventTypes": [

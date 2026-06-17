@@ -87,6 +87,7 @@ async function applyPimToMendix(
     entityMap.set(cls.name, entity);
 
     if (cls.isAbstract) console.log(`  (abstract) "${cls.name}" — Mendix has no abstract entities; marked in pimUML only`);
+    if (cls.isDerived)  console.log(`  (derived)  "${cls.name}" — created as regular entity; rule: ${cls.derivationExpression ?? "none"}`);
 
     for (const prop of cls.ownedAttributes ?? []) {
       if (prop.isDerived) {

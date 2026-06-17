@@ -35,7 +35,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
 
   // each entity type becomes a class, its attributes become properties (A3, A5)
   const classes = demo.entityTypes.map(et => {
-    trace.push({ sourceType: "EntityType", sourceName: et.name, targetType: "Class", targetName: et.name });
+    trace.push({ sourceType: et.isDerived ? "DerivedEntityType" : "EntityType", sourceName: et.name, targetType: "Class", targetName: et.name });
     const ownedAttributes: Property[] = (et.attributes ?? []).map(a => {
       const isDerived = a.derivationRule !== undefined;
       trace.push({
@@ -46,7 +46,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
       });
       return { name: a.name, type: a.valueType ?? "String", isDerived, derivationRule: a.derivationRule };
     });
-    return { name: et.name, isAbstract: et.isAbstract ?? false, ownedAttributes };
+    return { name: et.name, isAbstract: et.isAbstract ?? false, isDerived: et.isDerived ?? false, derivationExpression: et.derivationExpression, ownedAttributes };
   });
 
   // generalizations → parent-child relationships between classes (A10)

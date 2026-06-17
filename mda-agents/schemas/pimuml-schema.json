@@ -60,8 +60,10 @@
       "required": ["name"],
       "additionalProperties": false,
       "properties": {
-        "name":       { "type": "string" },
-        "isAbstract": { "type": "boolean" },
+        "name":                 { "type": "string" },
+        "isAbstract":           { "type": "boolean" },
+        "isDerived":            { "type": "boolean" },
+        "derivationExpression": { "type": "string" },
         "ownedAttributes": {
           "type": "array",
           "items": { "$ref": "#/$defs/Property" }

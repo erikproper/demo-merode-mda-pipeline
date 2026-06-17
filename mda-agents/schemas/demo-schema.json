@@ -49,9 +49,11 @@
       "required": ["name"],
       "additionalProperties": false,
       "properties": {
-        "name":       { "type": "string" },
-        "isAbstract": { "type": "boolean" },
-        "parent":     { "type": "string" },
+        "name":                 { "type": "string" },
+        "isAbstract":           { "type": "boolean" },
+        "isDerived":            { "type": "boolean" },
+        "derivationExpression": { "type": "string" },
+        "parent":               { "type": "string" },
         "attributes": {
           "type": "array",
           "items": { "$ref": "#/$defs/AttributeType" }
