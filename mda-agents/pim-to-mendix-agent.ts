@@ -85,7 +85,10 @@ async function applyPimToMendix(
       const attr = domainmodels.Attribute.createIn(entity);
       attr.name  = prop.name;
       attr.type  = makeAttributeType(prop.type, model, enumMap);
-      console.log(`  + attribute ${cls.name}.${prop.name} : ${prop.type ?? "String"}`);
+      if (prop.defaultValue !== undefined && attr.value instanceof domainmodels.StoredValue) {
+        (attr.value as domainmodels.StoredValue).defaultValue = prop.defaultValue;
+      }
+      console.log(`  + attribute ${cls.name}.${prop.name} : ${prop.type ?? "String"}${prop.defaultValue !== undefined ? ` = ${prop.defaultValue}` : ""}`);
     }
 
     console.log(`  + entity "${cls.name}"`);

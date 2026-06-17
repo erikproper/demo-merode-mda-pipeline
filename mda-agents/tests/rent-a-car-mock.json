@@ -25,6 +25,10 @@
       ]
     }
   ],
+  "eventTypes": [
+    { "name": "rentalStarted",   "entityType": "Rental" },
+    { "name": "rentalCompleted", "entityType": "Rental" }
+  ],
   "factTypes": [
     {
       "name": "RentalInvolvesCar",

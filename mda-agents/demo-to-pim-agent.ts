@@ -2,7 +2,7 @@
 // Listens on the bus for DEMO Fact Models and transforms them into pimUML models.
 
 import { BusClient } from "./bus-client";
-import type { DemoModel, PimModel } from "./schemas/types";
+import type { DemoModel, PimModel, Property } from "./schemas/types";
 import { getBusConfig, makeValidator, assertValid, extractMeta, attachMeta, TraceEntry } from "./agent-utils";
 
 const config = getBusConfig("demo-to-pim-agent");
@@ -28,14 +28,21 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
   // each entity type becomes a class, its attributes become properties (A3, A5)
   const classes = demo.entityTypes.map(et => {
     trace.push({ sourceType: "EntityType", sourceName: et.name, targetType: "Class", targetName: et.name });
-    return {
-      name: et.name,
-      ownedAttributes: (et.attributes ?? []).map(a => {
-        trace.push({ sourceType: "AttributeType", sourceName: `${et.name}.${a.name}`, targetType: "Property", targetName: `${et.name}.${a.name}` });
-        return { name: a.name, type: a.valueType ?? "String" };
-      }),
-    };
+    const ownedAttributes: Property[] = (et.attributes ?? []).map(a => {
+      trace.push({ sourceType: "AttributeType", sourceName: `${et.name}.${a.name}`, targetType: "Property", targetName: `${et.name}.${a.name}` });
+      return { name: a.name, type: a.valueType ?? "String" };
+    });
+    return { name: et.name, ownedAttributes };
   });
+
+  // event types → Boolean attributes on the owning class (A6)
+  for (const et of demo.eventTypes ?? []) {
+    const cls = classes.find(c => c.name === et.entityType);
+    if (!cls) { console.warn(`[demo-to-pim] eventType "${et.name}" references unknown entityType "${et.entityType}"`); continue; }
+    trace.push({ sourceType: "EventType", sourceName: et.name, targetType: "Property", targetName: `${et.entityType}.${et.name}` });
+    cls.ownedAttributes = cls.ownedAttributes ?? [];
+    cls.ownedAttributes.push({ name: et.name, type: "Boolean", defaultValue: "false" });
+  }
 
   // each fact type becomes an association between two classes (A12)
   const associations = (demo.factTypes ?? []).map(ft => {

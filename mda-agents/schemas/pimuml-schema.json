@@ -47,8 +47,9 @@
       "required": ["name"],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string" },
-        "type": { "type": "string" }
+        "name":         { "type": "string" },
+        "type":         { "type": "string" },
+        "defaultValue": { "type": "string" }
       }
     },
     "Association": {

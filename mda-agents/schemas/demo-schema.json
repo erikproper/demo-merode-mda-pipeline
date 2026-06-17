@@ -18,9 +18,22 @@
     "factTypes": {
       "type": "array",
       "items": { "$ref": "#/$defs/FactType" }
+    },
+    "eventTypes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/DemoEventType" }
     }
   },
   "$defs": {
+    "DemoEventType": {
+      "type": "object",
+      "required": ["name", "entityType"],
+      "additionalProperties": false,
+      "properties": {
+        "name":       { "type": "string" },
+        "entityType": { "type": "string" }
+      }
+    },
     "DemoValueType": {
       "type": "object",
       "required": ["name", "kind", "literals"],

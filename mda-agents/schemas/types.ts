@@ -6,6 +6,11 @@ export interface DemoValueType {
   literals: string[];
 }
 
+export interface DemoEventType {
+  name: string;
+  entityType: string;
+}
+
 export interface AttributeType {
   name: string;
   valueType?: string;
@@ -33,6 +38,7 @@ export interface DemoModel {
   valueTypes?: DemoValueType[];
   entityTypes: EntityType[];
   factTypes?: FactType[];
+  eventTypes?: DemoEventType[];
 }
 
 // MERODE types
@@ -77,6 +83,7 @@ export interface PimEnumeration {
 export interface Property {
   name: string;
   type?: string;
+  defaultValue?: string;
 }
 
 export interface AssociationEnd {
