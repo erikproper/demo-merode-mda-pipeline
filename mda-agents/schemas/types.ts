@@ -4,6 +4,9 @@ export interface DemoValueType {
   name: string;
   kind: "categorical" | "nonCategorical";
   literals?: string[];
+  triggerEventType?: string;
+  relatesEntityTypes?: [string, string];
+  attributes?: AttributeType[];
 }
 
 export interface DemoEventType {
@@ -91,6 +94,13 @@ export interface PimDataType {
   name: string;
 }
 
+export interface PimAssociationClass {
+  name: string;
+  triggerEvent?: string;
+  memberEnds: [AssociationEnd, AssociationEnd];
+  ownedAttributes?: Property[];
+}
+
 export interface Property {
   name: string;
   type?: string;
@@ -132,6 +142,7 @@ export interface PimModel {
   name: string;
   enumerations?: PimEnumeration[];
   dataTypes?: PimDataType[];
+  associationClasses?: PimAssociationClass[];
   classes?: PimClass[];
   associations?: PimAssociation[];
   generalizations?: PimGeneralization[];

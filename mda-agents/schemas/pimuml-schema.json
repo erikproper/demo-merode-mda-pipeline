@@ -26,6 +26,10 @@
     "generalizations": {
       "type": "array",
       "items": { "$ref": "#/$defs/Generalization" }
+    },
+    "associationClasses": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/AssociationClass" }
     }
   },
   "$defs": {
@@ -36,6 +40,22 @@
       "properties": {
         "name":     { "type": "string" },
         "literals": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
+    "AssociationClass": {
+      "type": "object",
+      "required": ["name", "memberEnds"],
+      "additionalProperties": false,
+      "properties": {
+        "name":             { "type": "string" },
+        "triggerEvent":     { "type": "string" },
+        "memberEnds": {
+          "type": "array", "minItems": 2, "maxItems": 2,
+          "items": { "$ref": "#/$defs/AssociationEnd" }
+        },
+        "ownedAttributes": {
+          "type": "array", "items": { "$ref": "#/$defs/Property" }
+        }
       }
     },
     "DataType": {

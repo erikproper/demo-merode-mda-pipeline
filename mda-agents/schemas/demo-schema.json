@@ -39,9 +39,16 @@
       "required": ["name", "kind"],
       "additionalProperties": false,
       "properties": {
-        "name":     { "type": "string" },
-        "kind":     { "type": "string", "enum": ["categorical", "nonCategorical"] },
-        "literals": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+        "name":               { "type": "string" },
+        "kind":               { "type": "string", "enum": ["categorical", "nonCategorical"] },
+        "literals":           { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "triggerEventType":   { "type": "string" },
+        "relatesEntityTypes": {
+          "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 2
+        },
+        "attributes": {
+          "type": "array", "items": { "$ref": "#/$defs/AttributeType" }
+        }
       }
     },
     "EntityType": {

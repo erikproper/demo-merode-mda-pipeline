@@ -25,9 +25,30 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
       return { name: vt.name, literals: vt.literals! };
     });
 
+  // non-categorical value types with event + entity relation → association classes (A8)
+  const associationClasses = (demo.valueTypes ?? [])
+    .filter(vt => vt.kind === "nonCategorical" && vt.triggerEventType && vt.relatesEntityTypes)
+    .map(vt => {
+      trace.push({ sourceType: "ValueType", sourceName: vt.name, targetType: "AssociationClass", targetName: vt.name });
+      const [e0, e1] = vt.relatesEntityTypes!;
+      const ownedAttributes: Property[] = (vt.attributes ?? []).map(a => {
+        trace.push({ sourceType: "AttributeType", sourceName: `${vt.name}.${a.name}`, targetType: "Property", targetName: `${vt.name}.${a.name}` });
+        return { name: a.name, type: a.valueType ?? "String" };
+      });
+      return {
+        name: vt.name,
+        triggerEvent: vt.triggerEventType,
+        memberEnds: [
+          { name: e0.toLowerCase(), type: e0, lower: 0, upper: "*" },
+          { name: e1.toLowerCase(), type: e1, lower: 0, upper: "*" },
+        ] as [any, any],
+        ownedAttributes,
+      };
+    });
+
   // non-categorical value types → user-defined data types (A2)
   const dataTypes = (demo.valueTypes ?? [])
-    .filter(vt => vt.kind === "nonCategorical")
+    .filter(vt => vt.kind === "nonCategorical" && !vt.triggerEventType)
     .map(vt => {
       trace.push({ sourceType: "ValueType", sourceName: vt.name, targetType: "DataType", targetName: vt.name });
       return { name: vt.name };
@@ -120,7 +141,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     ...eventTriggeredAssociations,
   ];
 
-  return { pim: { name: `${demo.name} – pimUML`, enumerations, dataTypes, classes, associations, generalizations }, trace };
+  return { pim: { name: `${demo.name} – pimUML`, enumerations, dataTypes, associationClasses, classes, associations, generalizations }, trace };
 }
 
 async function main() {

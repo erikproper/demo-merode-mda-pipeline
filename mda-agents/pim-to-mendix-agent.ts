@@ -106,6 +106,32 @@ async function applyPimToMendix(
     console.log(`  + entity "${cls.name}"`);
   }
 
+  // association classes → approximated as Entity + two Associations (A8)
+  for (const ac of pimModel.associationClasses ?? []) {
+    const acEntity    = domainmodels.Entity.createIn(domainModel);
+    acEntity.name     = ac.name;
+    acEntity.location = { x, y: 200 };
+    x += 220;
+    entityMap.set(ac.name, acEntity);
+
+    for (const prop of ac.ownedAttributes ?? []) {
+      const attr = domainmodels.Attribute.createIn(acEntity);
+      attr.name  = prop.name;
+      attr.type  = makeAttributeType(prop.type, model, enumMap);
+    }
+
+    for (const end of ac.memberEnds) {
+      const related = entityMap.get(end.type);
+      if (!related) { console.warn(`  skipping association class end "${end.type}" — entity not found`); continue; }
+      const mxAssoc  = domainmodels.Association.createIn(domainModel);
+      mxAssoc.name   = `${ac.name}_${end.type}`;
+      mxAssoc.parent = related;
+      mxAssoc.child  = acEntity;
+    }
+
+    console.log(`  + association class "${ac.name}" [trigger: ${ac.triggerEvent}] approximated as entity + associations (Mendix has no association class concept)`);
+  }
+
   // generalizations → Mendix entity inheritance (A10)
   for (const gen of pimModel.generalizations ?? []) {
     const childEntity  = entityMap.get(gen.child);

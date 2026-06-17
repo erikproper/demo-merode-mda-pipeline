@@ -2,7 +2,17 @@
   "name": "Rent-A-Car",
   "valueTypes": [
     { "name": "CarGroup",    "kind": "categorical",    "literals": ["economy", "compact", "luxury"] },
-    { "name": "MoneyAmount", "kind": "nonCategorical" }
+    { "name": "MoneyAmount", "kind": "nonCategorical" },
+    {
+      "name": "BookingDetail",
+      "kind": "nonCategorical",
+      "triggerEventType": "rentalStarted",
+      "relatesEntityTypes": ["Rental", "Car"],
+      "attributes": [
+        { "name": "pricePerDay", "valueType": "Integer" },
+        { "name": "notes",       "valueType": "String"  }
+      ]
+    }
   ],
   "entityTypes": [
     {
