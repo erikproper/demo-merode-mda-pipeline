@@ -30,6 +30,8 @@ export interface FactType {
 
 export interface EntityType {
   name: string;
+  isAbstract?: boolean;
+  parent?: string;
   attributes?: AttributeType[];
 }
 
@@ -98,8 +100,14 @@ export interface PimAssociation {
   memberEnds: [AssociationEnd, AssociationEnd];
 }
 
+export interface PimGeneralization {
+  child: string;
+  parent: string;
+}
+
 export interface PimClass {
   name: string;
+  isAbstract?: boolean;
   ownedAttributes?: Property[];
 }
 
@@ -108,4 +116,5 @@ export interface PimModel {
   enumerations?: PimEnumeration[];
   classes?: PimClass[];
   associations?: PimAssociation[];
+  generalizations?: PimGeneralization[];
 }

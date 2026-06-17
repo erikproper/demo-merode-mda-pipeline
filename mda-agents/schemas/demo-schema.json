@@ -49,7 +49,9 @@
       "required": ["name"],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string" },
+        "name":       { "type": "string" },
+        "isAbstract": { "type": "boolean" },
+        "parent":     { "type": "string" },
         "attributes": {
           "type": "array",
           "items": { "$ref": "#/$defs/AttributeType" }

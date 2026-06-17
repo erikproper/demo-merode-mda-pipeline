@@ -12,10 +12,17 @@
       ]
     },
     {
-      "name": "Car",
+      "name": "Vehicle",
+      "isAbstract": true,
       "attributes": [
-        { "name": "licensePlate", "valueType": "String" },
-        { "name": "group",        "valueType": "CarGroup" }
+        { "name": "licensePlate", "valueType": "String" }
+      ]
+    },
+    {
+      "name": "Car",
+      "parent": "Vehicle",
+      "attributes": [
+        { "name": "group", "valueType": "CarGroup" }
       ]
     },
     {

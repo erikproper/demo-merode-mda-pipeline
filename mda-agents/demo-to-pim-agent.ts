@@ -32,8 +32,19 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
       trace.push({ sourceType: "AttributeType", sourceName: `${et.name}.${a.name}`, targetType: "Property", targetName: `${et.name}.${a.name}` });
       return { name: a.name, type: a.valueType ?? "String" };
     });
-    return { name: et.name, ownedAttributes };
+    return { name: et.name, isAbstract: et.isAbstract ?? false, ownedAttributes };
   });
+
+  // generalizations → parent-child relationships between classes (A10)
+  // any entity with isAbstract:true is also marked abstract on the class
+  const generalizations = demo.entityTypes
+    .filter(et => et.parent !== undefined)
+    .map(et => {
+      trace.push({ sourceType: "EntityType", sourceName: et.name, targetType: "Generalization", targetName: `${et.parent} → ${et.name}` });
+      const parentClass = classes.find(c => c.name === et.parent);
+      if (parentClass) parentClass.isAbstract = true;
+      return { child: et.name, parent: et.parent! };
+    });
 
   // event types → Boolean attributes on the owning class (A6)
   for (const et of demo.eventTypes ?? []) {
@@ -56,7 +67,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     };
   });
 
-  return { pim: { name: `${demo.name} – pimUML`, enumerations, classes, associations }, trace };
+  return { pim: { name: `${demo.name} – pimUML`, enumerations, classes, associations, generalizations }, trace };
 }
 
 async function main() {

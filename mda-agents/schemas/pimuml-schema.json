@@ -18,6 +18,10 @@
     "associations": {
       "type": "array",
       "items": { "$ref": "#/$defs/Association" }
+    },
+    "generalizations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Generalization" }
     }
   },
   "$defs": {
@@ -30,12 +34,22 @@
         "literals": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
       }
     },
+    "Generalization": {
+      "type": "object",
+      "required": ["child", "parent"],
+      "additionalProperties": false,
+      "properties": {
+        "child":  { "type": "string" },
+        "parent": { "type": "string" }
+      }
+    },
     "Class": {
       "type": "object",
       "required": ["name"],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string" },
+        "name":       { "type": "string" },
+        "isAbstract": { "type": "boolean" },
         "ownedAttributes": {
           "type": "array",
           "items": { "$ref": "#/$defs/Property" }

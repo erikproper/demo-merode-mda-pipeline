@@ -81,6 +81,8 @@ async function applyPimToMendix(
     x += 220;
     entityMap.set(cls.name, entity);
 
+    if (cls.isAbstract) console.log(`  (abstract) "${cls.name}" — Mendix has no abstract entities; marked in pimUML only`);
+
     for (const prop of cls.ownedAttributes ?? []) {
       const attr = domainmodels.Attribute.createIn(entity);
       attr.name  = prop.name;
@@ -92,6 +94,19 @@ async function applyPimToMendix(
     }
 
     console.log(`  + entity "${cls.name}"`);
+  }
+
+  // generalizations → Mendix entity inheritance (A10)
+  for (const gen of pimModel.generalizations ?? []) {
+    const childEntity  = entityMap.get(gen.child);
+    const parentEntity = entityMap.get(gen.parent);
+    if (!childEntity || !parentEntity) {
+      console.warn(`  skipping generalization "${gen.child} → ${gen.parent}" — entity not found`);
+      continue;
+    }
+    const mxGen = domainmodels.Generalization.createIn(childEntity);
+    mxGen.generalization = parentEntity;
+    console.log(`  + generalization "${gen.child}" extends "${gen.parent}"`);
   }
 
   // associations → Mendix associations
