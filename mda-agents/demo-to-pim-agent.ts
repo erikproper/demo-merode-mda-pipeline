@@ -50,9 +50,9 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
   });
 
   // generalizations → parent-child relationships between classes (A10)
-  // any entity with isAbstract:true is also marked abstract on the class
+  // only non-derived specializations; derived ones with parent are handled as A9 below
   const generalizations = demo.entityTypes
-    .filter(et => et.parent !== undefined)
+    .filter(et => et.parent !== undefined && !et.isDerived)
     .map(et => {
       trace.push({ sourceType: "EntityType", sourceName: et.name, targetType: "Generalization", targetName: `${et.parent} → ${et.name}` });
       const parentClass = classes.find(c => c.name === et.parent);
@@ -69,19 +69,38 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     cls.ownedAttributes.push({ name: et.name, type: "Boolean", defaultValue: "false" });
   }
 
+  // derived specializations → directed associations with OCL expression (A9)
+  const derivedAssociations = demo.entityTypes
+    .filter(et => et.isDerived && et.parent !== undefined)
+    .map(et => {
+      trace.push({ sourceType: "DerivedEntityType", sourceName: et.name, targetType: "DerivedAssociation", targetName: `${et.name}IsA${et.parent}` });
+      return {
+        name: `${et.name}IsA${et.parent}`,
+        isDerived: true,
+        derivationExpression: et.derivationExpression,
+        memberEnds: [
+          { name: "derived", type: et.name,    lower: 0, upper: "*" },
+          { name: "parent",  type: et.parent!, lower: 1, upper: 1   },
+        ] as [any, any],
+      };
+    });
+
   // each fact type becomes an association between two classes (A12, A11)
-  const associations = (demo.factTypes ?? []).map(ft => {
-    const targetType = ft.isAggregation ? "Aggregation" : "Association";
-    trace.push({ sourceType: "FactType", sourceName: ft.name, targetType, targetName: ft.name });
-    return {
-      name: ft.name,
-      isAggregation: ft.isAggregation ?? false,
-      memberEnds: [
-        { name: ft.roles[0].name, type: ft.roles[0].entityType, lower: ft.roles[0].lower ?? 0, upper: ft.roles[0].upper ?? "*" },
-        { name: ft.roles[1].name, type: ft.roles[1].entityType, lower: ft.roles[1].lower ?? 1, upper: ft.roles[1].upper ?? 1 },
-      ] as [any, any],
-    };
-  });
+  const associations = [
+    ...(demo.factTypes ?? []).map(ft => {
+      const targetType = ft.isAggregation ? "Aggregation" : "Association";
+      trace.push({ sourceType: "FactType", sourceName: ft.name, targetType, targetName: ft.name });
+      return {
+        name: ft.name,
+        isAggregation: ft.isAggregation ?? false,
+        memberEnds: [
+          { name: ft.roles[0].name, type: ft.roles[0].entityType, lower: ft.roles[0].lower ?? 0, upper: ft.roles[0].upper ?? "*" },
+          { name: ft.roles[1].name, type: ft.roles[1].entityType, lower: ft.roles[1].lower ?? 1, upper: ft.roles[1].upper ?? 1 },
+        ] as [any, any],
+      };
+    }),
+    ...derivedAssociations,
+  ];
 
   return { pim: { name: `${demo.name} – pimUML`, enumerations, dataTypes, classes, associations, generalizations }, trace };
 }

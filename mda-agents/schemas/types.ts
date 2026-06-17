@@ -108,6 +108,8 @@ export interface AssociationEnd {
 export interface PimAssociation {
   name: string;
   isAggregation?: boolean;
+  isDerived?: boolean;
+  derivationExpression?: string;
   memberEnds: [AssociationEnd, AssociationEnd];
 }
 

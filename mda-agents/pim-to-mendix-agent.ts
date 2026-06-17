@@ -142,7 +142,8 @@ async function applyPimToMendix(
     if (assoc.isAggregation) {
       mxAssoc.owner = domainmodels.AssociationOwner.Both;
     }
-    console.log(`  + ${assoc.isAggregation ? "aggregation" : "association"} "${assoc.name}": ${parentEnd.type} → ${childEnd.type}`);
+    const kind = assoc.isDerived ? "derived association" : assoc.isAggregation ? "aggregation" : "association";
+    console.log(`  + ${kind} "${assoc.name}": ${parentEnd.type} → ${childEnd.type}${assoc.derivationExpression ? ` [rule: ${assoc.derivationExpression}]` : ""}`);
   }
 
   await model.flushChanges();

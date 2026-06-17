@@ -87,8 +87,10 @@
       "required": ["name", "memberEnds"],
       "additionalProperties": false,
       "properties": {
-        "name":          { "type": "string" },
-        "isAggregation": { "type": "boolean" },
+        "name":                 { "type": "string" },
+        "isAggregation":        { "type": "boolean" },
+        "isDerived":            { "type": "boolean" },
+        "derivationExpression": { "type": "string" },
         "memberEnds": {
           "type": "array",
           "minItems": 2,
