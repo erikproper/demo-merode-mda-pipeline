@@ -1,5 +1,8 @@
 {
   "name": "Rent-A-Car",
+  "valueTypes": [
+    { "name": "CarGroup", "kind": "categorical", "literals": ["economy", "compact", "luxury"] }
+  ],
   "entityTypes": [
     {
       "name": "Rental",
@@ -11,7 +14,8 @@
     {
       "name": "Car",
       "attributes": [
-        { "name": "licensePlate", "valueType": "String" }
+        { "name": "licensePlate", "valueType": "String" },
+        { "name": "group",        "valueType": "CarGroup" }
       ]
     },
     {

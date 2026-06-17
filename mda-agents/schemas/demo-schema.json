@@ -7,6 +7,10 @@
   "additionalProperties": false,
   "properties": {
     "name": { "type": "string" },
+    "valueTypes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/DemoValueType" }
+    },
     "entityTypes": {
       "type": "array",
       "items": { "$ref": "#/$defs/EntityType" }
@@ -17,6 +21,16 @@
     }
   },
   "$defs": {
+    "DemoValueType": {
+      "type": "object",
+      "required": ["name", "kind", "literals"],
+      "additionalProperties": false,
+      "properties": {
+        "name":     { "type": "string" },
+        "kind":     { "type": "string", "enum": ["categorical"] },
+        "literals": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
     "EntityType": {
       "type": "object",
       "required": ["name"],

@@ -1,7 +1,7 @@
 // pim-to-mendix-agent
 // Listens on the bus for pimUML models and writes them into a Mendix app via the Platform SDK.
 
-import { IModel, domainmodels } from "mendixmodelsdk";
+import { IModel, domainmodels, enumerations } from "mendixmodelsdk";
 import { MendixPlatformClient, OnlineWorkingCopy } from "mendixplatformsdk";
 import { BusClient } from "./bus-client";
 import type { PimModel } from "./schemas/types";
@@ -20,8 +20,18 @@ const IN_ARTEFACT     = "model.pim.created";
 
 const validatePim = makeValidator("pimuml-schema.json");
 
-function makeAttributeType(typeName: string | undefined, model: IModel): domainmodels.AttributeType {
-  switch ((typeName ?? "").toLowerCase()) {
+function makeAttributeType(
+  typeName: string | undefined,
+  model: IModel,
+  enumMap: Map<string, enumerations.Enumeration>,
+): domainmodels.AttributeType {
+  const name = typeName ?? "";
+  if (enumMap.has(name)) {
+    const attrType = domainmodels.EnumerationAttributeType.create(model);
+    attrType.enumeration = enumMap.get(name)!;
+    return attrType;
+  }
+  switch (name.toLowerCase()) {
     case "integer":  return domainmodels.IntegerAttributeType.create(model);
     case "boolean":  return domainmodels.BooleanAttributeType.create(model);
     case "datetime": return domainmodels.DateTimeAttributeType.create(model);
@@ -48,6 +58,19 @@ async function applyPimToMendix(
   model.allEnumerations().filter(en => (en.qualifiedName ?? "").startsWith(prefix)).forEach(en => en.delete());
   console.log("[pim-to-mendix] cleared previous model");
 
+  // enumerations → Mendix enumerations (A1)
+  const enumMap = new Map<string, enumerations.Enumeration>();
+  for (const enumDef of pimModel.enumerations ?? []) {
+    const mxEnum = enumerations.Enumeration.createIn(mxModule);
+    mxEnum.name  = enumDef.name;
+    for (const literal of enumDef.literals) {
+      const val  = enumerations.EnumerationValue.createIn(mxEnum);
+      val.name   = literal;
+    }
+    enumMap.set(enumDef.name, mxEnum);
+    console.log(`  + enumeration "${enumDef.name}" [${enumDef.literals.join(", ")}]`);
+  }
+
   // classes → Mendix entities with attributes
   const entityMap = new Map<string, domainmodels.Entity>();
   let x = 0;
@@ -61,7 +84,7 @@ async function applyPimToMendix(
     for (const prop of cls.ownedAttributes ?? []) {
       const attr = domainmodels.Attribute.createIn(entity);
       attr.name  = prop.name;
-      attr.type  = makeAttributeType(prop.type, model);
+      attr.type  = makeAttributeType(prop.type, model, enumMap);
       console.log(`  + attribute ${cls.name}.${prop.name} : ${prop.type ?? "String"}`);
     }
 

@@ -1,5 +1,11 @@
 // TypeScript interfaces matching demo-schema.json and pimuml-schema.json.
 
+export interface DemoValueType {
+  name: string;
+  kind: "categorical";
+  literals: string[];
+}
+
 export interface AttributeType {
   name: string;
   valueType?: string;
@@ -24,6 +30,7 @@ export interface EntityType {
 
 export interface DemoModel {
   name: string;
+  valueTypes?: DemoValueType[];
   entityTypes: EntityType[];
   factTypes?: FactType[];
 }
@@ -62,6 +69,11 @@ export interface MerodeModel {
 
 // pimUML types
 
+export interface PimEnumeration {
+  name: string;
+  literals: string[];
+}
+
 export interface Property {
   name: string;
   type?: string;
@@ -86,6 +98,7 @@ export interface PimClass {
 
 export interface PimModel {
   name: string;
+  enumerations?: PimEnumeration[];
   classes?: PimClass[];
   associations?: PimAssociation[];
 }

@@ -17,7 +17,15 @@ const validatePim  = makeValidator("pimuml-schema.json");
 function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
   const trace: TraceEntry[] = [];
 
-  // each entity type becomes a class, its attributes become properties
+  // categorical value types → enumerations (A1)
+  const enumerations = (demo.valueTypes ?? [])
+    .filter(vt => vt.kind === "categorical")
+    .map(vt => {
+      trace.push({ sourceType: "ValueType", sourceName: vt.name, targetType: "Enumeration", targetName: vt.name });
+      return { name: vt.name, literals: vt.literals };
+    });
+
+  // each entity type becomes a class, its attributes become properties (A3, A5)
   const classes = demo.entityTypes.map(et => {
     trace.push({ sourceType: "EntityType", sourceName: et.name, targetType: "Class", targetName: et.name });
     return {
@@ -29,7 +37,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     };
   });
 
-  // each fact type becomes an association between two classes
+  // each fact type becomes an association between two classes (A12)
   const associations = (demo.factTypes ?? []).map(ft => {
     trace.push({ sourceType: "FactType", sourceName: ft.name, targetType: "Association", targetName: ft.name });
     return {
@@ -41,7 +49,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     };
   });
 
-  return { pim: { name: `${demo.name} – pimUML`, classes, associations }, trace };
+  return { pim: { name: `${demo.name} – pimUML`, enumerations, classes, associations }, trace };
 }
 
 async function main() {
@@ -69,7 +77,7 @@ async function main() {
     }
 
     const { pim: pimModel, trace } = transform(model);
-    console.log(`[demo-to-pim] transformed: ${pimModel.classes?.length ?? 0} classes, ${pimModel.associations?.length ?? 0} associations, ${trace.length} trace entries`);
+    console.log(`[demo-to-pim] transformed: ${pimModel.enumerations?.length ?? 0} enumerations, ${pimModel.classes?.length ?? 0} classes, ${pimModel.associations?.length ?? 0} associations, ${trace.length} trace entries`);
 
     try {
       assertValid(validatePim, pimModel, "pimuml-schema.json");
