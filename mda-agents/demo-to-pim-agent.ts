@@ -22,7 +22,15 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     .filter(vt => vt.kind === "categorical")
     .map(vt => {
       trace.push({ sourceType: "ValueType", sourceName: vt.name, targetType: "Enumeration", targetName: vt.name });
-      return { name: vt.name, literals: vt.literals };
+      return { name: vt.name, literals: vt.literals! };
+    });
+
+  // non-categorical value types → user-defined data types (A2)
+  const dataTypes = (demo.valueTypes ?? [])
+    .filter(vt => vt.kind === "nonCategorical")
+    .map(vt => {
+      trace.push({ sourceType: "ValueType", sourceName: vt.name, targetType: "DataType", targetName: vt.name });
+      return { name: vt.name };
     });
 
   // each entity type becomes a class, its attributes become properties (A3, A5)
@@ -75,7 +83,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     };
   });
 
-  return { pim: { name: `${demo.name} – pimUML`, enumerations, classes, associations, generalizations }, trace };
+  return { pim: { name: `${demo.name} – pimUML`, enumerations, dataTypes, classes, associations, generalizations }, trace };
 }
 
 async function main() {

@@ -2,8 +2,8 @@
 
 export interface DemoValueType {
   name: string;
-  kind: "categorical";
-  literals: string[];
+  kind: "categorical" | "nonCategorical";
+  literals?: string[];
 }
 
 export interface DemoEventType {
@@ -84,6 +84,10 @@ export interface PimEnumeration {
   literals: string[];
 }
 
+export interface PimDataType {
+  name: string;
+}
+
 export interface Property {
   name: string;
   type?: string;
@@ -119,6 +123,7 @@ export interface PimClass {
 export interface PimModel {
   name: string;
   enumerations?: PimEnumeration[];
+  dataTypes?: PimDataType[];
   classes?: PimClass[];
   associations?: PimAssociation[];
   generalizations?: PimGeneralization[];

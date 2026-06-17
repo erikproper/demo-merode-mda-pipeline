@@ -1,7 +1,8 @@
 {
   "name": "Rent-A-Car",
   "valueTypes": [
-    { "name": "CarGroup", "kind": "categorical", "literals": ["economy", "compact", "luxury"] }
+    { "name": "CarGroup",    "kind": "categorical",    "literals": ["economy", "compact", "luxury"] },
+    { "name": "MoneyAmount", "kind": "nonCategorical" }
   ],
   "entityTypes": [
     {

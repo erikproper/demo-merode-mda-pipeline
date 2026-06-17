@@ -11,6 +11,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/Enumeration" }
     },
+    "dataTypes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/DataType" }
+    },
     "classes": {
       "type": "array",
       "items": { "$ref": "#/$defs/Class" }
@@ -32,6 +36,14 @@
       "properties": {
         "name":     { "type": "string" },
         "literals": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
+    "DataType": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" }
       }
     },
     "Generalization": {

@@ -36,11 +36,11 @@
     },
     "DemoValueType": {
       "type": "object",
-      "required": ["name", "kind", "literals"],
+      "required": ["name", "kind"],
       "additionalProperties": false,
       "properties": {
         "name":     { "type": "string" },
-        "kind":     { "type": "string", "enum": ["categorical"] },
+        "kind":     { "type": "string", "enum": ["categorical", "nonCategorical"] },
         "literals": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
       }
     },
