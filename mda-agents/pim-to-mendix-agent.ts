@@ -317,10 +317,6 @@ async function applyPimToMendix(
     endLine.destination = endAct;
 
     // B11: ACR Microflow that triggers the Workflow
-    // NOTE: workflowContextVariable (CE0049) requires a real MicroflowParameter scope
-    // variable, which the public SDK cannot create (no createIn on MicroflowParameter).
-    // The ACR microflow is generated with the WorkflowCallAction wired to the workflow;
-    // the context variable binding must be completed manually in Studio Pro.
     const acrMf  = microflows.Microflow.createIn(mxModule);
     acrMf.name   = `ACR_${entityName}`;
 
@@ -330,16 +326,40 @@ async function applyPimToMendix(
     acrStart.relativeMiddlePoint = { x: 0,   y: 0 };
     acrEnd.relativeMiddlePoint   = { x: 300, y: 0 };
 
-    // Add parameter object so the entity variable appears in Studio Pro's Object dropdown.
-    // workflowContextVariable cannot be set via SDK (MicroflowParameter not publicly
-    // constructable) — select the variable manually in Studio Pro once per entity type.
-    const acrParam   = microflows.MicroflowParameterObject.createIn(acrObjCol);
     const varName    = entityName.charAt(0).toLowerCase() + entityName.slice(1);
+
+    // MicroflowParameterObject: visual canvas element (needed for Studio Pro dropdown).
+    const acrParam   = microflows.MicroflowParameterObject.createIn(acrObjCol);
     acrParam.name    = varName;
     acrParam.relativeMiddlePoint = { x: -80, y: 0 };
     const objType    = datatypes.ObjectType.create(model);
     objType.entity   = entity;
     acrParam.variableType = objType;
+
+    // MicroflowParameter: logical scope variable required by the Mendix consistency checker
+    // (CE0049). Not exposed in the public TypeScript SDK, so we inject it via the internal
+    // delta mechanism. The Mendix metamodel supports "parameters" as a containment property
+    // on Microflow even though the SDK TypeScript types do not expose it.
+    const { randomUUID } = require("crypto") as typeof import("crypto");
+    const mfParamId  = randomUUID();
+    const mfTypeId   = randomUUID();
+    (model as any)._sendDelta({
+      deltaType:          "CREATE_ELEMENT_TREE",
+      unitId:             acrMf.id,
+      parentId:           acrMf.id,
+      parentPropertyName: "parameters",
+      additionIndex:      0,
+      elementTree: {
+        $Type:         "Microflows$MicroflowParameter",
+        $ID:           mfParamId,
+        name:          varName,
+        parameterType: {
+          $Type:  "DataTypes$ObjectType",
+          $ID:    mfTypeId,
+          entity: entity.qualifiedName,
+        },
+      },
+    });
 
     const acrActionAct = microflows.ActionActivity.createIn(acrObjCol);
     acrActionAct.relativeMiddlePoint = { x: 150, y: 0 };
@@ -354,8 +374,7 @@ async function applyPimToMendix(
     acrFlow2.origin      = acrActionAct;
     acrFlow2.destination = acrEnd;
 
-    console.log(`  + ACR microflow "ACR_${entityName}" → workflow "WF_${entityName}" [${sm.regions.length} region(s)] (context variable requires manual Studio Pro config)`);
-    console.log(`  ~ workflowContextVariable not set — MicroflowParameter not publicly constructable in Mendix SDK`);
+    console.log(`  + ACR microflow "ACR_${entityName}" → workflow "WF_${entityName}" [${sm.regions.length} region(s)]`);
   }
 
   await model.flushChanges();
