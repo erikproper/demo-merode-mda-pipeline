@@ -1,7 +1,7 @@
 // pim-to-mendix-agent
 // Listens on the bus for pimUML models and writes them into a Mendix app via the Platform SDK.
 
-import { IModel, domainmodels, enumerations } from "mendixmodelsdk";
+import { IModel, domainmodels, enumerations, microflows } from "mendixmodelsdk";
 import { MendixPlatformClient, OnlineWorkingCopy } from "mendixplatformsdk";
 import { BusClient } from "./bus-client";
 import type { PimModel } from "./schemas/types";
@@ -177,6 +177,27 @@ async function applyPimToMendix(
     const kind = assoc.isDerived ? "derived association" : assoc.triggerEvent ? "event-triggered association" : assoc.isAggregation ? "aggregation" : "association";
     const note = assoc.derivationExpression ? ` [rule: ${assoc.derivationExpression}]` : assoc.triggerEvent ? ` [trigger: ${assoc.triggerEvent}] (state machine behavior NotMapped)` : "";
     console.log(`  + ${kind} "${assoc.name}": ${parentEnd.type} → ${childEnd.type}${note}`);
+  }
+
+  // activity microflows — one per state machine activity (B13/B14/B15/B22)
+  for (const sm of pimModel.stateMachines ?? []) {
+    for (const activity of sm.activities ?? []) {
+      const mf  = microflows.Microflow.createIn(mxModule);
+      mf.name   = activity.name;
+
+      const objCol = mf.objectCollection;
+      const start  = microflows.StartEvent.createIn(objCol);
+      const end    = microflows.EndEvent.createIn(objCol);
+
+      start.relativeMiddlePoint = { x: 0,   y: 0 };
+      end.relativeMiddlePoint   = { x: 200, y: 0 };
+
+      const flow         = microflows.SequenceFlow.createIn(mf);
+      flow.origin        = start;
+      flow.destination   = end;
+
+      console.log(`  + microflow "${activity.name}" [${activity.kind}] (stub)`);
+    }
   }
 
   await model.flushChanges();
