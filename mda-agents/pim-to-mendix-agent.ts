@@ -457,42 +457,40 @@ async function applyPimToMendix(
   // Deep-search helper: traverses all known Mendix widget container types recursively.
   // Atlas layouts often nest LayoutParameters inside ScrollContainer regions rather
   // than top-level widget lists, so a shallow .widgets check is not enough.
+  // Safely read a property — returns undefined if the SDK throws (deleted property).
+  const safeGet = (obj: any, key: string): any => {
+    try { return obj[key]; } catch { return undefined; }
+  };
+
   const findLayoutParam = (obj: any, depth = 0): pages.ILayoutParameter | null => {
     if (!obj || typeof obj !== "object" || depth > 20) return null;
     if (obj.structureTypeName === "Pages$LayoutParameter") return obj as pages.ILayoutParameter;
 
-    // Lists: widgets, rows, columns, tabPages
+    // List properties: widgets, rows, columns, tabPages — try-catch only around property read
     for (const listKey of ["widgets", "rows", "columns", "tabPages", "items"]) {
-      try {
-        const list = obj[listKey];
-        if (!list) continue;
-        for (const item of list) {
-          const found = findLayoutParam(item, depth + 1);
-          if (found) return found;
-        }
-      } catch { /* skip deleted/inaccessible SDK properties */ }
+      const list = safeGet(obj, listKey);
+      if (!list) continue;
+      for (const item of list) {
+        const found = findLayoutParam(item, depth + 1);   // errors propagate correctly
+        if (found) return found;
+      }
     }
-    // ScrollContainer named regions: center, top, bottom, left, right
+    // ScrollContainer regions — each region's .widgets is then iterated recursively
     for (const regionKey of ["center", "top", "bottom", "left", "right",
                               "topRegion", "centerRegion", "bottomRegion",
                               "leftRegion", "rightRegion",
                               "firstRegion", "secondRegion"]) {
-      try {
-        const region = obj[regionKey];
-        if (!region || typeof region !== "object") continue;
-        const found = findLayoutParam(region, depth + 1);
-        if (found) return found;
-      } catch { /* skip */ }
+      const region = safeGet(obj, regionKey);
+      if (!region || typeof region !== "object") continue;
+      const found = findLayoutParam(region, depth + 1);
+      if (found) return found;
     }
-    // Single-widget references (note: "widget" singular is deleted since Mendix 7.15 → skip)
-    for (const childKey of ["leftWidget", "rightWidget",
-                             "headerWidget", "footerWidget", "content"]) {
-      try {
-        const child = obj[childKey];
-        if (!child || typeof child !== "object") continue;
-        const found = findLayoutParam(child, depth + 1);
-        if (found) return found;
-      } catch { /* skip deleted/inaccessible SDK properties */ }
+    // Single-child references (skip "widget" singular — deleted since Mendix 7.15)
+    for (const childKey of ["leftWidget", "rightWidget", "headerWidget", "footerWidget", "content"]) {
+      const child = safeGet(obj, childKey);
+      if (!child || typeof child !== "object") continue;
+      const found = findLayoutParam(child, depth + 1);
+      if (found) return found;
     }
     return null;
   };
