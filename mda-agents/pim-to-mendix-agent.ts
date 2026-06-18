@@ -56,6 +56,7 @@ async function applyPimToMendix(
   [...domainModel.associations].forEach(a => a.delete());
   [...domainModel.entities].forEach(e => e.delete());
   model.allEnumerations().filter(en => (en.qualifiedName ?? "").startsWith(prefix)).forEach(en => en.delete());
+  model.allMicroflows().filter(mf => (mf.qualifiedName ?? "").startsWith(prefix)).forEach(mf => mf.delete());
   console.log("[pim-to-mendix] cleared previous model");
 
   // enumerations → Mendix enumerations (A1)
@@ -192,11 +193,34 @@ async function applyPimToMendix(
       start.relativeMiddlePoint = { x: 0,   y: 0 };
       end.relativeMiddlePoint   = { x: 200, y: 0 };
 
+      // B20: create-kind → CreateObjectAction between start and end
+      if (activity.kind === "create" && activity.targetType) {
+        const targetEntity = entityMap.get(activity.targetType);
+        if (targetEntity) {
+          const actionAct  = microflows.ActionActivity.createIn(objCol);
+          actionAct.relativeMiddlePoint = { x: 100, y: 0 };
+
+          const createAct  = microflows.CreateObjectAction.createIn(actionAct);
+          createAct.entity = targetEntity;
+          createAct.outputVariableName = activity.targetType.charAt(0).toLowerCase() + activity.targetType.slice(1);
+
+          const flow1        = microflows.SequenceFlow.createIn(mf);
+          flow1.origin       = start;
+          flow1.destination  = actionAct;
+          const flow2        = microflows.SequenceFlow.createIn(mf);
+          flow2.origin       = actionAct;
+          flow2.destination  = end;
+
+          console.log(`  + microflow "${activity.name}" [create → ${activity.targetType}]`);
+          continue;
+        }
+      }
+
       const flow         = microflows.SequenceFlow.createIn(mf);
       flow.origin        = start;
       flow.destination   = end;
 
-      console.log(`  + microflow "${activity.name}" [${activity.kind}] (stub)`);
+      console.log(`  + microflow "${activity.name}" [${activity.kind}]`);
     }
   }
 
