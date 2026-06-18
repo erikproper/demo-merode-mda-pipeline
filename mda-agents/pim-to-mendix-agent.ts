@@ -463,30 +463,36 @@ async function applyPimToMendix(
 
     // Lists: widgets, rows, columns, tabPages
     for (const listKey of ["widgets", "rows", "columns", "tabPages", "items"]) {
-      const list = obj[listKey];
-      if (!list) continue;
-      for (const item of list) {
-        const found = findLayoutParam(item, depth + 1);
-        if (found) return found;
-      }
+      try {
+        const list = obj[listKey];
+        if (!list) continue;
+        for (const item of list) {
+          const found = findLayoutParam(item, depth + 1);
+          if (found) return found;
+        }
+      } catch { /* skip deleted/inaccessible SDK properties */ }
     }
     // ScrollContainer named regions: center, top, bottom, left, right
     for (const regionKey of ["center", "top", "bottom", "left", "right",
                               "topRegion", "centerRegion", "bottomRegion",
                               "leftRegion", "rightRegion",
                               "firstRegion", "secondRegion"]) {
-      const region = obj[regionKey];
-      if (!region || typeof region !== "object") continue;
-      const found = findLayoutParam(region, depth + 1);
-      if (found) return found;
+      try {
+        const region = obj[regionKey];
+        if (!region || typeof region !== "object") continue;
+        const found = findLayoutParam(region, depth + 1);
+        if (found) return found;
+      } catch { /* skip */ }
     }
-    // Single-widget references
-    for (const childKey of ["leftWidget", "rightWidget", "widget",
+    // Single-widget references (note: "widget" singular is deleted since Mendix 7.15 → skip)
+    for (const childKey of ["leftWidget", "rightWidget",
                              "headerWidget", "footerWidget", "content"]) {
-      const child = obj[childKey];
-      if (!child || typeof child !== "object") continue;
-      const found = findLayoutParam(child, depth + 1);
-      if (found) return found;
+      try {
+        const child = obj[childKey];
+        if (!child || typeof child !== "object") continue;
+        const found = findLayoutParam(child, depth + 1);
+        if (found) return found;
+      } catch { /* skip deleted/inaccessible SDK properties */ }
     }
     return null;
   };
