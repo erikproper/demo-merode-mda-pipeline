@@ -60,7 +60,7 @@ async function applyPimToMendix(
   model.allEnumerations().filter(en => (en.qualifiedName ?? "").startsWith(prefix)).forEach(en => en.delete());
   model.allMicroflows().filter(mf => (mf.qualifiedName ?? "").startsWith(prefix)).forEach(mf => mf.delete());
   model.allWorkflows().filter(wf => (wf.qualifiedName ?? "").startsWith(prefix)).forEach(wf => wf.delete());
-  model.allPages().filter(p => (p.qualifiedName ?? "").startsWith(prefix)).forEach(p => p.delete());
+  model.allPages().filter(p => (p.qualifiedName ?? "").startsWith(prefix) && (p.name ?? "").endsWith("_Overview")).forEach(p => p.delete());
   console.log("[pim-to-mendix] cleared previous model");
 
   // enumerations → Mendix enumerations (A1)
