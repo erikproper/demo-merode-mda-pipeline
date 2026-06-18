@@ -737,9 +737,11 @@ async function applyPimToMendix(
         const wo    = customwidgets.WidgetObject.createInCustomWidgetUnderObject(cw);
 
         // datasource: entity reference (Mendix 11 — no CustomWidgetDatabaseSource)
+        // WidgetValue.type must reference the matching WidgetValueType from the schema.
         const dsProp  = customwidgets.WidgetProperty.createIn(wo);
         dsProp.type   = dsPT;
         const dsWv    = customwidgets.WidgetValue.createIn(dsProp);
+        dsWv.type     = dsVT;   // non-nullable: must reference the schema's WidgetValueType
         const eRef    = domainmodels.DirectEntityRef.createInWidgetValueUnderEntityRef(dsWv);
         eRef.entity   = entity;
 
@@ -747,6 +749,7 @@ async function applyPimToMendix(
         const colsProp = customwidgets.WidgetProperty.createIn(wo);
         colsProp.type  = colsPT;
         const colsWv   = customwidgets.WidgetValue.createIn(colsProp);
+        colsWv.type    = colsVT;  // non-nullable
 
         for (const attr of cls.ownedAttributes ?? []) {
           if (attr.isDerived) continue;
@@ -756,6 +759,7 @@ async function applyPimToMendix(
           const attrProp = customwidgets.WidgetProperty.createIn(colObj);
           attrProp.type  = attrPT;
           const attrWv   = customwidgets.WidgetValue.createIn(attrProp);
+          attrWv.type    = attrVT;  // non-nullable
           const iattr    = entity.attributes.find(a => a.name === attr.name);
           if (iattr) {
             const aRef     = domainmodels.AttributeRef.createInWidgetValueUnderAttributeRef(attrWv);
@@ -766,6 +770,7 @@ async function applyPimToMendix(
           const headerProp = customwidgets.WidgetProperty.createIn(colObj);
           headerProp.type  = headerPT;
           const headerWv   = customwidgets.WidgetValue.createIn(headerProp);
+          headerWv.type    = headerVT;  // non-nullable
           const ct         = pages.ClientTemplate.createInWidgetValueUnderTextTemplate(headerWv);
           const htxt       = texts.Text.createInClientTemplateUnderTemplate(ct);
           const htr        = texts.Translation.createIn(htxt);
