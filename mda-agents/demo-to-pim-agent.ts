@@ -55,12 +55,16 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     });
 
   // each entity type becomes a class, its attributes become properties (A3, A5)
+  // A3 note: derived EntityTypes do NOT get their ID here — assigned at A9 per thesis def. iii
   const classes = demo.entityTypes.map(et => {
     trace.push({ sourceType: et.isDerived ? "DerivedEntityType" : "EntityType", sourceName: et.name, targetType: "Class", targetName: et.name });
-    // logical identifier — one integer ID per entity type (B6)
-    const idProp: Property = { name: `${et.name}ID`, type: "Integer", isID: true };
-    trace.push({ sourceType: "EntityType", sourceName: et.name, targetType: "Property", targetName: `${et.name}.${et.name}ID` });
-    const ownedAttributes: Property[] = [idProp, ...(et.attributes ?? []).map(a => {
+    const ownedAttributes: Property[] = [];
+    if (!et.isDerived) {
+      const idProp: Property = { name: `${et.name}ID`, type: "Integer", isID: true };
+      trace.push({ sourceType: "EntityType", sourceName: et.name, targetType: "Property", targetName: `${et.name}.${et.name}ID` });
+      ownedAttributes.push(idProp);
+    }
+    for (const a of et.attributes ?? []) {
       const isDerived = a.derivationRule !== undefined;
       trace.push({
         sourceType: isDerived ? "DerivedAttributeType" : "AttributeType",
@@ -68,8 +72,8 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
         targetType: isDerived ? "DerivedProperty" : "Property",
         targetName: `${et.name}.${a.name}`,
       });
-      return { name: a.name, type: a.valueType ?? "String", isDerived, derivationRule: a.derivationRule };
-    })];
+      ownedAttributes.push({ name: a.name, type: a.valueType ?? "String", isDerived, derivationRule: a.derivationRule });
+    }
     return { name: et.name, isAbstract: et.isAbstract ?? false, isDerived: et.isDerived ?? false, derivationExpression: et.derivationExpression, ownedAttributes };
   });
 
@@ -111,9 +115,16 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     });
 
   // derived specializations → directed associations with OCL expression (A9)
+  // A9 also assigns the Integer ID to the derived EntityType class (thesis def. iii, p.99)
   const derivedAssociations = demo.entityTypes
     .filter(et => et.isDerived && et.parent !== undefined)
     .map(et => {
+      const derivedClass = classes.find(c => c.name === et.name);
+      if (derivedClass) {
+        const idProp: Property = { name: `${et.name}ID`, type: "Integer", isID: true };
+        trace.push({ sourceType: "DerivedEntityType", sourceName: et.name, targetType: "Property", targetName: `${et.name}.${et.name}ID` });
+        derivedClass.ownedAttributes = [idProp, ...(derivedClass.ownedAttributes ?? [])];
+      }
       trace.push({ sourceType: "DerivedEntityType", sourceName: et.name, targetType: "DerivedAssociation", targetName: `${et.name}IsA${et.parent}` });
       return {
         name: `${et.name}IsA${et.parent}`,
