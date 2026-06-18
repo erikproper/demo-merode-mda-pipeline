@@ -703,8 +703,9 @@ async function applyPimToMendix(
 
         // ── Schema (type definition) ──────────────────────────────────────
         const cwt = customwidgets.CustomWidgetType.createIn(cw);
-        cwt.widgetId        = dg2WidgetId;
-        cwt.pluginWidget    = true;
+        cwt.widgetId           = dg2WidgetId;
+        cwt.name               = "DataGrid2";
+        cwt.pluginWidget       = true;
         cwt.needsEntityContext = false;
 
         const cwot = customwidgets.WidgetObjectType.createInCustomWidgetTypeUnderObjectType(cwt);
