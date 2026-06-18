@@ -454,12 +454,16 @@ async function applyPimToMendix(
   let webLayout: pages.ILayout | null = null;
   let contentParam: pages.ILayoutParameter | null = null;
 
-  // Find a non-popup web layout (prefer borrow from existing page, fall back to any layout)
+  // Strategy 1: borrow layout + first LayoutCallArgument parameter from an existing non-module page
   const foreignPage = model.allPages().find(p => !(p.qualifiedName ?? "").startsWith(prefix));
   if (foreignPage) {
     const fp  = await foreignPage.load();
     webLayout = fp.layoutCall?.layout ?? null;
+    contentParam = fp.layoutCall?.arguments?.[0]?.parameter ?? null;
+    if (contentParam) console.log(`[pim-to-mendix] layout parameter borrowed from "${foreignPage.qualifiedName}"`);
   }
+
+  // Strategy 2: if no foreign page, fall back to any non-popup layout
   if (!webLayout) {
     webLayout = model.allLayouts().find(l => {
       const n = (l.qualifiedName ?? "").toLowerCase();
@@ -467,21 +471,23 @@ async function applyPimToMendix(
     }) ?? null;
   }
 
-  // Find the content placeholder LayoutParameter by trying common Atlas UI slot names.
-  // model.findLayoutParameterByQualifiedName resolves by "<LayoutQN>.<ParamName>".
-  if (webLayout) {
+  // Strategy 3: if we have a layout but still no parameter, try common Atlas UI slot names via
+  // model.findLayoutParameterByQualifiedName("<LayoutQN>.<name>") — requires the layout to be loaded first.
+  if (webLayout && !contentParam) {
     const loadedLayout = await webLayout.load();
     const layoutQN     = loadedLayout.qualifiedName ?? "";
-    for (const name of ["Content", "Main", "Page", "Body", "Center", "MainContents"]) {
-      const candidate = model.findLayoutParameterByQualifiedName(`${layoutQN}.${name}`);
-      if (candidate) {
-        contentParam = candidate;
+    const candidates   = ["Content", "Main", "Page", "Body", "Center", "MainContents",
+                          "content", "main", "page", "body"];
+    for (const name of candidates) {
+      const found = model.findLayoutParameterByQualifiedName(`${layoutQN}.${name}`);
+      if (found) {
+        contentParam = found;
         console.log(`[pim-to-mendix] layout "${layoutQN}", content parameter "${name}"`);
         break;
       }
     }
     if (!contentParam) {
-      console.warn(`[pim-to-mendix] no content parameter found for "${layoutQN}" — pages will have no content widgets`);
+      console.warn(`[pim-to-mendix] no content parameter found for "${layoutQN}" (tried: ${candidates.join(", ")}) — pages will render empty`);
     }
   }
 
