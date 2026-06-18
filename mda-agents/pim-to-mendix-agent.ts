@@ -1,7 +1,7 @@
 // pim-to-mendix-agent
 // Listens on the bus for pimUML models and writes them into a Mendix app via the Platform SDK.
 
-import { IModel, domainmodels, enumerations, microflows, workflows } from "mendixmodelsdk";
+import { IModel, domainmodels, enumerations, microflows, workflows, datatypes } from "mendixmodelsdk";
 import { MendixPlatformClient, OnlineWorkingCopy } from "mendixplatformsdk";
 import { BusClient } from "./bus-client";
 import type { PimModel } from "./schemas/types";
@@ -324,11 +324,22 @@ async function applyPimToMendix(
     const acrMf  = microflows.Microflow.createIn(mxModule);
     acrMf.name   = `ACR_${entityName}`;
 
-    const acrObjCol = acrMf.objectCollection;
-    const acrStart  = microflows.StartEvent.createIn(acrObjCol);
-    const acrEnd    = microflows.EndEvent.createIn(acrObjCol);
+    const acrObjCol  = acrMf.objectCollection;
+    const acrStart   = microflows.StartEvent.createIn(acrObjCol);
+    const acrEnd     = microflows.EndEvent.createIn(acrObjCol);
     acrStart.relativeMiddlePoint = { x: 0,   y: 0 };
     acrEnd.relativeMiddlePoint   = { x: 300, y: 0 };
+
+    // Add parameter object so the entity variable appears in Studio Pro's Object dropdown.
+    // workflowContextVariable cannot be set via SDK (MicroflowParameter not publicly
+    // constructable) — select the variable manually in Studio Pro once per entity type.
+    const acrParam   = microflows.MicroflowParameterObject.createIn(acrObjCol);
+    const varName    = entityName.charAt(0).toLowerCase() + entityName.slice(1);
+    acrParam.name    = varName;
+    acrParam.relativeMiddlePoint = { x: -80, y: 0 };
+    const objType    = datatypes.ObjectType.create(model);
+    objType.entity   = entity;
+    acrParam.variableType = objType;
 
     const acrActionAct = microflows.ActionActivity.createIn(acrObjCol);
     acrActionAct.relativeMiddlePoint = { x: 150, y: 0 };
