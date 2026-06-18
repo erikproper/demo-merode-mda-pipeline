@@ -366,6 +366,7 @@ async function applyPimToMendix(
     const wfCallAct = microflows.WorkflowCallAction.createIn(acrActionAct);
     wfCallAct.workflow                = wf;
     wfCallAct.workflowContextVariable = varName;
+    wfCallAct.useReturnVariable       = false;
 
     const acrFlow1       = microflows.SequenceFlow.createIn(acrMf);
     acrFlow1.origin      = acrStart;
