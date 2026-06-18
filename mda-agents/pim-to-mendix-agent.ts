@@ -625,25 +625,35 @@ async function applyPimToMendix(
         (lca as any).__parameter.updateWithRawValue(borrowedParamQN);
       }
 
-      // Workflow trigger button — only for entities that have an ACR microflow.
-      // CE1571 (known SDK limitation): the button calls ACR_<Entity> which requires
-      // a <entity> object argument. Providing this argument needs a DataView context on
-      // the page; that wiring requires manual Studio Pro steps (select argument in button
-      // properties). The button is generated to show the structural connection
-      // DEMO EventType → ACR microflow → Workflow.
-      const hasSM = pimModel.stateMachines?.some(sm => sm.entityType === cls.name && sm.regions.length > 0) ?? false;
-      const acrMf = hasSM ? microflowMap.get(`ACR_${cls.name}`) : undefined;
-      if (acrMf) {
-        const btn  = pages.ActionButton.createInLayoutCallArgumentUnderWidgets(lca);
-        btn.name   = `ACR_${cls.name}`;
-        const ct   = texts.Text.createInClientTemplateUnderTemplate(btn.caption);
-        const tr   = texts.Translation.createIn(ct);
+      // DataGrid: shows all instances of this entity in a table.
+      // Provides basic read access in the generated page without requiring DataView context.
+      const dg = pages.DataGrid.createInLayoutCallArgumentUnderWidgets(lca);
+      dg.name = `${cls.name}_dataGrid`;
+      // entityPath lives on the DataSource (EntityPathSource), not on the DataGrid widget itself.
+      const src = pages.GridDatabaseSource.createInEntityWidgetUnderDataSource(dg);
+      src.entityPath = `${moduleName}.${cls.name}`;
+
+      for (const attr of cls.ownedAttributes ?? []) {
+        if (attr.isDerived) continue;
+        const col = pages.GridColumn.createIn(dg);
+        col.name  = `col_${cls.name}_${attr.name}`;
+        const tr  = texts.Translation.createIn(col.caption);
         tr.languageCode = "en_US";
-        tr.text = `Start ${cls.name} Workflow`;
-        const mca = pages.MicroflowClientAction.createInActionButtonUnderAction(btn);
-        const ms  = pages.MicroflowSettings.createInMicroflowClientActionUnderMicroflowSettings(mca);
-        ms.microflow = acrMf;
-        console.log(`    ⚠ CE1571: button "ACR_${cls.name}" needs DataView context for runtime — select argument manually in Studio Pro`);
+        tr.text   = attr.name;
+        // AttributeRef wires the column to the domain model attribute.
+        const iattr = entity.attributes.find(a => a.name === attr.name);
+        if (iattr) {
+          const aRef     = domainmodels.AttributeRef.createInGridColumnUnderAttributeRef(col);
+          aRef.attribute = iattr;  // entity context inferred from DataGrid's entityPath on source
+        }
+      }
+
+      // The generated ACR_<Entity> microflow and WF_<Entity> workflow remain in the module.
+      // To trigger a workflow from the UI, add a "Start Workflow" button inside a DataView
+      // on this page in Studio Pro (provides the required entity object context).
+      const hasSM = pimModel.stateMachines?.some(sm => sm.entityType === cls.name && sm.regions.length > 0) ?? false;
+      if (hasSM) {
+        console.log(`    ℹ ACR_${cls.name} + WF_${cls.name} generated — add trigger button inside DataView in Studio Pro`);
       }
 
       pageMap.set(cls.name, page);
