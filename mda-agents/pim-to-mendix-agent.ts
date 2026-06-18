@@ -1,7 +1,7 @@
 // pim-to-mendix-agent
 // Listens on the bus for pimUML models and writes them into a Mendix app via the Platform SDK.
 
-import { IModel, domainmodels, enumerations, microflows, datatypes, workflows } from "mendixmodelsdk";
+import { IModel, domainmodels, enumerations, microflows, workflows } from "mendixmodelsdk";
 import { MendixPlatformClient, OnlineWorkingCopy } from "mendixplatformsdk";
 import { BusClient } from "./bus-client";
 import type { PimModel } from "./schemas/types";
@@ -221,45 +221,15 @@ async function applyPimToMendix(
         }
       }
 
-      // B16/B17/B18: set-kind → parameter + ChangeObjectAction setting boolean to true
+      // B16/B17/B18: set-kind → ChangeObjectAction
+      // NOTE: Mendix SDK public API does not expose MicroflowParameter creation,
+      // only MicroflowParameterObject (visual). Workflow CallMicroflowTask cannot
+      // map to visual-only parameters (CE6685). Set microflows are generated as
+      // stubs; parameter wiring requires manual configuration in Studio Pro.
       if (activity.kind === "set" && activity.targetType) {
         const entityName = activity.targetType;
         const eventName  = activity.name.substring((`Set${entityName}_`).length);
-        const entity     = entityMap.get(entityName);
-        const boolAttr   = attributeMap.get(`${entityName}.${eventName}`);
-
-        if (entity && boolAttr) {
-          const varName = entityName.charAt(0).toLowerCase() + entityName.slice(1);
-
-          // B16: parameter object (visual input variable)
-          const paramObj = microflows.MicroflowParameterObject.createIn(objCol);
-          paramObj.name  = varName;
-          paramObj.relativeMiddlePoint = { x: -80, y: 0 };
-          const objType  = datatypes.ObjectType.create(model);
-          objType.entity = entity;
-          paramObj.variableType = objType;
-
-          // B17/B18: ChangeObjectAction setting the boolean attribute to true
-          const actionAct  = microflows.ActionActivity.createIn(objCol);
-          actionAct.relativeMiddlePoint = { x: 100, y: 0 };
-          const changeAct  = microflows.ChangeObjectAction.createIn(actionAct);
-          changeAct.changeVariableName = varName;
-
-          const memberChange      = microflows.MemberChange.createIn(changeAct);
-          memberChange.attribute  = boolAttr;
-          memberChange.value      = "true";
-          memberChange.type       = microflows.ChangeActionItemType.Set;
-
-          const flow1       = microflows.SequenceFlow.createIn(mf);
-          flow1.origin      = start;
-          flow1.destination = actionAct;
-          const flow2       = microflows.SequenceFlow.createIn(mf);
-          flow2.origin      = actionAct;
-          flow2.destination = end;
-
-          console.log(`  + microflow "${activity.name}" [set ${entityName}.${eventName} = true]`);
-          continue;
-        }
+        console.log(`  ~ microflow "${activity.name}" [set ${entityName}.${eventName}] — parameter binding requires manual Studio Pro configuration (SDK limitation)`);
       }
 
       const flow         = microflows.SequenceFlow.createIn(mf);
@@ -276,8 +246,6 @@ async function applyPimToMendix(
     const entityName = sm.entityType;
     const entity     = entityMap.get(entityName);
     if (!entity) continue;
-
-    const varName = entityName.charAt(0).toLowerCase() + entityName.slice(1);
 
     // B12: Workflow document with one flow per entity type
     const wf    = workflows.Workflow.createIn(mxModule);
@@ -349,6 +317,10 @@ async function applyPimToMendix(
     endLine.destination = endAct;
 
     // B11: ACR Microflow that triggers the Workflow
+    // NOTE: workflowContextVariable (CE0049) requires a real MicroflowParameter scope
+    // variable, which the public SDK cannot create (no createIn on MicroflowParameter).
+    // The ACR microflow is generated with the WorkflowCallAction wired to the workflow;
+    // the context variable binding must be completed manually in Studio Pro.
     const acrMf  = microflows.Microflow.createIn(mxModule);
     acrMf.name   = `ACR_${entityName}`;
 
@@ -358,18 +330,10 @@ async function applyPimToMendix(
     acrStart.relativeMiddlePoint = { x: 0,   y: 0 };
     acrEnd.relativeMiddlePoint   = { x: 300, y: 0 };
 
-    const acrParam = microflows.MicroflowParameterObject.createIn(acrObjCol);
-    acrParam.name  = varName;
-    acrParam.relativeMiddlePoint = { x: -80, y: 0 };
-    const acrObjType  = datatypes.ObjectType.create(model);
-    acrObjType.entity = entity;
-    acrParam.variableType = acrObjType;
-
     const acrActionAct = microflows.ActionActivity.createIn(acrObjCol);
     acrActionAct.relativeMiddlePoint = { x: 150, y: 0 };
     const wfCallAct = microflows.WorkflowCallAction.createIn(acrActionAct);
-    wfCallAct.workflow                = wf;
-    wfCallAct.workflowContextVariable = varName; // ACR microflow passes entity as context
+    wfCallAct.workflow = wf;
 
     const acrFlow1       = microflows.SequenceFlow.createIn(acrMf);
     acrFlow1.origin      = acrStart;
@@ -378,7 +342,8 @@ async function applyPimToMendix(
     acrFlow2.origin      = acrActionAct;
     acrFlow2.destination = acrEnd;
 
-    console.log(`  + ACR microflow "ACR_${entityName}" → workflow "WF_${entityName}" [${sm.regions.length} region(s)]`);
+    console.log(`  + ACR microflow "ACR_${entityName}" → workflow "WF_${entityName}" [${sm.regions.length} region(s)] (context variable requires manual Studio Pro config)`);
+    console.log(`  ~ workflowContextVariable not set — MicroflowParameter not publicly constructable in Mendix SDK`);
   }
 
   await model.flushChanges();
