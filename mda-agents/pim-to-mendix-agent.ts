@@ -221,15 +221,47 @@ async function applyPimToMendix(
         }
       }
 
-      // B16/B17/B18: set-kind → ChangeObjectAction
-      // NOTE: Mendix SDK public API does not expose MicroflowParameter creation,
-      // only MicroflowParameterObject (visual). Workflow CallMicroflowTask cannot
-      // map to visual-only parameters (CE6685). Set microflows are generated as
-      // stubs; parameter wiring requires manual configuration in Studio Pro.
+      // B16/B18: set-kind → MicroflowParameterObject + ChangeObjectAction (sets boolean event attribute)
+      // CE0049 caveat: logical MicroflowParameter cannot be created via SDK (same limitation as ACR).
+      // The MicroflowParameterObject makes the variable visible in Studio Pro; one OK-click fixes CE0049.
       if (activity.kind === "set" && activity.targetType) {
-        const entityName = activity.targetType;
-        const eventName  = activity.name.substring((`Set${entityName}_`).length);
-        console.log(`  ~ microflow "${activity.name}" [set ${entityName}.${eventName}] — parameter binding requires manual Studio Pro configuration (SDK limitation)`);
+        const setEntityName  = activity.targetType;
+        const eventName      = activity.name.substring((`Set${setEntityName}_`).length);
+        const targetEntity   = entityMap.get(setEntityName);
+        const boolAttr       = attributeMap.get(`${setEntityName}.${eventName}`);
+
+        if (targetEntity && boolAttr) {
+          const setVarName = setEntityName.charAt(0).toLowerCase() + setEntityName.slice(1);
+
+          const setParam   = microflows.MicroflowParameterObject.createIn(objCol);
+          setParam.name    = setVarName;
+          setParam.relativeMiddlePoint = { x: -80, y: 0 };
+          const setObjType = datatypes.ObjectType.create(model);
+          setObjType.entity = targetEntity;
+          setParam.variableType = setObjType;
+
+          const actionAct  = microflows.ActionActivity.createIn(objCol);
+          actionAct.relativeMiddlePoint = { x: 100, y: 0 };
+          end.relativeMiddlePoint = { x: 260, y: 0 };
+
+          const changeAct  = microflows.ChangeObjectAction.createIn(actionAct);
+          changeAct.changeVariableName = setVarName;
+          changeAct.commit = microflows.CommitEnum.Yes;
+
+          const memberChange = microflows.MemberChange.createIn(changeAct);
+          memberChange.attribute = boolAttr;
+          memberChange.value = "true";
+
+          const flow1       = microflows.SequenceFlow.createIn(mf);
+          flow1.origin      = start;
+          flow1.destination = actionAct;
+          const flow2       = microflows.SequenceFlow.createIn(mf);
+          flow2.origin      = actionAct;
+          flow2.destination = end;
+
+          console.log(`  + microflow "${activity.name}" [set ${setEntityName}.${eventName} = true] ⚠ CE0049: click OK once in Studio Pro`);
+          continue;
+        }
       }
 
       const flow         = microflows.SequenceFlow.createIn(mf);
