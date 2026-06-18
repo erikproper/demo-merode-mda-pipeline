@@ -453,6 +453,7 @@ async function applyPimToMendix(
   // that already has a valid Atlas layout wired up.
   let webLayout: pages.ILayout | null = null;
   let contentParam: pages.ILayoutParameter | null = null;
+  let borrowedParamQN: string | null = null; // raw qualified name for Atlas UI 3.x bypass
 
   // Deep-search helper: traverses all known Mendix widget container types recursively.
   // Atlas layouts often nest LayoutParameters inside ScrollContainer regions rather
@@ -517,14 +518,22 @@ async function applyPimToMendix(
       break;
     }
     if (pqn) {
-      if (!webLayout) webLayout = fp.layoutCall!.layout;
+      const layoutQN = fp.layoutCall?.layout?.qualifiedName ?? "";
+      const isNonPopup = !layoutQN.toLowerCase().includes("popup");
+      if (!webLayout && isNonPopup) webLayout = fp.layoutCall!.layout;
       const found = model.findLayoutParameterByQualifiedName(pqn);
       if (found) {
-        contentParam = found;
-        console.log(`[pim-to-mendix] layout parameter found via paramQN "${pqn}" from "${pg.qualifiedName}"`);
+        if (!contentParam) contentParam = found;
+        console.log(`[pim-to-mendix] layout parameter resolved via paramQN "${pqn}"`);
         break;
       }
-      console.log(`[pim-to-mendix] paramQN="${pqn}" — not resolvable in model (Atlas UI 3.x: will create arg without parameter)`);
+      // LayoutParameter object not in model index, but the qualified name string is valid.
+      // Save it for direct SDK bypass (updateWithRawValue) during page creation.
+      if (!borrowedParamQN && isNonPopup) {
+        borrowedParamQN = pqn;
+        console.log(`[pim-to-mendix] will use SDK bypass: paramQN="${pqn}" from "${pg.qualifiedName}"`);
+        break; // layout and paramQN are enough — stop scanning pages
+      }
     }
     if (!webLayout && fp.layoutCall?.layout) webLayout = fp.layoutCall.layout;
   }
@@ -616,7 +625,15 @@ async function applyPimToMendix(
       const lc  = page.layoutCall;
       lc.layout = webLayout;
       const lca = pages.LayoutCallArgument.createIn(lc);
-      if (contentParam) lca.parameter = contentParam;
+      if (contentParam) {
+        lca.parameter = contentParam;
+      } else if (borrowedParamQN) {
+        // Atlas UI 3.x / Mendix 11 SDK limitation: LayoutParameter "Main" exists in
+        // Atlas_Core layouts but is not indexed in the working-copy model.
+        // updateWithRawValue sets the qualified-name string directly so the delta is
+        // sent correctly and Studio Pro resolves the reference on next open.
+        (lca as any).__parameter.updateWithRawValue(borrowedParamQN);
+      }
 
       // Workflow trigger button — only for entities that have an ACR microflow
       const hasSM = pimModel.stateMachines?.some(sm => sm.entityType === cls.name && sm.regions.length > 0) ?? false;
