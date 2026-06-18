@@ -131,6 +131,22 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     ...(demo.factTypes ?? []).map(ft => {
       const targetType = ft.isAggregation ? "Aggregation" : "Association";
       trace.push({ sourceType: "FactType", sourceName: ft.name, targetType, targetName: ft.name });
+
+      // A11: for aggregations, add identifier property to the whole class for each part class
+      if (ft.isAggregation) {
+        const wholeRole = ft.roles.find(r => r.upper === 1) ?? ft.roles[0];
+        const partRole  = ft.roles.find(r => r.upper === "*" || (r.upper ?? 0) > 1) ?? ft.roles[1];
+        const wholeClass = classes.find(c => c.name === wholeRole.entityType);
+        if (wholeClass) {
+          const propName = `${partRole.name}ID`;
+          if (!wholeClass.ownedAttributes?.some(p => p.name === propName)) {
+            wholeClass.ownedAttributes = wholeClass.ownedAttributes ?? [];
+            wholeClass.ownedAttributes.push({ name: propName, type: "Integer" });
+            trace.push({ sourceType: "FactType", sourceName: ft.name, targetType: "Property", targetName: `${wholeRole.entityType}.${propName}` });
+          }
+        }
+      }
+
       return {
         name: ft.name,
         isAggregation: ft.isAggregation ?? false,
