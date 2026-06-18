@@ -684,7 +684,82 @@ async function applyPimToMendix(
         (lca as any).__parameter.updateWithRawValue(borrowedParamQN);
       }
 
-      console.log(`    + Page "${page.name}" (layout set, content empty)`);
+      // DataGrid2 — pluggable widget from the "Data Widgets" Marketplace package.
+      // Schema = CustomWidgetType + WidgetObjectType + WidgetPropertyType + WidgetValueType
+      // Instance = WidgetObject + WidgetProperty + WidgetValue (type ref must be non-null)
+      {
+        const cw  = customwidgets.CustomWidget.createInLayoutCallArgumentUnderWidgets(lca);
+        cw.name   = `${cls.name}_dataGrid2`;
+
+        const cwt              = customwidgets.CustomWidgetType.createIn(cw);
+        cwt.widgetId           = dg2WidgetId;
+        cwt.name               = "DataGrid2";
+        cwt.pluginWidget       = true;
+        cwt.needsEntityContext = false;
+
+        const cwot = customwidgets.WidgetObjectType.createInCustomWidgetTypeUnderObjectType(cwt);
+
+        const dsPT = customwidgets.WidgetPropertyType.createIn(cwot);
+        dsPT.key   = dg2DatasourceKey;
+        const dsVT = customwidgets.WidgetValueType.createIn(dsPT);
+        dsVT.type  = customwidgets.WidgetValueTypeEnum.DataSource;
+
+        const colsPT  = customwidgets.WidgetPropertyType.createIn(cwot);
+        colsPT.key    = dg2ColumnsKey;
+        const colsVT  = customwidgets.WidgetValueType.createIn(colsPT);
+        colsVT.type   = customwidgets.WidgetValueTypeEnum.Object;
+        colsVT.isList = true;
+
+        const colOT    = customwidgets.WidgetObjectType.createInWidgetValueTypeUnderObjectType(colsVT);
+        const attrPT   = customwidgets.WidgetPropertyType.createIn(colOT);
+        attrPT.key     = "attribute";
+        const attrVT   = customwidgets.WidgetValueType.createIn(attrPT);
+        attrVT.type    = customwidgets.WidgetValueTypeEnum.Attribute;
+        const headerPT = customwidgets.WidgetPropertyType.createIn(colOT);
+        headerPT.key   = "header";
+        const headerVT = customwidgets.WidgetValueType.createIn(headerPT);
+        headerVT.type  = customwidgets.WidgetValueTypeEnum.TextTemplate;
+
+        const wo = customwidgets.WidgetObject.createInCustomWidgetUnderObject(cw);
+
+        const dsProp = customwidgets.WidgetProperty.createIn(wo);
+        dsProp.type  = dsPT;
+        const dsWv   = customwidgets.WidgetValue.createIn(dsProp);
+        dsWv.type    = dsVT;
+        const eRef   = domainmodels.DirectEntityRef.createInWidgetValueUnderEntityRef(dsWv);
+        eRef.entity  = entity;
+
+        const colsProp = customwidgets.WidgetProperty.createIn(wo);
+        colsProp.type  = colsPT;
+        const colsWv   = customwidgets.WidgetValue.createIn(colsProp);
+        colsWv.type    = colsVT;
+
+        for (const attr of cls.ownedAttributes ?? []) {
+          if (attr.isDerived) continue;
+          const colObj   = customwidgets.WidgetObject.createInWidgetValueUnderObjects(colsWv);
+
+          const attrProp = customwidgets.WidgetProperty.createIn(colObj);
+          attrProp.type  = attrPT;
+          const attrWv   = customwidgets.WidgetValue.createIn(attrProp);
+          attrWv.type    = attrVT;
+          const iattr    = entity.attributes.find(a => a.name === attr.name);
+          if (iattr) {
+            const aRef     = domainmodels.AttributeRef.createInWidgetValueUnderAttributeRef(attrWv);
+            aRef.attribute = iattr;
+          }
+
+          const headerProp = customwidgets.WidgetProperty.createIn(colObj);
+          headerProp.type  = headerPT;
+          const headerWv   = customwidgets.WidgetValue.createIn(headerProp);
+          headerWv.type    = headerVT;
+          const ct         = pages.ClientTemplate.createInWidgetValueUnderTextTemplate(headerWv);
+          const htxt       = texts.Text.createInClientTemplateUnderTemplate(ct);
+          const htr        = texts.Translation.createIn(htxt);
+          htr.languageCode = "en_US";
+          htr.text         = attr.name;
+        }
+        console.log(`    + DataGrid2 on "${page.name}" (${cls.ownedAttributes?.filter(a => !a.isDerived).length ?? 0} cols)`);
+      }
 
       // The generated ACR_<Entity> microflow and WF_<Entity> workflow remain in the module.
       const hasSM = pimModel.stateMachines?.some(sm => sm.entityType === cls.name && sm.regions.length > 0) ?? false;
