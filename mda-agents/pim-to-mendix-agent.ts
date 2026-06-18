@@ -625,11 +625,17 @@ async function applyPimToMendix(
         (lca as any).__parameter.updateWithRawValue(borrowedParamQN);
       }
 
-      // Workflow trigger button — only for entities that have an ACR microflow
+      // Workflow trigger button — only for entities that have an ACR microflow.
+      // CE1571 (known SDK limitation): the button calls ACR_<Entity> which requires
+      // a <entity> object argument. Providing this argument needs a DataView context on
+      // the page; that wiring requires manual Studio Pro steps (select argument in button
+      // properties). The button is generated to show the structural connection
+      // DEMO EventType → ACR microflow → Workflow.
       const hasSM = pimModel.stateMachines?.some(sm => sm.entityType === cls.name && sm.regions.length > 0) ?? false;
       const acrMf = hasSM ? microflowMap.get(`ACR_${cls.name}`) : undefined;
       if (acrMf) {
         const btn  = pages.ActionButton.createInLayoutCallArgumentUnderWidgets(lca);
+        btn.name   = `ACR_${cls.name}`;
         const ct   = texts.Text.createInClientTemplateUnderTemplate(btn.caption);
         const tr   = texts.Translation.createIn(ct);
         tr.languageCode = "en_US";
@@ -637,6 +643,7 @@ async function applyPimToMendix(
         const mca = pages.MicroflowClientAction.createInActionButtonUnderAction(btn);
         const ms  = pages.MicroflowSettings.createInMicroflowClientActionUnderMicroflowSettings(mca);
         ms.microflow = acrMf;
+        console.log(`    ⚠ CE1571: button "ACR_${cls.name}" needs DataView context for runtime — select argument manually in Studio Pro`);
       }
 
       pageMap.set(cls.name, page);
