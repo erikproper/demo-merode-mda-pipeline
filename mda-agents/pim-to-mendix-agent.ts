@@ -317,7 +317,40 @@ async function applyPimToMendix(
     endLine.destination = endAct;
 
     // B11: ACR Microflow that triggers the Workflow
-    const acrMf  = microflows.Microflow.createIn(mxModule);
+    //
+    // MicroflowParameter (the logical scope variable checked by CE0049) is not exposed
+    // in the public SDK TypeScript types. We inject it by intercepting the CREATE_UNIT_TREE
+    // delta for this microflow and adding a "parameters" entry directly to the unitTree JSON
+    // before it reaches the Mendix model server.
+    const { randomUUID } = require("crypto") as typeof import("crypto");
+    const varName    = entityName.charAt(0).toLowerCase() + entityName.slice(1);
+    const mfParamId  = randomUUID();
+    const mfTypeId   = randomUUID();
+    const entityQName = entity.qualifiedName;
+
+    // Install a one-shot interceptor on _sendDelta.
+    const internalModel  = model as any;
+    const originalSend   = internalModel._sendDelta.bind(internalModel);
+    let   interceptorFired = false;
+    internalModel._sendDelta = function(delta: any) {
+      if (!interceptorFired && delta.deltaType === "CREATE_UNIT_TREE" && delta.contentType === "Microflows$Microflow") {
+        interceptorFired = true;
+        delta.unitTree.parameters = [{
+          $Type:         "Microflows$MicroflowParameter",
+          $ID:           mfParamId,
+          name:          varName,
+          parameterType: {
+            $Type:  "DataTypes$ObjectType",
+            $ID:    mfTypeId,
+            entity: entityQName,
+          },
+        }];
+      }
+      originalSend(delta);
+    };
+
+    const acrMf  = microflows.Microflow.createIn(mxModule);  // interceptor fires here
+    internalModel._sendDelta = originalSend;                  // restore immediately after
     acrMf.name   = `ACR_${entityName}`;
 
     const acrObjCol  = acrMf.objectCollection;
@@ -326,40 +359,13 @@ async function applyPimToMendix(
     acrStart.relativeMiddlePoint = { x: 0,   y: 0 };
     acrEnd.relativeMiddlePoint   = { x: 300, y: 0 };
 
-    const varName    = entityName.charAt(0).toLowerCase() + entityName.slice(1);
-
-    // MicroflowParameterObject: visual canvas element (needed for Studio Pro dropdown).
+    // MicroflowParameterObject: visual canvas element (keeps Studio Pro dropdown populated).
     const acrParam   = microflows.MicroflowParameterObject.createIn(acrObjCol);
     acrParam.name    = varName;
     acrParam.relativeMiddlePoint = { x: -80, y: 0 };
     const objType    = datatypes.ObjectType.create(model);
     objType.entity   = entity;
     acrParam.variableType = objType;
-
-    // MicroflowParameter: logical scope variable required by the Mendix consistency checker
-    // (CE0049). Not exposed in the public TypeScript SDK, so we inject it via the internal
-    // delta mechanism. The Mendix metamodel supports "parameters" as a containment property
-    // on Microflow even though the SDK TypeScript types do not expose it.
-    const { randomUUID } = require("crypto") as typeof import("crypto");
-    const mfParamId  = randomUUID();
-    const mfTypeId   = randomUUID();
-    (model as any)._sendDelta({
-      deltaType:          "CREATE_ELEMENT_TREE",
-      unitId:             acrMf.id,
-      parentId:           acrMf.id,
-      parentPropertyName: "parameters",
-      additionIndex:      0,
-      elementTree: {
-        $Type:         "Microflows$MicroflowParameter",
-        $ID:           mfParamId,
-        name:          varName,
-        parameterType: {
-          $Type:  "DataTypes$ObjectType",
-          $ID:    mfTypeId,
-          entity: entity.qualifiedName,
-        },
-      },
-    });
 
     const acrActionAct = microflows.ActionActivity.createIn(acrObjCol);
     acrActionAct.relativeMiddlePoint = { x: 150, y: 0 };
