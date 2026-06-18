@@ -444,6 +444,7 @@ async function applyPimToMendix(
     acrFlow2.origin      = acrActionAct;
     acrFlow2.destination = acrEnd;
 
+    microflowMap.set(`ACR_${entityName}`, acrMf);
     console.log(`  + ACR microflow "ACR_${entityName}" → workflow "WF_${entityName}" [${sm.regions.length} region(s)]`);
   }
 
