@@ -454,18 +454,35 @@ async function applyPimToMendix(
   let webLayout: pages.ILayout | null = null;
   let contentParam: pages.ILayoutParameter | null = null;
 
+  // Find a non-popup web layout (prefer borrow from existing page, fall back to any layout)
   const foreignPage = model.allPages().find(p => !(p.qualifiedName ?? "").startsWith(prefix));
   if (foreignPage) {
-    const fp     = await foreignPage.load();
-    webLayout    = fp.layoutCall?.layout ?? null;
-    contentParam = fp.layoutCall?.arguments?.[0]?.parameter ?? null;
+    const fp  = await foreignPage.load();
+    webLayout = fp.layoutCall?.layout ?? null;
   }
-  // Fallback: any non-popup, non-native layout
   if (!webLayout) {
     webLayout = model.allLayouts().find(l => {
       const n = (l.qualifiedName ?? "").toLowerCase();
       return !n.includes("popup") && !n.includes("native") && !n.includes("login");
     }) ?? null;
+  }
+
+  // Find the content placeholder LayoutParameter by trying common Atlas UI slot names.
+  // model.findLayoutParameterByQualifiedName resolves by "<LayoutQN>.<ParamName>".
+  if (webLayout) {
+    const loadedLayout = await webLayout.load();
+    const layoutQN     = loadedLayout.qualifiedName ?? "";
+    for (const name of ["Content", "Main", "Page", "Body", "Center", "MainContents"]) {
+      const candidate = model.findLayoutParameterByQualifiedName(`${layoutQN}.${name}`);
+      if (candidate) {
+        contentParam = candidate;
+        console.log(`[pim-to-mendix] layout "${layoutQN}", content parameter "${name}"`);
+        break;
+      }
+    }
+    if (!contentParam) {
+      console.warn(`[pim-to-mendix] no content parameter found for "${layoutQN}" — pages will have no content widgets`);
+    }
   }
 
   if (!webLayout) {
