@@ -30,6 +30,10 @@
     "associationClasses": {
       "type": "array",
       "items": { "$ref": "#/$defs/AssociationClass" }
+    },
+    "stateMachines": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/StateMachine" }
     }
   },
   "$defs": {
@@ -135,6 +139,59 @@
             { "type": "string",  "enum": ["*"] }
           ]
         }
+      }
+    },
+    "StateMachine": {
+      "type": "object",
+      "required": ["name", "entityType", "regions"],
+      "additionalProperties": false,
+      "properties": {
+        "name":       { "type": "string" },
+        "entityType": { "type": "string" },
+        "regions":    { "type": "array", "items": { "$ref": "#/$defs/Region" } },
+        "activities": { "type": "array", "items": { "$ref": "#/$defs/Activity" } }
+      }
+    },
+    "Region": {
+      "type": "object",
+      "required": ["name", "forEvent", "states", "transitions"],
+      "additionalProperties": false,
+      "properties": {
+        "name":        { "type": "string" },
+        "forEvent":    { "type": "string" },
+        "states":      { "type": "array", "items": { "$ref": "#/$defs/State" } },
+        "transitions": { "type": "array", "items": { "$ref": "#/$defs/Transition" } }
+      }
+    },
+    "State": {
+      "type": "object",
+      "required": ["name", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "name":          { "type": "string" },
+        "kind":          { "type": "string", "enum": ["initial", "false", "true"] },
+        "entryActivity": { "type": "string" }
+      }
+    },
+    "Transition": {
+      "type": "object",
+      "required": ["from", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "from":          { "type": "string" },
+        "to":            { "type": "string" },
+        "trigger":       { "type": "string" },
+        "alfExpression": { "type": "string" }
+      }
+    },
+    "Activity": {
+      "type": "object",
+      "required": ["name", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "name":       { "type": "string" },
+        "kind":       { "type": "string", "enum": ["set", "create"] },
+        "targetType": { "type": "string" }
       }
     }
   }

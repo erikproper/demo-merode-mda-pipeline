@@ -139,6 +139,39 @@ export interface PimClass {
   ownedAttributes?: Property[];
 }
 
+export interface PimState {
+  name: string;
+  kind: "initial" | "false" | "true";
+  entryActivity?: string;
+}
+
+export interface PimTransition {
+  from: string;
+  to: string;
+  trigger?: string;
+  alfExpression?: string;
+}
+
+export interface PimRegion {
+  name: string;
+  forEvent: string;
+  states: PimState[];
+  transitions: PimTransition[];
+}
+
+export interface PimActivity {
+  name: string;
+  kind: "set" | "create";
+  targetType?: string;
+}
+
+export interface PimStateMachine {
+  name: string;
+  entityType: string;
+  regions: PimRegion[];
+  activities?: PimActivity[];
+}
+
 export interface PimModel {
   name: string;
   enumerations?: PimEnumeration[];
@@ -147,4 +180,5 @@ export interface PimModel {
   classes?: PimClass[];
   associations?: PimAssociation[];
   generalizations?: PimGeneralization[];
+  stateMachines?: PimStateMachine[];
 }
