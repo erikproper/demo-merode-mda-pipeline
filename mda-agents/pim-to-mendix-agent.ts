@@ -1,7 +1,7 @@
 // pim-to-mendix-agent
 // Listens on the bus for pimUML models and writes them into a Mendix app via the Platform SDK.
 
-import { IModel, domainmodels, enumerations, microflows, workflows, datatypes } from "mendixmodelsdk";
+import { IModel, domainmodels, enumerations, microflows, workflows, datatypes, pages, navigation, menus, texts } from "mendixmodelsdk";
 import { MendixPlatformClient, OnlineWorkingCopy } from "mendixplatformsdk";
 import { BusClient } from "./bus-client";
 import type { PimModel } from "./schemas/types";
@@ -60,6 +60,7 @@ async function applyPimToMendix(
   model.allEnumerations().filter(en => (en.qualifiedName ?? "").startsWith(prefix)).forEach(en => en.delete());
   model.allMicroflows().filter(mf => (mf.qualifiedName ?? "").startsWith(prefix)).forEach(mf => mf.delete());
   model.allWorkflows().filter(wf => (wf.qualifiedName ?? "").startsWith(prefix)).forEach(wf => wf.delete());
+  model.allPages().filter(p => (p.qualifiedName ?? "").startsWith(prefix)).forEach(p => p.delete());
   console.log("[pim-to-mendix] cleared previous model");
 
   // enumerations → Mendix enumerations (A1)
@@ -444,6 +445,108 @@ async function applyPimToMendix(
     acrFlow2.destination = acrEnd;
 
     console.log(`  + ACR microflow "ACR_${entityName}" → workflow "WF_${entityName}" [${sm.regions.length} region(s)]`);
+  }
+
+  // ── Pages + Navigation ────────────────────────────────────────────────────────
+  // Find a web layout by borrowing the reference from any existing page outside
+  // our module. A blank Mendix starter app always has at least one pre-built page
+  // that already has a valid Atlas layout wired up.
+  let webLayout: pages.ILayout | null = null;
+  let contentParam: pages.ILayoutParameter | null = null;
+
+  const foreignPage = model.allPages().find(p => !(p.qualifiedName ?? "").startsWith(prefix));
+  if (foreignPage) {
+    const fp     = await foreignPage.load();
+    webLayout    = fp.layoutCall?.layout ?? null;
+    contentParam = fp.layoutCall?.arguments?.[0]?.parameter ?? null;
+  }
+  // Fallback: any non-popup, non-native layout
+  if (!webLayout) {
+    webLayout = model.allLayouts().find(l => {
+      const n = (l.qualifiedName ?? "").toLowerCase();
+      return !n.includes("popup") && !n.includes("native") && !n.includes("login");
+    }) ?? null;
+  }
+
+  if (!webLayout) {
+    console.warn("[pim-to-mendix] no suitable layout found — skipping page generation");
+  } else {
+    const pageMap = new Map<string, pages.Page>();
+
+    for (const cls of pimModel.classes ?? []) {
+      const entity = entityMap.get(cls.name);
+      if (!entity) continue;
+
+      const page = pages.Page.createIn(mxModule);
+      page.name  = `${cls.name}_Overview`;
+
+      // Page title
+      {
+        const t  = texts.Text.createInPageUnderTitle(page);
+        const tr = texts.Translation.createIn(t);
+        tr.languageCode = "en_US";
+        tr.text = `${cls.name} Overview`;
+      }
+
+      // Layout
+      const lc = page.layoutCall;
+      lc.layout = webLayout;
+
+      if (contentParam) {
+        const lca = pages.LayoutCallArgument.createIn(lc);
+        lca.parameter = contentParam;
+
+        // Workflow trigger button — only for entities that have an ACR microflow
+        const hasSM = pimModel.stateMachines?.some(sm => sm.entityType === cls.name && sm.regions.length > 0) ?? false;
+        const acrMf = hasSM ? microflowMap.get(`ACR_${cls.name}`) : undefined;
+        if (acrMf) {
+          const btn  = pages.ActionButton.createInLayoutCallArgumentUnderWidgets(lca);
+          const ct   = texts.Text.createInClientTemplateUnderTemplate(btn.caption);
+          const tr   = texts.Translation.createIn(ct);
+          tr.languageCode = "en_US";
+          tr.text = `Start ${cls.name} Workflow`;
+          const mca = pages.MicroflowClientAction.createInActionButtonUnderAction(btn);
+          const ms  = pages.MicroflowSettings.createInMicroflowClientActionUnderMicroflowSettings(mca);
+          ms.microflow = acrMf;
+        }
+      }
+
+      pageMap.set(cls.name, page);
+      console.log(`  + page "${page.name}"`);
+    }
+
+    // Navigation: add one menu item per entity page in the responsive profile
+    const navDocs = model.allNavigationDocuments();
+    if (navDocs.length > 0) {
+      const navDoc  = await navDocs[0].load();
+      const profile = navDoc.profiles.find(p =>
+        (p as navigation.NavigationProfile).kind === navigation.ProfileKind.Responsive
+      ) as navigation.NavigationProfile | undefined ?? navDoc.profiles[0] as navigation.NavigationProfile | undefined;
+
+      if (profile?.menuItemCollection) {
+        // Remove old items that point to pages in our module
+        [...profile.menuItemCollection.items].forEach(mi => {
+          const item = mi as menus.MenuItem;
+          if (!item.action) return;
+          const pca = item.action as pages.PageClientAction;
+          if (!pca.pageSettings) return;
+          if ((pca.pageSettings.pageQualifiedName ?? "").startsWith(prefix)) item.delete();
+        });
+
+        for (const [entityName, page] of pageMap) {
+          const mi  = menus.MenuItem.createIn(profile.menuItemCollection);
+          const t   = texts.Text.createInMenuItemUnderCaption(mi);
+          const tr  = texts.Translation.createIn(t);
+          tr.languageCode = "en_US";
+          tr.text = entityName;
+          const pca = pages.PageClientAction.createInMenuItemUnderAction(mi);
+          const ps  = pages.PageSettings.createInPageClientActionUnderPageSettings(pca);
+          ps.page   = page;
+        }
+
+        console.log(`  + navigation: ${pageMap.size} menu item(s) added`);
+      }
+    }
   }
 
   await model.flushChanges();
