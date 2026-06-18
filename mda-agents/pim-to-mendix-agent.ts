@@ -284,18 +284,26 @@ async function applyPimToMendix(
     wf.name     = `WF_${entityName}`;
     wf.title    = `WF ${entityName}`;
 
+    // CE1850 fix: workflow context parameter (required)
+    const wfParam    = workflows.Parameter.createIn(wf);
+    wfParam.name     = "WorkflowContext";
+    wfParam.entity   = entity;
+
     const wfMeta = workflows.WorkflowMetaData.createIn(wf);
     const flow   = workflows.Flow.createInWorkflowUnderFlow(wf);
 
-    const startAct = workflows.StartWorkflowActivity.createInFlowUnderActivities(flow);
+    // CE7247 fix: activities need both name and caption
+    const startAct   = workflows.StartWorkflowActivity.createInFlowUnderActivities(flow);
+    startAct.name    = "Start";
     startAct.caption = "Start";
     let prevAct: workflows.WorkflowActivity = startAct;
 
     // B23/B24: one WaitForNotification + CallMicroflowTask(Set) per region, plus CallMicroflowTask(Create) for entry activities
     for (const region of sm.regions) {
-      const waitAct     = workflows.WaitForNotificationActivity.createInFlowUnderActivities(flow);
-      waitAct.caption   = `Wait: ${region.forEvent}`;
-      const waitLine    = workflows.FlowLine.createIn(wfMeta);
+      const waitAct    = workflows.WaitForNotificationActivity.createInFlowUnderActivities(flow);
+      waitAct.name     = `Wait_${region.forEvent}`;
+      waitAct.caption  = `Wait: ${region.forEvent}`;
+      const waitLine   = workflows.FlowLine.createIn(wfMeta);
       waitLine.origin      = prevAct;
       waitLine.destination = waitAct;
       prevAct = waitAct;
@@ -303,9 +311,12 @@ async function applyPimToMendix(
       const setMfName = `Set${entityName}_${region.forEvent}`;
       const setMf     = microflowMap.get(setMfName);
       if (setMf) {
-        const callSetTask        = workflows.CallMicroflowTask.createInFlowUnderActivities(flow);
-        callSetTask.caption      = `Call: ${setMfName}`;
-        callSetTask.microflow    = setMf;
+        const callSetTask    = workflows.CallMicroflowTask.createInFlowUnderActivities(flow);
+        callSetTask.name     = `Call_${setMfName}`;
+        callSetTask.caption  = `Call: ${setMfName}`;
+        callSetTask.microflow = setMf;
+        // CE6686 fix: add VoidConditionOutcome so outcomes match
+        workflows.VoidConditionOutcome.createIn(callSetTask);
         const callSetLine        = workflows.FlowLine.createIn(wfMeta);
         callSetLine.origin       = prevAct;
         callSetLine.destination  = callSetTask;
@@ -317,9 +328,11 @@ async function applyPimToMendix(
       if (trueState?.entryActivity) {
         const createMf = microflowMap.get(trueState.entryActivity);
         if (createMf) {
-          const callCreateTask       = workflows.CallMicroflowTask.createInFlowUnderActivities(flow);
-          callCreateTask.caption     = `Call: ${trueState.entryActivity}`;
-          callCreateTask.microflow   = createMf;
+          const callCreateTask    = workflows.CallMicroflowTask.createInFlowUnderActivities(flow);
+          callCreateTask.name     = `Call_${trueState.entryActivity}`;
+          callCreateTask.caption  = `Call: ${trueState.entryActivity}`;
+          callCreateTask.microflow = createMf;
+          workflows.VoidConditionOutcome.createIn(callCreateTask);
           const callCreateLine       = workflows.FlowLine.createIn(wfMeta);
           callCreateLine.origin      = prevAct;
           callCreateLine.destination = callCreateTask;
@@ -329,6 +342,7 @@ async function applyPimToMendix(
     }
 
     const endAct    = workflows.EndWorkflowActivity.createInFlowUnderActivities(flow);
+    endAct.name     = "End";
     endAct.caption  = "End";
     const endLine   = workflows.FlowLine.createIn(wfMeta);
     endLine.origin      = prevAct;
@@ -354,8 +368,8 @@ async function applyPimToMendix(
     const acrActionAct = microflows.ActionActivity.createIn(acrObjCol);
     acrActionAct.relativeMiddlePoint = { x: 150, y: 0 };
     const wfCallAct = microflows.WorkflowCallAction.createIn(acrActionAct);
-    wfCallAct.workflow               = wf;
-    wfCallAct.workflowContextVariable = varName;
+    wfCallAct.workflow                = wf;
+    wfCallAct.workflowContextVariable = varName; // ACR microflow passes entity as context
 
     const acrFlow1       = microflows.SequenceFlow.createIn(acrMf);
     acrFlow1.origin      = acrStart;
