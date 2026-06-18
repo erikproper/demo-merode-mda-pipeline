@@ -32,10 +32,12 @@ function makeAttributeType(
     return attrType;
   }
   switch (name.toLowerCase()) {
-    case "integer":  return domainmodels.IntegerAttributeType.create(model);
-    case "boolean":  return domainmodels.BooleanAttributeType.create(model);
-    case "datetime": return domainmodels.DateTimeAttributeType.create(model);
-    default:         return domainmodels.StringAttributeType.create(model);
+    case "integer":          return domainmodels.IntegerAttributeType.create(model);
+    case "boolean":          return domainmodels.BooleanAttributeType.create(model);
+    case "datetime":         return domainmodels.DateTimeAttributeType.create(model);
+    case "real":
+    case "decimal":          return domainmodels.DecimalAttributeType.create(model);
+    default:                 return domainmodels.StringAttributeType.create(model);
   }
 }
 
@@ -156,6 +158,7 @@ async function applyPimToMendix(
   }
 
   // associations → Mendix associations
+  const associationMap = new Map<string, domainmodels.Association>();
   for (const assoc of pimModel.associations ?? []) {
     const end0 = assoc.memberEnds[0];
     const end1 = assoc.memberEnds[1];
@@ -178,6 +181,7 @@ async function applyPimToMendix(
     if (assoc.isAggregation) {
       mxAssoc.owner = domainmodels.AssociationOwner.Both;
     }
+    associationMap.set(assoc.name, mxAssoc);
     const kind = assoc.isDerived ? "derived association" : assoc.triggerEvent ? "event-triggered association" : assoc.isAggregation ? "aggregation" : "association";
     const note = assoc.derivationExpression ? ` [rule: ${assoc.derivationExpression}]` : assoc.triggerEvent ? ` [trigger: ${assoc.triggerEvent}] (state machine behavior NotMapped)` : "";
     console.log(`  + ${kind} "${assoc.name}": ${parentEnd.type} → ${childEnd.type}${note}`);
@@ -198,25 +202,82 @@ async function applyPimToMendix(
       start.relativeMiddlePoint = { x: 0,   y: 0 };
       end.relativeMiddlePoint   = { x: 200, y: 0 };
 
-      // B20: create-kind → CreateObjectAction between start and end
+      // B20+B21+B18+B19: create-kind → full Create microflow body
+      // CreateObjectAction → CreateVariableAction(parentID) → ChangeObjectAction(childID) → ChangeObjectAction(assoc link)
       if (activity.kind === "create" && activity.targetType) {
-        const targetEntity = entityMap.get(activity.targetType);
-        if (targetEntity) {
-          const actionAct  = microflows.ActionActivity.createIn(objCol);
-          actionAct.relativeMiddlePoint = { x: 100, y: 0 };
+        const childName    = activity.targetType;
+        const parentName   = sm.entityType;
+        const childEntity  = entityMap.get(childName);
+        const parentEntity = entityMap.get(parentName);
 
-          const createAct  = microflows.CreateObjectAction.createIn(actionAct);
-          createAct.entity = targetEntity;
-          createAct.outputVariableName = activity.targetType.charAt(0).toLowerCase() + activity.targetType.slice(1);
+        // find the pimUML association linking child to parent
+        const pimAssoc = pimModel.associations?.find(a => {
+          const t0 = a.memberEnds[0].type;
+          const t1 = a.memberEnds[1].type;
+          return (t0 === childName && t1 === parentName) || (t1 === childName && t0 === parentName);
+        });
+        const mxAssoc       = pimAssoc ? associationMap.get(pimAssoc.name) : undefined;
+        const childIDAttr   = attributeMap.get(`${childName}.${childName}ID`);
 
-          const flow1        = microflows.SequenceFlow.createIn(mf);
-          flow1.origin       = start;
-          flow1.destination  = actionAct;
-          const flow2        = microflows.SequenceFlow.createIn(mf);
-          flow2.origin       = actionAct;
-          flow2.destination  = end;
+        const parentVar = parentName.charAt(0).toLowerCase() + parentName.slice(1);
+        const childVar  = childName.charAt(0).toLowerCase() + childName.slice(1);
+        const idVar     = `${parentVar}ID`;
 
-          console.log(`  + microflow "${activity.name}" [create → ${activity.targetType}]`);
+        if (childEntity && parentEntity) {
+          // B16: parameter — parent entity object
+          const mfParam = microflows.MicroflowParameterObject.createIn(objCol);
+          mfParam.name  = parentVar;
+          mfParam.relativeMiddlePoint = { x: -80, y: 0 };
+          const paramType = datatypes.ObjectType.create(model);
+          paramType.entity = parentEntity;
+          mfParam.variableType = paramType;
+
+          // B20: CreateObjectAction — instantiate child entity
+          const createAct = microflows.ActionActivity.createIn(objCol);
+          createAct.relativeMiddlePoint = { x: 100, y: 0 };
+          const createObj = microflows.CreateObjectAction.createIn(createAct);
+          createObj.entity = childEntity;
+          createObj.outputVariableName = childVar;
+
+          // B21: CreateVariableAction — read parent's logical ID
+          const readIdAct = microflows.ActionActivity.createIn(objCol);
+          readIdAct.relativeMiddlePoint = { x: 280, y: 0 };
+          const createVar = microflows.CreateVariableAction.createIn(readIdAct);
+          createVar.variableName = idVar;
+          createVar.initialValue = `$${parentVar}/${parentName}ID`;
+
+          // B18: ChangeObjectAction — copy parent's ID into child's ID attribute
+          const copyIdAct = microflows.ActionActivity.createIn(objCol);
+          copyIdAct.relativeMiddlePoint = { x: 460, y: 0 };
+          const copyId = microflows.ChangeObjectAction.createIn(copyIdAct);
+          copyId.changeVariableName = childVar;
+          if (childIDAttr) {
+            const mc1 = microflows.MemberChange.createIn(copyId);
+            mc1.attribute = childIDAttr;
+            mc1.value = `$${idVar}`;
+          }
+
+          // B19: ChangeObjectAction — set association link to parent
+          const linkAct = microflows.ActionActivity.createIn(objCol);
+          linkAct.relativeMiddlePoint = { x: 640, y: 0 };
+          const setLink = microflows.ChangeObjectAction.createIn(linkAct);
+          setLink.changeVariableName = childVar;
+          setLink.commit = microflows.CommitEnum.Yes;
+          if (mxAssoc) {
+            const mc2 = microflows.MemberChange.createIn(setLink);
+            mc2.association = mxAssoc;
+            mc2.value = `$${parentVar}`;
+          }
+
+          end.relativeMiddlePoint = { x: 820, y: 0 };
+
+          const f1 = microflows.SequenceFlow.createIn(mf); f1.origin = start;    f1.destination = createAct;
+          const f2 = microflows.SequenceFlow.createIn(mf); f2.origin = createAct; f2.destination = readIdAct;
+          const f3 = microflows.SequenceFlow.createIn(mf); f3.origin = readIdAct; f3.destination = copyIdAct;
+          const f4 = microflows.SequenceFlow.createIn(mf); f4.origin = copyIdAct; f4.destination = linkAct;
+          const f5 = microflows.SequenceFlow.createIn(mf); f5.origin = linkAct;   f5.destination = end;
+
+          console.log(`  + microflow "${activity.name}" [create ${childName} from ${parentName}]${!mxAssoc ? " ⚠ no association found" : ""}`);
           continue;
         }
       }
