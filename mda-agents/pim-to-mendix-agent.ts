@@ -615,9 +615,14 @@ async function applyPimToMendix(
       lc.layout = webLayout;
       const lca = pages.LayoutCallArgument.createIn(lc);
       if (contentParam) lca.parameter = contentParam;
-      // borrowedParamQN ("Atlas_Core.Atlas_Default.Main") exists but the Mendix model
-      // server rejects new LCAs referencing protected-module LayoutParameters via SDK delta.
-      // Pages commit with an unresolved LCA; Studio Pro resolves the slot on next sync.
+      // Atlas UI 3.x SDK limitation: LayoutParameter "Main" in Atlas_Core is not indexed
+      // in the working-copy model, so lca.parameter cannot be set the normal way.
+      // updateWithRawValue sets the qualified-name string directly on the internal
+      // ByNameReferenceProperty, triggering the correct change delta so the server
+      // stores the reference and Studio Pro resolves it on next open.
+      if (borrowedParamQN) {
+        (lca as any).__parameter.updateWithRawValue(borrowedParamQN);
+      }
 
       // Workflow trigger button — only for entities that have an ACR microflow
       const hasSM = pimModel.stateMachines?.some(sm => sm.entityType === cls.name && sm.regions.length > 0) ?? false;
