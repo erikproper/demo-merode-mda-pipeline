@@ -71,14 +71,19 @@ async function applyPimToMendix(
     console.log(`  + enumeration "${enumDef.name}" [${enumDef.literals.join(", ")}]`);
   }
 
-  // non-categorical data types — not mapped to Mendix (no scalar type system) (A2)
-  for (const dt of pimModel.dataTypes ?? []) {
-    console.log(`  ~ data type "${dt.name}" not mapped — Mendix has no user-defined scalar types`);
-  }
-
   // classes → Mendix entities with attributes
   const entityMap = new Map<string, domainmodels.Entity>();
   let x = 0;
+
+  // non-categorical data types → Entity in Mendix (B4)
+  for (const dt of pimModel.dataTypes ?? []) {
+    const entity    = domainmodels.Entity.createIn(domainModel);
+    entity.name     = dt.name;
+    entity.location = { x, y: 400 };
+    x += 220;
+    entityMap.set(dt.name, entity);
+    console.log(`  + data type entity "${dt.name}"`);
+  }
   for (const cls of pimModel.classes ?? []) {
     const entity    = domainmodels.Entity.createIn(domainModel);
     entity.name     = cls.name;
