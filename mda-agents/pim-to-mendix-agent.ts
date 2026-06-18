@@ -1,7 +1,7 @@
 // pim-to-mendix-agent
 // Listens on the bus for pimUML models and writes them into a Mendix app via the Platform SDK.
 
-import { IModel, domainmodels, enumerations, microflows, datatypes } from "mendixmodelsdk";
+import { IModel, domainmodels, enumerations, microflows, datatypes, workflows } from "mendixmodelsdk";
 import { MendixPlatformClient, OnlineWorkingCopy } from "mendixplatformsdk";
 import { BusClient } from "./bus-client";
 import type { PimModel } from "./schemas/types";
@@ -57,6 +57,7 @@ async function applyPimToMendix(
   [...domainModel.entities].forEach(e => e.delete());
   model.allEnumerations().filter(en => (en.qualifiedName ?? "").startsWith(prefix)).forEach(en => en.delete());
   model.allMicroflows().filter(mf => (mf.qualifiedName ?? "").startsWith(prefix)).forEach(mf => mf.delete());
+  model.allWorkflows().filter(wf => (wf.qualifiedName ?? "").startsWith(prefix)).forEach(wf => wf.delete());
   console.log("[pim-to-mendix] cleared previous model");
 
   // enumerations → Mendix enumerations (A1)
@@ -183,10 +184,12 @@ async function applyPimToMendix(
   }
 
   // activity microflows — one per state machine activity (B13/B14/B15/B22)
+  const microflowMap = new Map<string, microflows.Microflow>();
   for (const sm of pimModel.stateMachines ?? []) {
     for (const activity of sm.activities ?? []) {
       const mf  = microflows.Microflow.createIn(mxModule);
       mf.name   = activity.name;
+      microflowMap.set(activity.name, mf);
 
       const objCol = mf.objectCollection;
       const start  = microflows.StartEvent.createIn(objCol);
@@ -265,6 +268,103 @@ async function applyPimToMendix(
 
       console.log(`  + microflow "${activity.name}" [${activity.kind}]`);
     }
+  }
+
+  // B11/B12/B23/B24: per entity type — Workflow + ACR Microflow
+  for (const sm of pimModel.stateMachines ?? []) {
+    if (sm.regions.length === 0) continue;
+    const entityName = sm.entityType;
+    const entity     = entityMap.get(entityName);
+    if (!entity) continue;
+
+    const varName = entityName.charAt(0).toLowerCase() + entityName.slice(1);
+
+    // B12: Workflow document with one flow per entity type
+    const wf    = workflows.Workflow.createIn(mxModule);
+    wf.name     = `WF_${entityName}`;
+    wf.title    = `WF ${entityName}`;
+
+    const wfMeta = workflows.WorkflowMetaData.createIn(wf);
+    const flow   = workflows.Flow.createInWorkflowUnderFlow(wf);
+
+    const startAct = workflows.StartWorkflowActivity.createInFlowUnderActivities(flow);
+    startAct.caption = "Start";
+    let prevAct: workflows.WorkflowActivity = startAct;
+
+    // B23/B24: one WaitForNotification + CallMicroflowTask(Set) per region, plus CallMicroflowTask(Create) for entry activities
+    for (const region of sm.regions) {
+      const waitAct     = workflows.WaitForNotificationActivity.createIn(flow);
+      waitAct.caption   = `Wait: ${region.forEvent}`;
+      const waitLine    = workflows.FlowLine.createIn(wfMeta);
+      waitLine.origin      = prevAct;
+      waitLine.destination = waitAct;
+      prevAct = waitAct;
+
+      const setMfName = `Set${entityName}_${region.forEvent}`;
+      const setMf     = microflowMap.get(setMfName);
+      if (setMf) {
+        const callSetTask        = workflows.CallMicroflowTask.createIn(flow);
+        callSetTask.caption      = `Call: ${setMfName}`;
+        callSetTask.microflow    = setMf;
+        const callSetLine        = workflows.FlowLine.createIn(wfMeta);
+        callSetLine.origin       = prevAct;
+        callSetLine.destination  = callSetTask;
+        prevAct = callSetTask;
+      }
+
+      // B24: entry activity (Create<Child>) in true state
+      const trueState = region.states.find(s => s.kind === "true");
+      if (trueState?.entryActivity) {
+        const createMf = microflowMap.get(trueState.entryActivity);
+        if (createMf) {
+          const callCreateTask       = workflows.CallMicroflowTask.createIn(flow);
+          callCreateTask.caption     = `Call: ${trueState.entryActivity}`;
+          callCreateTask.microflow   = createMf;
+          const callCreateLine       = workflows.FlowLine.createIn(wfMeta);
+          callCreateLine.origin      = prevAct;
+          callCreateLine.destination = callCreateTask;
+          prevAct = callCreateTask;
+        }
+      }
+    }
+
+    const endAct    = workflows.EndWorkflowActivity.createIn(flow);
+    endAct.caption  = "End";
+    const endLine   = workflows.FlowLine.createIn(wfMeta);
+    endLine.origin      = prevAct;
+    endLine.destination = endAct;
+
+    // B11: ACR Microflow that triggers the Workflow
+    const acrMf  = microflows.Microflow.createIn(mxModule);
+    acrMf.name   = `ACR_${entityName}`;
+
+    const acrObjCol = acrMf.objectCollection;
+    const acrStart  = microflows.StartEvent.createIn(acrObjCol);
+    const acrEnd    = microflows.EndEvent.createIn(acrObjCol);
+    acrStart.relativeMiddlePoint = { x: 0,   y: 0 };
+    acrEnd.relativeMiddlePoint   = { x: 300, y: 0 };
+
+    const acrParam = microflows.MicroflowParameterObject.createIn(acrObjCol);
+    acrParam.name  = varName;
+    acrParam.relativeMiddlePoint = { x: -80, y: 0 };
+    const acrObjType  = datatypes.ObjectType.create(model);
+    acrObjType.entity = entity;
+    acrParam.variableType = acrObjType;
+
+    const acrActionAct = microflows.ActionActivity.createIn(acrObjCol);
+    acrActionAct.relativeMiddlePoint = { x: 150, y: 0 };
+    const wfCallAct = microflows.WorkflowCallAction.createIn(acrActionAct);
+    wfCallAct.workflow               = wf;
+    wfCallAct.workflowContextVariable = varName;
+
+    const acrFlow1       = microflows.SequenceFlow.createIn(acrMf);
+    acrFlow1.origin      = acrStart;
+    acrFlow1.destination = acrActionAct;
+    const acrFlow2       = microflows.SequenceFlow.createIn(acrMf);
+    acrFlow2.origin      = acrActionAct;
+    acrFlow2.destination = acrEnd;
+
+    console.log(`  + ACR microflow "ACR_${entityName}" → workflow "WF_${entityName}" [${sm.regions.length} region(s)]`);
   }
 
   await model.flushChanges();
