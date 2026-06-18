@@ -178,7 +178,7 @@ async function applyPimToMendix(
     mxAssoc.name   = assoc.name;
     mxAssoc.parent = parentEntity;
     mxAssoc.child  = childEntity;
-    if (assoc.isAggregation) {
+    if (assoc.isAggregation || assoc.isDerived || assoc.triggerEvent) {
       mxAssoc.owner = domainmodels.AssociationOwner.Both;
     }
     associationMap.set(assoc.name, mxAssoc);
@@ -221,7 +221,6 @@ async function applyPimToMendix(
 
         const parentVar = parentName.charAt(0).toLowerCase() + parentName.slice(1);
         const childVar  = childName.charAt(0).toLowerCase() + childName.slice(1);
-        const idVar     = `${parentVar}ID`;
 
         if (childEntity && parentEntity) {
           // B16: parameter — parent entity object
@@ -232,50 +231,34 @@ async function applyPimToMendix(
           paramType.entity = parentEntity;
           mfParam.variableType = paramType;
 
-          // B20: CreateObjectAction — instantiate child entity
+          // B20: CreateObjectAction — instantiate child; B18+B19 inlined as MemberChanges
+          // (CreateVariableAction skipped: SDK cannot set variable type → defaults to Boolean.
+          //  Expressions are inlined directly to avoid CE0117.)
           const createAct = microflows.ActionActivity.createIn(objCol);
           createAct.relativeMiddlePoint = { x: 100, y: 0 };
           const createObj = microflows.CreateObjectAction.createIn(createAct);
           createObj.entity = childEntity;
           createObj.outputVariableName = childVar;
+          createObj.commit = microflows.CommitEnum.Yes;
 
-          // B21: CreateVariableAction — read parent's logical ID
-          const readIdAct = microflows.ActionActivity.createIn(objCol);
-          readIdAct.relativeMiddlePoint = { x: 280, y: 0 };
-          const createVar = microflows.CreateVariableAction.createIn(readIdAct);
-          createVar.variableName = idVar;
-          createVar.initialValue = `$${parentVar}/${parentName}ID`;
-
-          // B18: ChangeObjectAction — copy parent's ID into child's ID attribute
-          const copyIdAct = microflows.ActionActivity.createIn(objCol);
-          copyIdAct.relativeMiddlePoint = { x: 460, y: 0 };
-          const copyId = microflows.ChangeObjectAction.createIn(copyIdAct);
-          copyId.changeVariableName = childVar;
+          // B18: copy parent's logical ID into child's ID attribute
           if (childIDAttr) {
-            const mc1 = microflows.MemberChange.createIn(copyId);
+            const mc1 = microflows.MemberChange.createIn(createObj);
             mc1.attribute = childIDAttr;
-            mc1.value = `$${idVar}`;
+            mc1.value = `$${parentVar}/${parentName}ID`;
           }
 
-          // B19: ChangeObjectAction — set association link to parent
-          const linkAct = microflows.ActionActivity.createIn(objCol);
-          linkAct.relativeMiddlePoint = { x: 640, y: 0 };
-          const setLink = microflows.ChangeObjectAction.createIn(linkAct);
-          setLink.changeVariableName = childVar;
-          setLink.commit = microflows.CommitEnum.Yes;
+          // B19: set association link to parent
           if (mxAssoc) {
-            const mc2 = microflows.MemberChange.createIn(setLink);
+            const mc2 = microflows.MemberChange.createIn(createObj);
             mc2.association = mxAssoc;
             mc2.value = `$${parentVar}`;
           }
 
-          end.relativeMiddlePoint = { x: 820, y: 0 };
+          end.relativeMiddlePoint = { x: 280, y: 0 };
 
           const f1 = microflows.SequenceFlow.createIn(mf); f1.origin = start;    f1.destination = createAct;
-          const f2 = microflows.SequenceFlow.createIn(mf); f2.origin = createAct; f2.destination = readIdAct;
-          const f3 = microflows.SequenceFlow.createIn(mf); f3.origin = readIdAct; f3.destination = copyIdAct;
-          const f4 = microflows.SequenceFlow.createIn(mf); f4.origin = copyIdAct; f4.destination = linkAct;
-          const f5 = microflows.SequenceFlow.createIn(mf); f5.origin = linkAct;   f5.destination = end;
+          const f2 = microflows.SequenceFlow.createIn(mf); f2.origin = createAct; f2.destination = end;
 
           console.log(`  + microflow "${activity.name}" [create ${childName} from ${parentName}]${!mxAssoc ? " ⚠ no association found" : ""}`);
           continue;
