@@ -532,6 +532,18 @@ async function applyPimToMendix(
       const wlc    = (loaded as pages.Layout).content as pages.WebLayoutContent | null;
       if (!wlc) continue;
 
+      // Diagnostic: log structure of first few layouts so we understand what's there
+      try {
+        const topWidgets = (wlc as any).widgets;
+        const nestedLC   = (wlc as any).layoutCall;
+        console.log(`[pim-to-mendix] layout "${layout.qualifiedName}": contentType=${wlc.structureTypeName}, topWidgets=${topWidgets?.length ?? "n/a"}, nestedLC=${nestedLC?.layout?.qualifiedName ?? (nestedLC ? "?" : "none")}`);
+        if (topWidgets?.length) {
+          for (let i = 0; i < Math.min(3, topWidgets.length); i++) {
+            try { console.log(`[pim-to-mendix]   widget[${i}]: ${topWidgets[i]?.structureTypeName}`); } catch {}
+          }
+        }
+      } catch {}
+
       // Search the top-level widget list
       const found = findLayoutParam(wlc);
       if (found) {
