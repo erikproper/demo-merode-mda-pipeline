@@ -1,7 +1,7 @@
 // pim-to-mendix-agent
 // Listens on the bus for pimUML models and writes them into a Mendix app via the Platform SDK.
 
-import { IModel, domainmodels, enumerations, microflows } from "mendixmodelsdk";
+import { IModel, domainmodels, enumerations, microflows, datatypes } from "mendixmodelsdk";
 import { MendixPlatformClient, OnlineWorkingCopy } from "mendixplatformsdk";
 import { BusClient } from "./bus-client";
 import type { PimModel } from "./schemas/types";
@@ -73,7 +73,8 @@ async function applyPimToMendix(
   }
 
   // classes → Mendix entities with attributes
-  const entityMap = new Map<string, domainmodels.Entity>();
+  const entityMap    = new Map<string, domainmodels.Entity>();
+  const attributeMap = new Map<string, domainmodels.Attribute>(); // key: "EntityName.attrName"
   let x = 0;
 
   // non-categorical data types → Entity in Mendix (B4)
@@ -103,6 +104,7 @@ async function applyPimToMendix(
       const attr = domainmodels.Attribute.createIn(entity);
       attr.name  = prop.name;
       attr.type  = makeAttributeType(prop.type, model, enumMap);
+      attributeMap.set(`${cls.name}.${prop.name}`, attr);
       if (prop.defaultValue !== undefined && attr.value instanceof domainmodels.StoredValue) {
         (attr.value as domainmodels.StoredValue).defaultValue = prop.defaultValue;
       }
@@ -212,6 +214,47 @@ async function applyPimToMendix(
           flow2.destination  = end;
 
           console.log(`  + microflow "${activity.name}" [create → ${activity.targetType}]`);
+          continue;
+        }
+      }
+
+      // B16/B17/B18: set-kind → parameter + ChangeObjectAction setting boolean to true
+      if (activity.kind === "set" && activity.targetType) {
+        const entityName = activity.targetType;
+        const eventName  = activity.name.substring((`Set${entityName}_`).length);
+        const entity     = entityMap.get(entityName);
+        const boolAttr   = attributeMap.get(`${entityName}.${eventName}`);
+
+        if (entity && boolAttr) {
+          const varName = entityName.charAt(0).toLowerCase() + entityName.slice(1);
+
+          // B16: parameter object (visual input variable)
+          const paramObj = microflows.MicroflowParameterObject.createIn(objCol);
+          paramObj.name  = varName;
+          paramObj.relativeMiddlePoint = { x: -80, y: 0 };
+          const objType  = datatypes.ObjectType.create(model);
+          objType.entity = entity;
+          paramObj.variableType = objType;
+
+          // B17/B18: ChangeObjectAction setting the boolean attribute to true
+          const actionAct  = microflows.ActionActivity.createIn(objCol);
+          actionAct.relativeMiddlePoint = { x: 100, y: 0 };
+          const changeAct  = microflows.ChangeObjectAction.createIn(actionAct);
+          changeAct.changeVariableName = varName;
+
+          const memberChange      = microflows.MemberChange.createIn(changeAct);
+          memberChange.attribute  = boolAttr;
+          memberChange.value      = "true";
+          memberChange.type       = microflows.ChangeActionItemType.Set;
+
+          const flow1       = microflows.SequenceFlow.createIn(mf);
+          flow1.origin      = start;
+          flow1.destination = actionAct;
+          const flow2       = microflows.SequenceFlow.createIn(mf);
+          flow2.origin      = actionAct;
+          flow2.destination = end;
+
+          console.log(`  + microflow "${activity.name}" [set ${entityName}.${eventName} = true]`);
           continue;
         }
       }
