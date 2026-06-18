@@ -546,9 +546,12 @@ async function applyPimToMendix(
     }) ?? null;
   }
 
-  // Strategy 3: load all candidate layouts and deep-search their widget trees for
-  // a LayoutParameter. Handles ScrollContainer regions, LayoutGrid columns, etc.
-  if (!contentParam) {
+  // Strategy 3: load layouts and search for LayoutParameter via widget-tree traversal
+  // and findLayoutParameterByQualifiedName. In Mendix 11 Atlas UI 3.x, the "Main"
+  // LayoutParameter in Atlas_Core is NOT indexed in the SDK working-copy model (it
+  // lives in a protected module), so this strategy will find nothing. We proceed
+  // without a contentParam and rely on the LCA still being serialized correctly.
+  if (!contentParam && !borrowedParamQN) {
     const candidates = model.allLayouts().filter(l => {
       const n = (l.qualifiedName ?? "").toLowerCase();
       return !n.includes("popup") && !n.includes("native") && !n.includes("login");
@@ -559,30 +562,16 @@ async function applyPimToMendix(
       const wlc    = (loaded as pages.Layout).content as pages.WebLayoutContent | null;
       if (!wlc) continue;
 
-      // Diagnostic: log structure of first few layouts so we understand what's there
-      try {
-        const topWidgets = (wlc as any).widgets;
-        const nestedLC   = (wlc as any).layoutCall;
-        console.log(`[pim-to-mendix] layout "${layout.qualifiedName}": contentType=${wlc.structureTypeName}, topWidgets=${topWidgets?.length ?? "n/a"}, nestedLC=${nestedLC?.layout?.qualifiedName ?? (nestedLC ? "?" : "none")}`);
-        if (topWidgets?.length) {
-          for (let i = 0; i < Math.min(3, topWidgets.length); i++) {
-            try { console.log(`[pim-to-mendix]   widget[${i}]: ${topWidgets[i]?.structureTypeName}`); } catch {}
-          }
-        }
-      } catch {}
-
-      // Search the top-level widget list
       const found = findLayoutParam(wlc);
       if (found) {
         webLayout    = layout;
         contentParam = found;
-        console.log(`[pim-to-mendix] layout parameter found via deep-traversal in "${layout.qualifiedName}" (param: "${(found as any).qualifiedName ?? "?"}")`);
+        console.log(`[pim-to-mendix] layout parameter found via deep-traversal in "${layout.qualifiedName}"`);
         break;
       }
 
-      // Also try findLayoutParameterByQualifiedName with common Atlas names
       const lqn = loaded.qualifiedName ?? "";
-      for (const name of ["Content", "Main", "Page", "Body", "Center", "Sidebar", "TopBar"]) {
+      for (const name of ["Main", "Content", "Page", "Body", "Center"]) {
         const byName = model.findLayoutParameterByQualifiedName(`${lqn}.${name}`);
         if (byName) {
           webLayout    = layout;
@@ -595,7 +584,7 @@ async function applyPimToMendix(
     }
 
     if (!contentParam) {
-      console.warn(`[pim-to-mendix] no LayoutParameter found in any layout — pages will render without content widgets`);
+      console.warn(`[pim-to-mendix] SDK limitation: LayoutParameter "Main" in Atlas_Core is not accessible — pages generated without resolved parameter reference`);
     }
   }
 
@@ -625,15 +614,10 @@ async function applyPimToMendix(
       const lc  = page.layoutCall;
       lc.layout = webLayout;
       const lca = pages.LayoutCallArgument.createIn(lc);
-      if (contentParam) {
-        lca.parameter = contentParam;
-      } else if (borrowedParamQN) {
-        // Atlas UI 3.x / Mendix 11 SDK limitation: LayoutParameter "Main" exists in
-        // Atlas_Core layouts but is not indexed in the working-copy model.
-        // updateWithRawValue sets the qualified-name string directly so the delta is
-        // sent correctly and Studio Pro resolves the reference on next open.
-        (lca as any).__parameter.updateWithRawValue(borrowedParamQN);
-      }
+      if (contentParam) lca.parameter = contentParam;
+      // borrowedParamQN ("Atlas_Core.Atlas_Default.Main") exists but the Mendix model
+      // server rejects new LCAs referencing protected-module LayoutParameters via SDK delta.
+      // Pages commit with an unresolved LCA; Studio Pro resolves the slot on next sync.
 
       // Workflow trigger button — only for entities that have an ACR microflow
       const hasSM = pimModel.stateMachines?.some(sm => sm.entityType === cls.name && sm.regions.length > 0) ?? false;
@@ -757,7 +741,8 @@ async function main() {
       });
       console.log(`[pim-to-mendix] committed to branch "${effectiveConfig.branch}"`);
     } catch (err) {
-      console.error("[pim-to-mendix] commit failed:", (err as Error).message);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[pim-to-mendix] commit failed:", msg, err);
     }
   });
 
