@@ -625,32 +625,13 @@ async function applyPimToMendix(
         (lca as any).__parameter.updateWithRawValue(borrowedParamQN);
       }
 
-      // DataGrid: shows all instances of this entity in a table.
-      // Provides basic read access in the generated page without requiring DataView context.
-      const dg = pages.DataGrid.createInLayoutCallArgumentUnderWidgets(lca);
-      dg.name = `${cls.name}_dataGrid`;
-      // entityPath lives on the DataSource (EntityPathSource), not on the DataGrid widget itself.
-      const src = pages.GridDatabaseSource.createInEntityWidgetUnderDataSource(dg);
-      src.entityPath = `${moduleName}.${cls.name}`;
-
-      for (const attr of cls.ownedAttributes ?? []) {
-        if (attr.isDerived) continue;
-        const col = pages.GridColumn.createIn(dg);
-        col.name  = `col_${cls.name}_${attr.name}`;
-        const tr  = texts.Translation.createIn(col.caption);
-        tr.languageCode = "en_US";
-        tr.text   = attr.name;
-        // AttributeRef wires the column to the domain model attribute.
-        const iattr = entity.attributes.find(a => a.name === attr.name);
-        if (iattr) {
-          const aRef     = domainmodels.AttributeRef.createInGridColumnUnderAttributeRef(col);
-          aRef.attribute = iattr;  // entity context inferred from DataGrid's entityPath on source
-        }
-      }
+      // NOTE: Mendix 11.7.0 rejects Pages$GridDatabaseSource and Pages$ListViewDatabaseSource
+      // as "ambiguously contained" — the old DataGrid/ListView SDK API is no longer supported.
+      // Mendix 10+ uses DataGrid2/ListView2 (custom widgets) via a different SDK path.
+      // Pages are generated with an empty content slot; drag a DataGrid2 from the Toolbox
+      // in Studio Pro to add data display (two minutes per page, no generation needed).
 
       // The generated ACR_<Entity> microflow and WF_<Entity> workflow remain in the module.
-      // To trigger a workflow from the UI, add a "Start Workflow" button inside a DataView
-      // on this page in Studio Pro (provides the required entity object context).
       const hasSM = pimModel.stateMachines?.some(sm => sm.entityType === cls.name && sm.regions.length > 0) ?? false;
       if (hasSM) {
         console.log(`    ℹ ACR_${cls.name} + WF_${cls.name} generated — add trigger button inside DataView in Studio Pro`);
