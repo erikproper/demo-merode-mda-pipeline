@@ -544,6 +544,13 @@ async function applyPimToMendix(
           ps.page   = page;
         }
 
+        // Fix CE1613: point the profile's home page to our first generated entity page
+        // so that the app has a valid landing page when opened via Studio Pro Play.
+        const firstPage = [...pageMap.values()][0];
+        if (firstPage && profile.homePage) {
+          profile.homePage.page = firstPage;
+        }
+
         console.log(`  + navigation: ${pageMap.size} menu item(s) added`);
       }
     }
