@@ -105,7 +105,8 @@ async function applyPimToMendix(
       if (prop.defaultValue !== undefined && attr.value instanceof domainmodels.StoredValue) {
         (attr.value as domainmodels.StoredValue).defaultValue = prop.defaultValue;
       }
-      console.log(`  + attribute ${cls.name}.${prop.name} : ${prop.type ?? "String"}${prop.defaultValue !== undefined ? ` = ${prop.defaultValue}` : ""}`);
+      const idMark = prop.isID ? " [logical ID]" : "";
+      console.log(`  + attribute ${cls.name}.${prop.name} : ${prop.type ?? "String"}${prop.defaultValue !== undefined ? ` = ${prop.defaultValue}` : ""}${idMark}`);
     }
 
     console.log(`  + entity "${cls.name}"`);

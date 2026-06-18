@@ -107,6 +107,7 @@ export interface Property {
   defaultValue?: string;
   isDerived?: boolean;
   derivationRule?: string;
+  isID?: boolean;
 }
 
 export interface AssociationEnd {

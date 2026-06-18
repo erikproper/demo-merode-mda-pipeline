@@ -99,7 +99,8 @@
         "type":           { "type": "string" },
         "defaultValue":   { "type": "string" },
         "isDerived":      { "type": "boolean" },
-        "derivationRule": { "type": "string" }
+        "derivationRule": { "type": "string" },
+        "isID":           { "type": "boolean" }
       }
     },
     "Association": {

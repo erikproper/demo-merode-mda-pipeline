@@ -57,7 +57,10 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
   // each entity type becomes a class, its attributes become properties (A3, A5)
   const classes = demo.entityTypes.map(et => {
     trace.push({ sourceType: et.isDerived ? "DerivedEntityType" : "EntityType", sourceName: et.name, targetType: "Class", targetName: et.name });
-    const ownedAttributes: Property[] = (et.attributes ?? []).map(a => {
+    // logical identifier — one integer ID per entity type (B6)
+    const idProp: Property = { name: `${et.name}ID`, type: "Integer", isID: true };
+    trace.push({ sourceType: "EntityType", sourceName: et.name, targetType: "Property", targetName: `${et.name}.${et.name}ID` });
+    const ownedAttributes: Property[] = [idProp, ...(et.attributes ?? []).map(a => {
       const isDerived = a.derivationRule !== undefined;
       trace.push({
         sourceType: isDerived ? "DerivedAttributeType" : "AttributeType",
@@ -66,7 +69,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
         targetName: `${et.name}.${a.name}`,
       });
       return { name: a.name, type: a.valueType ?? "String", isDerived, derivationRule: a.derivationRule };
-    });
+    })];
     return { name: et.name, isAbstract: et.isAbstract ?? false, isDerived: et.isDerived ?? false, derivationExpression: et.derivationExpression, ownedAttributes };
   });
 
