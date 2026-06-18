@@ -360,8 +360,11 @@ async function applyPimToMendix(
     acrEnd.relativeMiddlePoint   = { x: 300, y: 0 };
 
     // MicroflowParameterObject: visual canvas element (keeps Studio Pro dropdown populated).
+    // hasVariableNameBeenChanged=true signals to Studio Pro / CE checker that the name
+    // was deliberately set — mirrors what Studio Pro writes when the user confirms the dialog.
     const acrParam   = microflows.MicroflowParameterObject.createIn(acrObjCol);
     acrParam.name    = varName;
+    acrParam.hasVariableNameBeenChanged = true;
     acrParam.relativeMiddlePoint = { x: -80, y: 0 };
     const objType    = datatypes.ObjectType.create(model);
     objType.entity   = entity;
