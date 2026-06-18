@@ -454,24 +454,58 @@ async function applyPimToMendix(
   let webLayout: pages.ILayout | null = null;
   let contentParam: pages.ILayoutParameter | null = null;
 
-  // Strategy 1: scan all non-module pages looking for one with a LayoutCallArgument.
-  console.log(`[pim-to-mendix] all non-module pages: ${model.allPages().filter(p => !(p.qualifiedName ?? "").startsWith(prefix)).map(p => p.qualifiedName).join(", ") || "(none)"}`);
+  // Deep-search helper: traverses all known Mendix widget container types recursively.
+  // Atlas layouts often nest LayoutParameters inside ScrollContainer regions rather
+  // than top-level widget lists, so a shallow .widgets check is not enough.
+  const findLayoutParam = (obj: any, depth = 0): pages.ILayoutParameter | null => {
+    if (!obj || typeof obj !== "object" || depth > 20) return null;
+    if (obj.structureTypeName === "Pages$LayoutParameter") return obj as pages.ILayoutParameter;
+
+    // Lists: widgets, rows, columns, tabPages
+    for (const listKey of ["widgets", "rows", "columns", "tabPages", "items"]) {
+      const list = obj[listKey];
+      if (!list) continue;
+      for (const item of list) {
+        const found = findLayoutParam(item, depth + 1);
+        if (found) return found;
+      }
+    }
+    // ScrollContainer named regions: center, top, bottom, left, right
+    for (const regionKey of ["center", "top", "bottom", "left", "right",
+                              "topRegion", "centerRegion", "bottomRegion",
+                              "leftRegion", "rightRegion",
+                              "firstRegion", "secondRegion"]) {
+      const region = obj[regionKey];
+      if (!region || typeof region !== "object") continue;
+      const found = findLayoutParam(region, depth + 1);
+      if (found) return found;
+    }
+    // Single-widget references
+    for (const childKey of ["leftWidget", "rightWidget", "widget",
+                             "headerWidget", "footerWidget", "content"]) {
+      const child = obj[childKey];
+      if (!child || typeof child !== "object") continue;
+      const found = findLayoutParam(child, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  // Strategy 1: borrow from an existing non-module page that already has a LayoutCallArgument.
   for (const pg of model.allPages()) {
     if ((pg.qualifiedName ?? "").startsWith(prefix)) continue;
     const fp  = await pg.load();
     const arg = fp.layoutCall?.arguments?.[0];
-    const lqn = (fp.layoutCall?.layout as any)?.qualifiedName ?? "?";
-    console.log(`[pim-to-mendix]   page "${pg.qualifiedName}": layout=${lqn}, args=${fp.layoutCall?.arguments?.length ?? 0}`);
     if (arg?.parameter) {
       webLayout    = fp.layoutCall!.layout;
       contentParam = arg.parameter;
-      console.log(`[pim-to-mendix] layout parameter borrowed from "${pg.qualifiedName}" (param: "${(arg.parameter as any)?.qualifiedName ?? "?"}")`);
+      console.log(`[pim-to-mendix] layout parameter borrowed from page "${pg.qualifiedName}"`);
       break;
     }
     if (!webLayout && fp.layoutCall?.layout) webLayout = fp.layoutCall.layout;
   }
 
-  // Strategy 2: no page had arguments — fall back to any non-popup layout
+  // Strategy 2: fall back to any non-popup, non-native layout
   if (!webLayout) {
     webLayout = model.allLayouts().find(l => {
       const n = (l.qualifiedName ?? "").toLowerCase();
@@ -479,33 +513,44 @@ async function applyPimToMendix(
     }) ?? null;
   }
 
-  // Strategy 3: load EVERY non-popup layout and scan it for LayoutParameters.
-  // This finds the correct parameter regardless of which layout has it.
+  // Strategy 3: load all candidate layouts and deep-search their widget trees for
+  // a LayoutParameter. Handles ScrollContainer regions, LayoutGrid columns, etc.
   if (!contentParam) {
-    const layoutsToScan = model.allLayouts().filter(l => {
+    const candidates = model.allLayouts().filter(l => {
       const n = (l.qualifiedName ?? "").toLowerCase();
-      return !n.includes("popup") && !n.includes("native") && !n.includes("login") && !n.includes("_native");
+      return !n.includes("popup") && !n.includes("native") && !n.includes("login");
     });
-    console.log(`[pim-to-mendix] scanning ${layoutsToScan.length} layout(s) for LayoutParameters…`);
 
-    for (const layout of layoutsToScan) {
-      const lqn = layout.qualifiedName ?? "";
-      await layout.load();  // registers all contained LayoutParameters in the model
-      const candidates = ["Content", "Main", "Page", "Body", "Center", "MainContents",
-                          "content", "main", "page", "body", "Sidebar", "TopBar"];
-      for (const name of candidates) {
-        const found = model.findLayoutParameterByQualifiedName(`${lqn}.${name}`);
-        if (found) {
+    for (const layout of candidates) {
+      const loaded = await layout.load();
+      const wlc    = (loaded as pages.Layout).content as pages.WebLayoutContent | null;
+      if (!wlc) continue;
+
+      // Search the top-level widget list
+      const found = findLayoutParam(wlc);
+      if (found) {
+        webLayout    = layout;
+        contentParam = found;
+        console.log(`[pim-to-mendix] layout parameter found via deep-traversal in "${layout.qualifiedName}" (param: "${(found as any).qualifiedName ?? "?"}")`);
+        break;
+      }
+
+      // Also try findLayoutParameterByQualifiedName with common Atlas names
+      const lqn = loaded.qualifiedName ?? "";
+      for (const name of ["Content", "Main", "Page", "Body", "Center", "Sidebar", "TopBar"]) {
+        const byName = model.findLayoutParameterByQualifiedName(`${lqn}.${name}`);
+        if (byName) {
           webLayout    = layout;
-          contentParam = found;
-          console.log(`[pim-to-mendix] layout parameter found: "${lqn}.${name}"`);
+          contentParam = byName;
+          console.log(`[pim-to-mendix] layout parameter found by name "${lqn}.${name}"`);
           break;
         }
       }
       if (contentParam) break;
     }
+
     if (!contentParam) {
-      console.warn(`[pim-to-mendix] no LayoutParameter found in any layout — pages will render empty`);
+      console.warn(`[pim-to-mendix] no LayoutParameter found in any layout — pages will render without content widgets`);
     }
   }
 
