@@ -495,16 +495,36 @@ async function applyPimToMendix(
     return null;
   };
 
-  // Strategy 1: borrow from an existing non-module page that already has a LayoutCallArgument.
+  // Strategy 1: borrow layout + LayoutParameter from an existing non-module page.
+  // In Mendix 11 Atlas UI 3.x the resolved parameter object is often null while
+  // parameterQualifiedName (the raw string) is still set — check both.
   for (const pg of model.allPages()) {
     if ((pg.qualifiedName ?? "").startsWith(prefix)) continue;
     const fp  = await pg.load();
-    const arg = fp.layoutCall?.arguments?.[0];
-    if (arg?.parameter) {
+    const args = fp.layoutCall?.arguments;
+    if (!args?.length) {
+      if (!webLayout && fp.layoutCall?.layout) webLayout = fp.layoutCall.layout;
+      continue;
+    }
+    const arg = args[0];
+    const pqn = (arg as any).parameterQualifiedName as string | undefined;
+    console.log(`[pim-to-mendix] page "${pg.qualifiedName}": layout="${fp.layoutCall?.layout?.qualifiedName ?? "?"}", args=${args.length}, paramQN="${pqn ?? "null"}"`);
+
+    if (arg.parameter) {
       webLayout    = fp.layoutCall!.layout;
       contentParam = arg.parameter;
-      console.log(`[pim-to-mendix] layout parameter borrowed from page "${pg.qualifiedName}"`);
+      console.log(`[pim-to-mendix] layout parameter borrowed (resolved) from "${pg.qualifiedName}"`);
       break;
+    }
+    if (pqn) {
+      if (!webLayout) webLayout = fp.layoutCall!.layout;
+      const found = model.findLayoutParameterByQualifiedName(pqn);
+      if (found) {
+        contentParam = found;
+        console.log(`[pim-to-mendix] layout parameter found via paramQN "${pqn}" from "${pg.qualifiedName}"`);
+        break;
+      }
+      console.log(`[pim-to-mendix] paramQN="${pqn}" — not resolvable in model (Atlas UI 3.x: will create arg without parameter)`);
     }
     if (!webLayout && fp.layoutCall?.layout) webLayout = fp.layoutCall.layout;
   }
@@ -590,27 +610,26 @@ async function applyPimToMendix(
         tr.text = `${cls.name} Overview`;
       }
 
-      // Layout
-      const lc = page.layoutCall;
+      // Layout — always create a LayoutCallArgument.
+      // In Mendix 11 Atlas UI 3.x, the layout parameter reference may be null;
+      // the runtime still renders arg.widgets in the default content slot.
+      const lc  = page.layoutCall;
       lc.layout = webLayout;
+      const lca = pages.LayoutCallArgument.createIn(lc);
+      if (contentParam) lca.parameter = contentParam;
 
-      if (contentParam) {
-        const lca = pages.LayoutCallArgument.createIn(lc);
-        lca.parameter = contentParam;
-
-        // Workflow trigger button — only for entities that have an ACR microflow
-        const hasSM = pimModel.stateMachines?.some(sm => sm.entityType === cls.name && sm.regions.length > 0) ?? false;
-        const acrMf = hasSM ? microflowMap.get(`ACR_${cls.name}`) : undefined;
-        if (acrMf) {
-          const btn  = pages.ActionButton.createInLayoutCallArgumentUnderWidgets(lca);
-          const ct   = texts.Text.createInClientTemplateUnderTemplate(btn.caption);
-          const tr   = texts.Translation.createIn(ct);
-          tr.languageCode = "en_US";
-          tr.text = `Start ${cls.name} Workflow`;
-          const mca = pages.MicroflowClientAction.createInActionButtonUnderAction(btn);
-          const ms  = pages.MicroflowSettings.createInMicroflowClientActionUnderMicroflowSettings(mca);
-          ms.microflow = acrMf;
-        }
+      // Workflow trigger button — only for entities that have an ACR microflow
+      const hasSM = pimModel.stateMachines?.some(sm => sm.entityType === cls.name && sm.regions.length > 0) ?? false;
+      const acrMf = hasSM ? microflowMap.get(`ACR_${cls.name}`) : undefined;
+      if (acrMf) {
+        const btn  = pages.ActionButton.createInLayoutCallArgumentUnderWidgets(lca);
+        const ct   = texts.Text.createInClientTemplateUnderTemplate(btn.caption);
+        const tr   = texts.Translation.createIn(ct);
+        tr.languageCode = "en_US";
+        tr.text = `Start ${cls.name} Workflow`;
+        const mca = pages.MicroflowClientAction.createInActionButtonUnderAction(btn);
+        const ms  = pages.MicroflowSettings.createInMicroflowClientActionUnderMicroflowSettings(mca);
+        ms.microflow = acrMf;
       }
 
       pageMap.set(cls.name, page);
