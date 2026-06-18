@@ -1,7 +1,7 @@
 // pim-to-mendix-agent
 // Listens on the bus for pimUML models and writes them into a Mendix app via the Platform SDK.
 
-import { IModel, domainmodels, enumerations, microflows, workflows, datatypes, pages, navigation, menus, texts, customwidgets } from "mendixmodelsdk";
+import { IModel, domainmodels, enumerations, microflows, workflows, datatypes, pages, navigation, menus, texts } from "mendixmodelsdk";
 import { MendixPlatformClient, OnlineWorkingCopy } from "mendixplatformsdk";
 import { BusClient } from "./bus-client";
 import type { PimModel } from "./schemas/types";
@@ -589,64 +589,6 @@ async function applyPimToMendix(
     }
   }
 
-  // ── DataGrid2 Discovery ───────────────────────────────────────────────────
-  // Scan existing pages for a DataGrid2 custom widget to get its exact widgetId
-  // and property-key names. Falls back to known defaults if nothing is found.
-  // Similar to the LayoutParameter borrow approach.
-
-  const findCustomWidget = (obj: any, depth = 0): customwidgets.CustomWidget | null => {
-    if (!obj || typeof obj !== "object" || depth > 15) return null;
-    if (obj.structureTypeName === "Pages$CustomWidget") return obj as customwidgets.CustomWidget;
-    for (const k of ["widgets", "rows", "columns", "tabPages", "items"]) {
-      const list = safeGet(obj, k);
-      if (!list) continue;
-      for (const item of list) {
-        const found = findCustomWidget(item, depth + 1);
-        if (found) return found;
-      }
-    }
-    for (const k of ["center","top","bottom","left","right",
-                      "topRegion","centerRegion","bottomRegion","leftRegion","rightRegion"]) {
-      const region = safeGet(obj, k);
-      if (!region || typeof region !== "object") continue;
-      const found = findCustomWidget(region, depth + 1);
-      if (found) return found;
-    }
-    return null;
-  };
-
-  // Discovery vars kept for future DataGrid2 re-introduction
-  let dg2WidgetId      = "com.mendix.widgets.web.datagrid.DataGrid2";
-  let dg2DatasourceKey = "datasource";
-  let dg2ColumnsKey    = "columns";
-
-  for (const pg of model.allPages()) {
-    if ((pg.qualifiedName ?? "").startsWith(prefix)) continue;
-    let fp2: pages.Page;
-    try { fp2 = await pg.load(); } catch { continue; }
-    for (const arg of (fp2.layoutCall?.arguments ?? [])) {
-      const cw = findCustomWidget(arg);
-      if (!cw) continue;
-      const wid = cw.type?.widgetId ?? "";
-      if (!wid) continue;
-      console.log(`[pim-to-mendix] existing widget: "${wid}" in "${pg.qualifiedName}"`);
-      if (!wid.toLowerCase().includes("datagrid")) continue;
-      dg2WidgetId = wid;
-      // Inspect property keys from the existing widget's objectType schema
-      for (const pt of (cw.type?.objectType?.propertyTypes ?? [])) {
-        console.log(`  discovered prop key="${pt.key}" type=${pt.valueType?.type ?? "?"}`);
-        const k = pt.key.toLowerCase();
-        if (k === "datasource") dg2DatasourceKey = pt.key;
-        if (k === "columns")    dg2ColumnsKey    = pt.key;
-      }
-      console.log(`[pim-to-mendix] DataGrid2 discovered: widgetId="${dg2WidgetId}"`);
-      break;
-    }
-    // Stop scanning once we found a DataGrid widget
-    if (dg2WidgetId !== "com.mendix.widgets.web.datagrid.DataGrid2" ||
-        (model.allPages().filter(p => !(p.qualifiedName ?? "").startsWith(prefix)).length === 0)) break;
-  }
-  console.log(`[pim-to-mendix] DataGrid2 config: widgetId="${dg2WidgetId}" datasource="${dg2DatasourceKey}" columns="${dg2ColumnsKey}"`);
 
   if (!webLayout) {
     console.warn("[pim-to-mendix] no suitable layout found — skipping page generation");
@@ -682,83 +624,6 @@ async function applyPimToMendix(
       // stores the reference and Studio Pro resolves it on next open.
       if (borrowedParamQN) {
         (lca as any).__parameter.updateWithRawValue(borrowedParamQN);
-      }
-
-      // DataGrid2 — pluggable widget from the "Data Widgets" Marketplace package.
-      // Schema = CustomWidgetType + WidgetObjectType + WidgetPropertyType + WidgetValueType
-      // Instance = WidgetObject + WidgetProperty + WidgetValue (type ref must be non-null)
-      {
-        const cw  = customwidgets.CustomWidget.createInLayoutCallArgumentUnderWidgets(lca);
-        cw.name   = `${cls.name}_dataGrid2`;
-
-        const cwt              = customwidgets.CustomWidgetType.createIn(cw);
-        cwt.widgetId           = dg2WidgetId;
-        cwt.name               = "DataGrid2";
-        cwt.pluginWidget       = true;
-        cwt.needsEntityContext = false;
-
-        const cwot = customwidgets.WidgetObjectType.createInCustomWidgetTypeUnderObjectType(cwt);
-
-        const dsPT = customwidgets.WidgetPropertyType.createIn(cwot);
-        dsPT.key   = dg2DatasourceKey;
-        const dsVT = customwidgets.WidgetValueType.createIn(dsPT);
-        dsVT.type  = customwidgets.WidgetValueTypeEnum.DataSource;
-
-        const colsPT  = customwidgets.WidgetPropertyType.createIn(cwot);
-        colsPT.key    = dg2ColumnsKey;
-        const colsVT  = customwidgets.WidgetValueType.createIn(colsPT);
-        colsVT.type   = customwidgets.WidgetValueTypeEnum.Object;
-        colsVT.isList = true;
-
-        const colOT    = customwidgets.WidgetObjectType.createInWidgetValueTypeUnderObjectType(colsVT);
-        const attrPT   = customwidgets.WidgetPropertyType.createIn(colOT);
-        attrPT.key     = "attribute";
-        const attrVT   = customwidgets.WidgetValueType.createIn(attrPT);
-        attrVT.type    = customwidgets.WidgetValueTypeEnum.Attribute;
-        const headerPT = customwidgets.WidgetPropertyType.createIn(colOT);
-        headerPT.key   = "header";
-        const headerVT = customwidgets.WidgetValueType.createIn(headerPT);
-        headerVT.type  = customwidgets.WidgetValueTypeEnum.TextTemplate;
-
-        const wo = customwidgets.WidgetObject.createInCustomWidgetUnderObject(cw);
-
-        const dsProp = customwidgets.WidgetProperty.createIn(wo);
-        dsProp.type  = dsPT;
-        const dsWv   = customwidgets.WidgetValue.createIn(dsProp);
-        dsWv.type    = dsVT;
-        const eRef   = domainmodels.DirectEntityRef.createInWidgetValueUnderEntityRef(dsWv);
-        eRef.entity  = entity;
-
-        const colsProp = customwidgets.WidgetProperty.createIn(wo);
-        colsProp.type  = colsPT;
-        const colsWv   = customwidgets.WidgetValue.createIn(colsProp);
-        colsWv.type    = colsVT;
-
-        for (const attr of cls.ownedAttributes ?? []) {
-          if (attr.isDerived) continue;
-          const colObj   = customwidgets.WidgetObject.createInWidgetValueUnderObjects(colsWv);
-
-          const attrProp = customwidgets.WidgetProperty.createIn(colObj);
-          attrProp.type  = attrPT;
-          const attrWv   = customwidgets.WidgetValue.createIn(attrProp);
-          attrWv.type    = attrVT;
-          const iattr    = entity.attributes.find(a => a.name === attr.name);
-          if (iattr) {
-            const aRef     = domainmodels.AttributeRef.createInWidgetValueUnderAttributeRef(attrWv);
-            aRef.attribute = iattr;
-          }
-
-          const headerProp = customwidgets.WidgetProperty.createIn(colObj);
-          headerProp.type  = headerPT;
-          const headerWv   = customwidgets.WidgetValue.createIn(headerProp);
-          headerWv.type    = headerVT;
-          const ct         = pages.ClientTemplate.createInWidgetValueUnderTextTemplate(headerWv);
-          const htxt       = texts.Text.createInClientTemplateUnderTemplate(ct);
-          const htr        = texts.Translation.createIn(htxt);
-          htr.languageCode = "en_US";
-          htr.text         = attr.name;
-        }
-        console.log(`    + DataGrid2 on "${page.name}" (${cls.ownedAttributes?.filter(a => !a.isDerived).length ?? 0} cols)`);
       }
 
       // The generated ACR_<Entity> microflow and WF_<Entity> workflow remain in the module.
