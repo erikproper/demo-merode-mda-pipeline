@@ -2,7 +2,7 @@
 // Listens on the bus for DEMO Fact Models and transforms them into pimUML models.
 
 import { BusClient } from "./bus-client";
-import type { DemoModel, PimModel, Property } from "./schemas/types";
+import type { DemoModel, PimModel, PimStateMachine, PimRegion, PimActivity, Property } from "./schemas/types";
 import { getBusConfig, makeValidator, assertValid, extractMeta, attachMeta, TraceEntry } from "./agent-utils";
 
 const config = getBusConfig("demo-to-pim-agent");
@@ -160,7 +160,56 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     ...eventTriggeredAssociations,
   ];
 
-  return { pim: { name: `${demo.name} – pimUML`, enumerations, dataTypes, associationClasses, classes, associations, generalizations }, trace };
+  // state machines — one per entity type, one orthogonal region per event type (A3, A4, A6, A7, A9)
+  const stateMachines: PimStateMachine[] = demo.entityTypes.map(et => {
+    const ownEvents = (demo.eventTypes ?? []).filter(ev => ev.entityType === et.name);
+
+    // event-triggered specializations whose parent is this entity type → entry activities in true state
+    const triggeredChildren = demo.entityTypes.filter(child => child.parent === et.name && child.triggerEventType);
+
+    const regions: PimRegion[] = ownEvents.map(ev => {
+      const falseState = `${ev.name}_false`;
+      const trueState  = `${ev.name}_true`;
+
+      // A7: if a child specialization is triggered by this event, add entry activity
+      const childForEvent = triggeredChildren.find(c => c.triggerEventType === ev.name);
+      const entryActivity = childForEvent ? `Create${childForEvent.name}` : undefined;
+
+      trace.push({ sourceType: "EventType", sourceName: ev.name, targetType: "Region", targetName: `${et.name}.${ev.name}` });
+
+      return {
+        name: ev.name,
+        forEvent: ev.name,
+        states: [
+          { name: `${ev.name}_initial`, kind: "initial" },
+          { name: falseState, kind: "false" },
+          { name: trueState, kind: "true", ...(entryActivity ? { entryActivity } : {}) },
+        ],
+        transitions: [
+          { from: `${ev.name}_initial`, to: falseState },
+          {
+            from: falseState,
+            to: trueState,
+            trigger: ev.name,
+            alfExpression: `self.${ev.name} = true`,
+          },
+        ],
+      };
+    });
+
+    // activities: Set<entity>.<event> for each event (A6), Create<child> for specializations (A7, A9)
+    const activities: PimActivity[] = [
+      ...ownEvents.map(ev => ({ name: `Set${et.name}_${ev.name}`, kind: "set" as const, targetType: et.name })),
+      ...triggeredChildren.map(c  => ({ name: `Create${c.name}`, kind: "create" as const, targetType: c.name })),
+      ...demo.entityTypes.filter(c => c.isDerived && c.parent === et.name).map(c => ({ name: `Create${c.name}`, kind: "create" as const, targetType: c.name })),
+    ];
+
+    trace.push({ sourceType: et.isDerived ? "DerivedEntityType" : "EntityType", sourceName: et.name, targetType: "StateMachine", targetName: `SM_${et.name}` });
+
+    return { name: `SM_${et.name}`, entityType: et.name, regions, ...(activities.length > 0 ? { activities } : {}) };
+  });
+
+  return { pim: { name: `${demo.name} – pimUML`, enumerations, dataTypes, associationClasses, classes, associations, generalizations, stateMachines }, trace };
 }
 
 async function main() {
