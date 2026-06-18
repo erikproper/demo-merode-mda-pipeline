@@ -318,39 +318,18 @@ async function applyPimToMendix(
 
     // B11: ACR Microflow that triggers the Workflow
     //
-    // MicroflowParameter (the logical scope variable checked by CE0049) is not exposed
-    // in the public SDK TypeScript types. We inject it by intercepting the CREATE_UNIT_TREE
-    // delta for this microflow and adding a "parameters" entry directly to the unitTree JSON
-    // before it reaches the Mendix model server.
-    const { randomUUID } = require("crypto") as typeof import("crypto");
-    const varName    = entityName.charAt(0).toLowerCase() + entityName.slice(1);
-    const mfParamId  = randomUUID();
-    const mfTypeId   = randomUUID();
-    const entityQName = entity.qualifiedName;
+    // KNOWN LIMITATION (CE0049 – "No variable name specified"):
+    // The Mendix SDK does not expose MicroflowParameter (the logical scope variable
+    // that the CE checker requires for WorkflowCallAction.workflowContextVariable).
+    // MicroflowParameterObject (the visual canvas element) is created and populated
+    // correctly so the Studio Pro dropdown works, but the CE0049 error persists until
+    // the user opens the WorkflowCallAction dialog in Studio Pro and clicks OK once.
+    // All SDK-level workarounds attempted (CREATE_ELEMENT_TREE delta injection,
+    // CREATE_UNIT_TREE interception, hasVariableNameBeenChanged flag) were rejected
+    // or silently ignored by the Mendix model server.
+    const varName = entityName.charAt(0).toLowerCase() + entityName.slice(1);
 
-    // Install a one-shot interceptor on _sendDelta.
-    const internalModel  = model as any;
-    const originalSend   = internalModel._sendDelta.bind(internalModel);
-    let   interceptorFired = false;
-    internalModel._sendDelta = function(delta: any) {
-      if (!interceptorFired && delta.deltaType === "CREATE_UNIT_TREE" && delta.contentType === "Microflows$Microflow") {
-        interceptorFired = true;
-        delta.unitTree.parameters = [{
-          $Type:         "Microflows$MicroflowParameter",
-          $ID:           mfParamId,
-          name:          varName,
-          parameterType: {
-            $Type:  "DataTypes$ObjectType",
-            $ID:    mfTypeId,
-            entity: entityQName,
-          },
-        }];
-      }
-      originalSend(delta);
-    };
-
-    const acrMf  = microflows.Microflow.createIn(mxModule);  // interceptor fires here
-    internalModel._sendDelta = originalSend;                  // restore immediately after
+    const acrMf  = microflows.Microflow.createIn(mxModule);
     acrMf.name   = `ACR_${entityName}`;
 
     const acrObjCol  = acrMf.objectCollection;
@@ -359,12 +338,10 @@ async function applyPimToMendix(
     acrStart.relativeMiddlePoint = { x: 0,   y: 0 };
     acrEnd.relativeMiddlePoint   = { x: 300, y: 0 };
 
-    // MicroflowParameterObject: visual canvas element (keeps Studio Pro dropdown populated).
-    // hasVariableNameBeenChanged=true signals to Studio Pro / CE checker that the name
-    // was deliberately set — mirrors what Studio Pro writes when the user confirms the dialog.
+    // MicroflowParameterObject: visual canvas element — populates the Object dropdown
+    // in the WorkflowCallAction dialog so the user can confirm the selection manually.
     const acrParam   = microflows.MicroflowParameterObject.createIn(acrObjCol);
     acrParam.name    = varName;
-    acrParam.hasVariableNameBeenChanged = true;
     acrParam.relativeMiddlePoint = { x: -80, y: 0 };
     const objType    = datatypes.ObjectType.create(model);
     objType.entity   = entity;
