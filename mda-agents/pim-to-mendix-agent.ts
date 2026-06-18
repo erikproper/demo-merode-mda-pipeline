@@ -454,23 +454,24 @@ async function applyPimToMendix(
   let webLayout: pages.ILayout | null = null;
   let contentParam: pages.ILayoutParameter | null = null;
 
-  // Strategy 1: scan all non-module pages and take the first one that has a LayoutCallArgument.
-  // Load each page sequentially until we find one with arguments — avoids loading every page upfront.
+  // Strategy 1: scan all non-module pages looking for one with a LayoutCallArgument.
+  console.log(`[pim-to-mendix] all non-module pages: ${model.allPages().filter(p => !(p.qualifiedName ?? "").startsWith(prefix)).map(p => p.qualifiedName).join(", ") || "(none)"}`);
   for (const pg of model.allPages()) {
     if ((pg.qualifiedName ?? "").startsWith(prefix)) continue;
     const fp  = await pg.load();
     const arg = fp.layoutCall?.arguments?.[0];
+    const lqn = (fp.layoutCall?.layout as any)?.qualifiedName ?? "?";
+    console.log(`[pim-to-mendix]   page "${pg.qualifiedName}": layout=${lqn}, args=${fp.layoutCall?.arguments?.length ?? 0}`);
     if (arg?.parameter) {
       webLayout    = fp.layoutCall!.layout;
       contentParam = arg.parameter;
-      console.log(`[pim-to-mendix] layout parameter borrowed from "${pg.qualifiedName}" (layout: ${(fp.layoutCall?.layout as any)?.qualifiedName ?? "?"})`);
+      console.log(`[pim-to-mendix] layout parameter borrowed from "${pg.qualifiedName}" (param: "${(arg.parameter as any)?.qualifiedName ?? "?"}")`);
       break;
     }
-    // Even if no argument, record the layout so strategy 2 has something to fall back on
     if (!webLayout && fp.layoutCall?.layout) webLayout = fp.layoutCall.layout;
   }
 
-  // Strategy 2: if no page had arguments, fall back to any non-popup layout
+  // Strategy 2: no page had arguments — fall back to any non-popup layout
   if (!webLayout) {
     webLayout = model.allLayouts().find(l => {
       const n = (l.qualifiedName ?? "").toLowerCase();
@@ -478,43 +479,33 @@ async function applyPimToMendix(
     }) ?? null;
   }
 
-  // Strategy 3: if we have a layout but still no parameter, try common Atlas UI slot names via
-  // model.findLayoutParameterByQualifiedName("<LayoutQN>.<name>") — requires the layout to be loaded first.
-  if (webLayout && !contentParam) {
-    const loadedLayout = await webLayout.load();
-    const layoutQN     = loadedLayout.qualifiedName ?? "";
-    const candidates   = ["Content", "Main", "Page", "Body", "Center", "MainContents",
-                          "content", "main", "page", "body", "Sidebar", "TopBar", "Header", "Footer"];
-    for (const name of candidates) {
-      const found = model.findLayoutParameterByQualifiedName(`${layoutQN}.${name}`);
-      if (found) {
-        contentParam = found;
-        console.log(`[pim-to-mendix] layout "${layoutQN}", content parameter "${name}"`);
-        break;
-      }
-    }
+  // Strategy 3: load EVERY non-popup layout and scan it for LayoutParameters.
+  // This finds the correct parameter regardless of which layout has it.
+  if (!contentParam) {
+    const layoutsToScan = model.allLayouts().filter(l => {
+      const n = (l.qualifiedName ?? "").toLowerCase();
+      return !n.includes("popup") && !n.includes("native") && !n.includes("login") && !n.includes("_native");
+    });
+    console.log(`[pim-to-mendix] scanning ${layoutsToScan.length} layout(s) for LayoutParameters…`);
 
-    // Strategy 4: walk the layout's content widget tree to find any LayoutParameter
-    if (!contentParam && (loadedLayout as pages.Layout).content) {
-      const wlc = (loadedLayout as pages.Layout).content;
-      const findInWidgets = (wlist: Iterable<pages.Widget>): pages.ILayoutParameter | null => {
-        for (const w of wlist) {
-          if (w.structureTypeName === "Pages$LayoutParameter") return w as unknown as pages.ILayoutParameter;
-          const nested = (w as any).widgets as pages.Widget[] | undefined;
-          if (nested?.length) {
-            const found = findInWidgets(nested);
-            if (found) return found;
-          }
+    for (const layout of layoutsToScan) {
+      const lqn = layout.qualifiedName ?? "";
+      await layout.load();  // registers all contained LayoutParameters in the model
+      const candidates = ["Content", "Main", "Page", "Body", "Center", "MainContents",
+                          "content", "main", "page", "body", "Sidebar", "TopBar"];
+      for (const name of candidates) {
+        const found = model.findLayoutParameterByQualifiedName(`${lqn}.${name}`);
+        if (found) {
+          webLayout    = layout;
+          contentParam = found;
+          console.log(`[pim-to-mendix] layout parameter found: "${lqn}.${name}"`);
+          break;
         }
-        return null;
-      };
-      const wlcWidgets = (wlc as pages.WebLayoutContent).widgets;
-      if (wlcWidgets?.length) contentParam = findInWidgets(wlcWidgets);
-      if (contentParam) console.log(`[pim-to-mendix] layout parameter found by widget-tree traversal: "${(contentParam as any).qualifiedName ?? "?"}"`);
+      }
+      if (contentParam) break;
     }
-
     if (!contentParam) {
-      console.warn(`[pim-to-mendix] no content parameter found for "${layoutQN}" (tried: ${candidates.join(", ")}) — pages will render empty`);
+      console.warn(`[pim-to-mendix] no LayoutParameter found in any layout — pages will render empty`);
     }
   }
 
