@@ -293,7 +293,7 @@ async function applyPimToMendix(
 
     // B23/B24: one WaitForNotification + CallMicroflowTask(Set) per region, plus CallMicroflowTask(Create) for entry activities
     for (const region of sm.regions) {
-      const waitAct     = workflows.WaitForNotificationActivity.createIn(flow);
+      const waitAct     = workflows.WaitForNotificationActivity.createInFlowUnderActivities(flow);
       waitAct.caption   = `Wait: ${region.forEvent}`;
       const waitLine    = workflows.FlowLine.createIn(wfMeta);
       waitLine.origin      = prevAct;
@@ -303,7 +303,7 @@ async function applyPimToMendix(
       const setMfName = `Set${entityName}_${region.forEvent}`;
       const setMf     = microflowMap.get(setMfName);
       if (setMf) {
-        const callSetTask        = workflows.CallMicroflowTask.createIn(flow);
+        const callSetTask        = workflows.CallMicroflowTask.createInFlowUnderActivities(flow);
         callSetTask.caption      = `Call: ${setMfName}`;
         callSetTask.microflow    = setMf;
         const callSetLine        = workflows.FlowLine.createIn(wfMeta);
@@ -317,7 +317,7 @@ async function applyPimToMendix(
       if (trueState?.entryActivity) {
         const createMf = microflowMap.get(trueState.entryActivity);
         if (createMf) {
-          const callCreateTask       = workflows.CallMicroflowTask.createIn(flow);
+          const callCreateTask       = workflows.CallMicroflowTask.createInFlowUnderActivities(flow);
           callCreateTask.caption     = `Call: ${trueState.entryActivity}`;
           callCreateTask.microflow   = createMf;
           const callCreateLine       = workflows.FlowLine.createIn(wfMeta);
@@ -328,7 +328,7 @@ async function applyPimToMendix(
       }
     }
 
-    const endAct    = workflows.EndWorkflowActivity.createIn(flow);
+    const endAct    = workflows.EndWorkflowActivity.createInFlowUnderActivities(flow);
     endAct.caption  = "End";
     const endLine   = workflows.FlowLine.createIn(wfMeta);
     endLine.origin      = prevAct;
