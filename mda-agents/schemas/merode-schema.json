@@ -30,6 +30,12 @@
         "attributes": {
           "type": "array",
           "items": { "$ref": "#/$defs/Attribute" }
+        },
+        "lifecycleStates": {
+          "description": "Ordered named lifecycle states (M5). First = entered by C-event, last = left by E-event.",
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
         }
       }
     },
@@ -65,7 +71,20 @@
       "additionalProperties": false,
       "properties": {
         "name":       { "type": "string" },
-        "objectType": { "type": "string" }
+        "objectType": { "type": "string" },
+        "role": {
+          "description": "C = creating, M = modifying, E = ending (Snoeck 2014, §3).",
+          "type": "string",
+          "enum": ["C", "M", "E"]
+        },
+        "fromState": {
+          "description": "For M-events: source lifecycle state of the transition.",
+          "type": "string"
+        },
+        "toState": {
+          "description": "For M-events: target lifecycle state of the transition.",
+          "type": "string"
+        }
       }
     }
   }

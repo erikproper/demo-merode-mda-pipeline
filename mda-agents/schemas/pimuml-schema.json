@@ -154,7 +154,7 @@
     },
     "Region": {
       "type": "object",
-      "required": ["name", "forEvent", "states", "transitions"],
+      "required": ["name", "states", "transitions"],
       "additionalProperties": false,
       "properties": {
         "name":        { "type": "string" },
@@ -169,7 +169,7 @@
       "additionalProperties": false,
       "properties": {
         "name":          { "type": "string" },
-        "kind":          { "type": "string", "enum": ["initial", "false", "true"] },
+        "kind":          { "type": "string", "enum": ["initial", "false", "true", "simple", "final"] },
         "entryActivity": { "type": "string" }
       }
     },
@@ -190,7 +190,7 @@
       "additionalProperties": false,
       "properties": {
         "name":       { "type": "string" },
-        "kind":       { "type": "string", "enum": ["set", "create"] },
+        "kind":       { "type": "string", "enum": ["set", "create", "end"] },
         "targetType": { "type": "string" }
       }
     }

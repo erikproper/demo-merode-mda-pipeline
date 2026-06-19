@@ -6,19 +6,22 @@
       "attributes": [
         { "name": "startingDay", "type": "String" },
         { "name": "endingDay",   "type": "String" }
-      ]
+      ],
+      "lifecycleStates": ["active"]
     },
     {
       "name": "Car",
       "attributes": [
         { "name": "licensePlate", "type": "String" }
-      ]
+      ],
+      "lifecycleStates": ["registered"]
     },
     {
       "name": "Person",
       "attributes": [
         { "name": "name", "type": "String" }
-      ]
+      ],
+      "lifecycleStates": ["registered"]
     }
   ],
   "existenceDependencies": [
@@ -38,9 +41,9 @@
     }
   ],
   "businessEventTypes": [
-    { "name": "startRental",    "objectType": "Rental" },
-    { "name": "completeRental", "objectType": "Rental" },
-    { "name": "registerCar",    "objectType": "Car"    },
-    { "name": "registerPerson", "objectType": "Person" }
+    { "name": "startRental",    "objectType": "Rental", "role": "C" },
+    { "name": "completeRental", "objectType": "Rental", "role": "E" },
+    { "name": "registerCar",    "objectType": "Car",    "role": "C" },
+    { "name": "registerPerson", "objectType": "Person", "role": "C" }
   ]
 }
