@@ -61,6 +61,7 @@ export interface MerodeAttribute {
 export interface MerodeObjectType {
   name: string;
   attributes?: MerodeAttribute[];
+  lifecycleStates?: string[];
 }
 
 export interface MerodeExistenceDependency {
@@ -74,6 +75,9 @@ export interface MerodeExistenceDependency {
 export interface MerodeBusinessEventType {
   name: string;
   objectType: string;
+  role?: "C" | "M" | "E";
+  fromState?: string;
+  toState?: string;
 }
 
 export interface MerodeModel {
@@ -141,7 +145,7 @@ export interface PimClass {
 
 export interface PimState {
   name: string;
-  kind: "initial" | "false" | "true";
+  kind: "initial" | "false" | "true" | "simple" | "final";
   entryActivity?: string;
 }
 
@@ -154,14 +158,14 @@ export interface PimTransition {
 
 export interface PimRegion {
   name: string;
-  forEvent: string;
+  forEvent?: string;
   states: PimState[];
   transitions: PimTransition[];
 }
 
 export interface PimActivity {
   name: string;
-  kind: "set" | "create";
+  kind: "set" | "create" | "end";
   targetType?: string;
 }
 
