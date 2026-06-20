@@ -4,6 +4,8 @@
 
 # ── Claude AI / IDE context ───────────────────────────────────────────────────
 .claude/
+CLAUDE.md
+1MToken.md
 
 # ── Secrets & local environment ──────────────────────────────────────────────
 # Never commit credentials — use .env.example as template
