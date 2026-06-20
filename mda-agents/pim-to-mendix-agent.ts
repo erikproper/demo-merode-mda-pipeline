@@ -41,6 +41,10 @@ function makeAttributeType(
   }
 }
 
+function isMerodeFSM(sm: PimModel["stateMachines"] extends Array<infer S> ? S : never): boolean {
+  return sm.regions.length > 0 && sm.regions.every(r => !r.forEvent);
+}
+
 async function applyPimToMendix(
   pimModel:    PimModel,
   workingCopy: OnlineWorkingCopy,
@@ -188,7 +192,35 @@ async function applyPimToMendix(
     console.log(`  + ${kind} "${assoc.name}": ${parentEnd.type} → ${childEnd.type}${note}`);
   }
 
-  // activity microflows — one per state machine activity (B13/B14/B15/B22)
+  // B13: for each MERODE sequential FSM, generate <Entity>_Status enum + status attribute
+  for (const sm of pimModel.stateMachines ?? []) {
+    if (!isMerodeFSM(sm)) continue;
+    const entity = entityMap.get(sm.entityType);
+    if (!entity) continue;
+
+    const lcStates = sm.regions[0].states.filter(s => s.kind === "simple").map(s => s.name);
+    if (lcStates.length === 0) continue;
+
+    const statusEnumName = `${sm.entityType}_Status`;
+    const statusEnum = enumerations.Enumeration.createIn(mxModule);
+    statusEnum.name  = statusEnumName;
+    for (const state of lcStates) {
+      const v = enumerations.EnumerationValue.createIn(statusEnum);
+      v.name = state;
+    }
+    enumMap.set(statusEnumName, statusEnum);
+
+    const statusAttr = domainmodels.Attribute.createIn(entity);
+    statusAttr.name  = "status";
+    const enumAttrType = domainmodels.EnumerationAttributeType.create(model);
+    enumAttrType.enumeration = statusEnum;
+    statusAttr.type  = enumAttrType;
+    attributeMap.set(`${sm.entityType}.status`, statusAttr);
+
+    console.log(`  + ${statusEnumName} [${lcStates.join(", ")}] + status attribute on ${sm.entityType}`);
+  }
+
+  // activity microflows — one per state machine activity
   const microflowMap = new Map<string, microflows.Microflow>();
   for (const sm of pimModel.stateMachines ?? []) {
     for (const activity of sm.activities ?? []) {
@@ -203,8 +235,37 @@ async function applyPimToMendix(
       start.relativeMiddlePoint = { x: 0,   y: 0 };
       end.relativeMiddlePoint   = { x: 200, y: 0 };
 
-      // B20+B21+B18+B19: create-kind → full Create microflow body
-      // CreateObjectAction → CreateVariableAction(parentID) → ChangeObjectAction(childID) → ChangeObjectAction(assoc link)
+      // B14: MERODE create — entity creates itself, sets initial lifecycle status
+      if (activity.kind === "create" && activity.targetType && isMerodeFSM(sm)
+          && activity.targetType === sm.entityType) {
+        const entityName   = activity.targetType;
+        const targetEntity = entityMap.get(entityName);
+        if (targetEntity) {
+          const varName    = entityName.charAt(0).toLowerCase() + entityName.slice(1);
+          const createAct  = microflows.ActionActivity.createIn(objCol);
+          createAct.relativeMiddlePoint = { x: 100, y: 0 };
+          const createObj  = microflows.CreateObjectAction.createIn(createAct);
+          createObj.entity = targetEntity;
+          createObj.outputVariableName = varName;
+          createObj.commit = microflows.CommitEnum.Yes;
+
+          const statusAttr  = attributeMap.get(`${entityName}.status`);
+          const firstState  = sm.regions[0]?.states.find(s => s.kind === "simple")?.name;
+          if (statusAttr && firstState) {
+            const mc      = microflows.MemberChange.createIn(createObj);
+            mc.attribute  = statusAttr;
+            mc.value      = `'${moduleName}.${entityName}_Status.${firstState}'`;
+          }
+
+          end.relativeMiddlePoint = { x: 280, y: 0 };
+          const f1 = microflows.SequenceFlow.createIn(mf); f1.origin = start;     f1.destination = createAct;
+          const f2 = microflows.SequenceFlow.createIn(mf); f2.origin = createAct; f2.destination = end;
+          console.log(`  + microflow "${activity.name}" [MERODE: create ${entityName}, status=${firstState ?? "?"}]`);
+          continue;
+        }
+      }
+
+      // B20+B21+B18+B19: DEMO create — child entity created and linked to parent
       if (activity.kind === "create" && activity.targetType) {
         const childName    = activity.targetType;
         const parentName   = sm.entityType;
@@ -309,6 +370,60 @@ async function applyPimToMendix(
         }
       }
 
+      // B15: MERODE set — change status attribute to the transition's target state
+      if (activity.kind === "set" && activity.targetType && isMerodeFSM(sm)) {
+        const entityName  = activity.targetType;
+        const eventName   = activity.name.substring(`Set_${entityName}_`.length);
+        const targetEntity = entityMap.get(entityName);
+        const transition  = sm.regions[0]?.transitions.find(t => t.trigger === eventName);
+        const toState     = transition?.to;
+        const statusAttr  = attributeMap.get(`${entityName}.status`);
+        if (targetEntity && toState && statusAttr) {
+          const varName    = entityName.charAt(0).toLowerCase() + entityName.slice(1);
+          const setParam   = microflows.MicroflowParameterObject.createIn(objCol);
+          setParam.name    = varName;
+          setParam.relativeMiddlePoint = { x: -80, y: 0 };
+          const setObjType = datatypes.ObjectType.create(model);
+          setObjType.entity = targetEntity;
+          setParam.variableType = setObjType;
+
+          const actionAct  = microflows.ActionActivity.createIn(objCol);
+          actionAct.relativeMiddlePoint = { x: 100, y: 0 };
+          end.relativeMiddlePoint = { x: 260, y: 0 };
+          const changeAct  = microflows.ChangeObjectAction.createIn(actionAct);
+          changeAct.changeVariableName = varName;
+          changeAct.commit = microflows.CommitEnum.Yes;
+          const mc         = microflows.MemberChange.createIn(changeAct);
+          mc.attribute     = statusAttr;
+          mc.value         = `'${moduleName}.${entityName}_Status.${toState}'`;
+
+          const f1 = microflows.SequenceFlow.createIn(mf); f1.origin = start;     f1.destination = actionAct;
+          const f2 = microflows.SequenceFlow.createIn(mf); f2.origin = actionAct; f2.destination = end;
+          console.log(`  + microflow "${activity.name}" [MERODE: set ${entityName}.status = ${toState}]`);
+          continue;
+        }
+      }
+
+      // B16: MERODE end — stub microflow with entity parameter (archiving/deletion is domain-specific)
+      if (activity.kind === "end" && activity.targetType) {
+        const entityName   = activity.targetType;
+        const targetEntity = entityMap.get(entityName);
+        if (targetEntity) {
+          const varName    = entityName.charAt(0).toLowerCase() + entityName.slice(1);
+          const endParam   = microflows.MicroflowParameterObject.createIn(objCol);
+          endParam.name    = varName;
+          endParam.relativeMiddlePoint = { x: -80, y: 0 };
+          const endObjType = datatypes.ObjectType.create(model);
+          endObjType.entity = targetEntity;
+          endParam.variableType = endObjType;
+
+          const flow = microflows.SequenceFlow.createIn(mf);
+          flow.origin = start; flow.destination = end;
+          console.log(`  + microflow "${activity.name}" [MERODE: end ${entityName} — stub]`);
+          continue;
+        }
+      }
+
       const flow         = microflows.SequenceFlow.createIn(mf);
       flow.origin        = start;
       flow.destination   = end;
@@ -317,9 +432,10 @@ async function applyPimToMendix(
     }
   }
 
-  // B11/B12/B23/B24: per entity type — Workflow + ACR Microflow
+  // B11/B12/B23/B24: per entity type — Workflow + ACR Microflow (DEMO FSMs only)
   for (const sm of pimModel.stateMachines ?? []) {
     if (sm.regions.length === 0) continue;
+    if (isMerodeFSM(sm)) continue;
     const entityName = sm.entityType;
     const entity     = entityMap.get(entityName);
     if (!entity) continue;
