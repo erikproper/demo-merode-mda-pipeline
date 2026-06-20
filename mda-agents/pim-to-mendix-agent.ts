@@ -15,8 +15,8 @@ const mendixConfig = {
   branch:     process.env.MENDIX_BRANCH      ?? "main",
 };
 
-const SOURCE_AGENT_ID = process.env.PIM_PUBLISHER_AGENT_ID ?? "demo-to-pim-agent";
-const IN_ARTEFACT     = "model.pim.created";
+const PIM_SOURCE_AGENTS = (process.env.PIM_PUBLISHER_AGENT_IDS ?? "demo-to-pim-agent,merode-to-pim-agent").split(",");
+const IN_ARTEFACT       = "model.pim.created";
 
 const validatePim = makeValidator("pimuml-schema.json");
 
@@ -804,7 +804,7 @@ async function main() {
   await bus.connect();
   console.log(`[pim-to-mendix] connected to ${config.broker}:${config.port}`);
 
-  bus.subscribePimState(SOURCE_AGENT_ID, IN_ARTEFACT, async (rawModel: PimModel, timestamp: string) => {
+  const onPimReceived = async (rawModel: PimModel, timestamp: string) => {
     console.log(`[pim-to-mendix] received model at ${timestamp}`);
 
     const { clean: pim, meta } = extractMeta(rawModel);
@@ -859,7 +859,12 @@ async function main() {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[pim-to-mendix] commit failed:", msg, err);
     }
-  });
+  };
+
+  for (const agentId of PIM_SOURCE_AGENTS) {
+    bus.subscribePimState(agentId, IN_ARTEFACT, onPimReceived);
+    console.log(`[pim-to-mendix] subscribed to PIM from "${agentId}"`);
+  }
 
   console.log("[pim-to-mendix] listening … (Ctrl+C to stop)");
 }
