@@ -205,8 +205,12 @@ async function applyPimToMendix(
     const statusEnum = enumerations.Enumeration.createIn(mxModule);
     statusEnum.name  = statusEnumName;
     for (const state of lcStates) {
-      const v = enumerations.EnumerationValue.createIn(statusEnum);
-      v.name = state;
+      const v   = enumerations.EnumerationValue.createIn(statusEnum);
+      v.name    = state;
+      const cap = texts.Text.createInEnumerationValueUnderCaption(v);
+      const tr  = texts.Translation.createIn(cap);
+      tr.languageCode = "en_US";
+      tr.text   = state.charAt(0).toUpperCase() + state.slice(1);
     }
     enumMap.set(statusEnumName, statusEnum);
 
@@ -254,7 +258,7 @@ async function applyPimToMendix(
           if (statusAttr && firstState) {
             const mc      = microflows.MemberChange.createIn(createObj);
             mc.attribute  = statusAttr;
-            mc.value      = `'${moduleName}.${entityName}_Status.${firstState}'`;
+            mc.value      = `${moduleName}.${entityName}_Status.${firstState}`;
           }
 
           end.relativeMiddlePoint = { x: 280, y: 0 };
@@ -395,7 +399,7 @@ async function applyPimToMendix(
           changeAct.commit = microflows.CommitEnum.Yes;
           const mc         = microflows.MemberChange.createIn(changeAct);
           mc.attribute     = statusAttr;
-          mc.value         = `'${moduleName}.${entityName}_Status.${toState}'`;
+          mc.value         = `${moduleName}.${entityName}_Status.${toState}`;
 
           const f1 = microflows.SequenceFlow.createIn(mf); f1.origin = start;     f1.destination = actionAct;
           const f2 = microflows.SequenceFlow.createIn(mf); f2.origin = actionAct; f2.destination = end;

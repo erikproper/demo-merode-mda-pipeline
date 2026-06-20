@@ -32,7 +32,7 @@ function transform(merode: MerodeModel): { pim: PimModel; trace: TraceEntry[] } 
     // M1: ObjectType → Class + Integer-ID
     trace.push({ sourceType: "ObjectType", sourceName: ot.name, targetType: "Class", targetName: ot.name });
     const ownedAttributes = [
-      { name: "id", type: "Integer", isID: true },
+      { name: `${ot.name}ID`, type: "Integer", isID: true },
       ...(ot.attributes ?? []).map(a => {
         trace.push({ sourceType: "Attribute", sourceName: `${ot.name}.${a.name}`, targetType: "Property", targetName: `${ot.name}.${a.name}` });
         return { name: a.name, type: a.type ?? "String" };
