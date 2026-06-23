@@ -1,12 +1,12 @@
-# Architekturübersicht: MDA Modelling Bus Prototyp
+# Architecture Overview: MDA Modelling Bus Prototype
 
-Dieses Dokument beschreibt die technische Architektur des für diese Masterarbeit implementierten Prototyps. Das System automatisiert die Transformation heterogener Enterprise-Modelle (aktuell DEMO und MERODE) in Mendix Low-Code-Applikationen nach dem MDA-Abstraktionshierarchie-Prinzip.
+This document covers the technical architecture of the prototype built for this thesis. The system takes enterprise models (currently DEMO and MERODE) and transforms them into Mendix low-code apps, following the MDA abstraction hierarchy.
 
 ---
 
-## 1. Ende-zu-Ende-Pipeline
+## 1. End-to-End Pipeline
 
-Die Pipeline implementiert drei MDA-Abstraktionsschichten, verbunden durch einen asynchronen Nachrichtenbus. Quellmodelle treten auf CIM-Ebene ein, werden in eine gemeinsame PIM-Repräsentation transformiert und dann als Mendix-Applikation auf PSM-Ebene realisiert.
+The pipeline implements three MDA layers connected by an async message bus. Source models come in at the CIM level, get transformed into a shared PIM representation, and land as a Mendix app at the PSM level.
 
 ```mermaid
 flowchart TB
@@ -87,9 +87,9 @@ flowchart TB
 
 ---
 
-## 2. Internes Verarbeitungsmuster eines Agenten
+## 2. Internal Processing Pattern
 
-Jeder Agent, ob CIM-nach-PIM oder PIM-nach-PSM, folgt demselben internen Verarbeitungsmuster. Diese einheitliche Struktur wird durch die gemeinsam genutzte Infrastruktur aus `bus-client.ts` und `agent-utils.ts` erzwungen.
+Every agent, whether CIM-to-PIM or PIM-to-PSM, follows the same internal processing pattern. The shared infrastructure in `bus-client.ts` and `agent-utils.ts` enforces this structure.
 
 ```mermaid
 flowchart LR
@@ -122,9 +122,9 @@ flowchart LR
 
 ---
 
-## 3. Schema-Hierarchie und Validierung
+## 3. Schema Hierarchy and Validation
 
-Schema-Validierung ist ein zentrales Anliegen. Jede Grenze in der Pipeline wird durch ein mit AJV kompiliertes JSON-Schema abgesichert (`additionalProperties: false`). Die Pipeline bricht ohne Veröffentlichung ab, wenn eine Validierung fehlschlägt.
+Schema validation is a core concern. Every boundary in the pipeline is guarded by an AJV-compiled JSON Schema with `additionalProperties: false`. If validation fails the pipeline aborts without publishing anything.
 
 ```mermaid
 flowchart LR
@@ -149,42 +149,42 @@ flowchart LR
     PS --> MX_IN
 ```
 
-Das pimUML-Schema ist der einzige gemeinsame Vertrag zwischen allen CIM-Agenten und dem PSM-Agenten. Als MERODE hinzugefügt wurde, wurde das Schema additiv erweitert (neue `kind`-Enum-Werte, `forEvent` optional), kein bestehendes DEMO-generiertes PIM-Dokument muss angepasst werden.
+The pimUML schema is the single shared contract between all CIM agents and the PSM agent. When MERODE was added the schema got extended additively (new `kind` enum values, `forEvent` made optional), so no existing DEMO-generated PIM document needed to change.
 
 ---
 
-## 4. MQTT-Topic-Struktur
+## 4. MQTT Topic Structure
 
-Der Bus folgt der BIG Modelling Bus-Namenskonvention (Schicht 1 der Go-Referenzimplementierung). Jeder Agent schreibt in seinen eigenen Namensraum; Schreibtopics werden nie geteilt.
+The bus follows the BIG Modelling Bus naming convention (layer 1 of the Go reference implementation). Each agent writes into its own namespace; write topics are never shared.
 
 ```
 {prefix}/{bus-version}/{environmentID}/{agentID}/artefacts/json/{artefactID}/{jsonVersion}/state
 ```
 
-| Feld | Wert (dieser Prototyp) |
-|------|----------------------|
+| Field | Value (this prototype) |
+|-------|----------------------|
 | `prefix` | `big` |
 | `bus-version` | `bus-version-1.0` |
 | `environmentID` | `dev` |
 | `agentID` | `api-server`, `demo-to-pim-agent`, `merode-to-pim-agent`, `pim-to-mendix-agent` |
 | `artefactID` | `model.cim.raw`, `model.pim.created` |
 | `jsonVersion` | `cim-v1.0-v1.0`, `pimuml-v1.0-v1.0` |
-| `state` | retained, neu gestartete Agenten erhalten sofort das letzte bekannte Modell |
+| `state` | retained — newly connected agents immediately get the last known model |
 
-Vollständige Beispiel-Topics:
+Example topics:
 ```
 big/bus-version-1.0/dev/api-server/artefacts/json/model.cim.raw/cim-v1.0-v1.0/state
 big/bus-version-1.0/dev/demo-to-pim-agent/artefacts/json/model.pim.created/pimuml-v1.0-v1.0/state
 big/bus-version-1.0/dev/merode-to-pim-agent/artefacts/json/model.pim.created/pimuml-v1.0-v1.0/state
 ```
 
-Der PSM-Agent abonniert die PIM-Topics beider CIM-Agenten. Die Menge der vorgelagerten Agenten wird über die Umgebungsvariable `PIM_PUBLISHER_AGENT_IDS` gesteuert. Das Hinzufügen eines dritten CIM-Agenten erfordert nur die Aktualisierung dieser Variable, keine Code-Änderungen am PSM-Agenten.
+The PSM agent subscribes to the PIM topics of both CIM agents. The set of upstream agents is controlled via the `PIM_PUBLISHER_AGENT_IDS` env var. Adding a third CIM agent only requires updating that variable, no code changes to the PSM agent.
 
 ---
 
-## 5. Deployment-Sicht
+## 5. Deployment
 
-Alle Komponenten laufen als Docker-Container auf einem Raspberry Pi. Der öffentliche Zugang erfolgt über einen Cloudflare-Tunnel, der TLS terminiert und HTTPS-Verkehr an das lokale API-Gateway weiterleitet.
+All components run as Docker containers on a Raspberry Pi. Public access goes through a Cloudflare tunnel that terminates TLS and forwards HTTPS traffic to the local API gateway.
 
 ```mermaid
 flowchart TB
@@ -220,44 +220,44 @@ flowchart TB
     MQTT_C     -.->|"healthcheck\nrestart: unless-stopped"| API_C
 ```
 
-CI/CD: Ein GitHub-Actions-Workflow (`deploy-pi.yml`) deployed den Stack automatisch bei jedem Push auf `main`. Der Workflow verbindet sich per SSH mit dem Pi, zieht das aktuelle Image und führt `docker compose up -d` aus.
+CI/CD: a GitHub Actions workflow (`deploy-pi.yml`) deploys the stack automatically on every push to `main`. It SSHes into the Pi, pulls the latest image, and runs `docker compose up -d`.
 
 ---
 
-## 6. Erweiterbarkeit
+## 6. Extensibility
 
-Die Architektur ist darauf ausgelegt, neue CIM-Sprachen aufzunehmen, ohne bestehende Komponenten zu ändern. Die MERODE-Integration liefert den konkreten Nachweis.
+The architecture is designed to absorb new CIM languages without touching existing components. The MERODE integration is the concrete proof of that.
 
-| Komponente | Änderung beim Hinzufügen von MERODE |
-|------------|-------------------------------------|
-| `demo-to-pim-agent.ts` | Keine Änderungen |
-| `bus-client.ts` | Keine Änderungen |
-| `agent-utils.ts` | Keine Änderungen |
-| `merode-to-pim-agent.ts` | Neue Datei (vollständig additiv) |
-| `merode-schema.json` | Neue Datei (vollständig additiv) |
-| `pimuml-schema.json` | Additive Erweiterung (neue `kind`-Werte, `forEvent` optional) |
-| `types.ts` | Neue Interfaces und kleine Typerweiterungen |
-| `pim-to-mendix-agent.ts` | Neue B13-B16-Regelblöcke und `isMerodeFSM()`-Diskriminator |
-| `docker-compose.yml` | Ein neuer Service-Block |
+| Component | Change when adding MERODE |
+|-----------|--------------------------|
+| `demo-to-pim-agent.ts` | No changes |
+| `bus-client.ts` | No changes |
+| `agent-utils.ts` | No changes |
+| `merode-to-pim-agent.ts` | New file (fully additive) |
+| `merode-schema.json` | New file (fully additive) |
+| `pimuml-schema.json` | Additive extension (new `kind` values, `forEvent` optional) |
+| `types.ts` | New interfaces and small type extensions |
+| `pim-to-mendix-agent.ts` | New B13-B16 rule blocks and `isMerodeFSM()` discriminator |
+| `docker-compose.yml` | One new service block |
 
-Ein geplantes Dritte-Agenten-Experiment (ER-Diagramm-Sprache) prognostiziert null Änderungen an bestehenden Dateien, weil ER-Konzepte auf bestehende pimUML-Konstrukte (Classes, Associations) abbilden, die B1-B12 bereits verarbeiten.
+A planned third-agent experiment (ER diagram language) predicts zero changes to existing files, because ER concepts map onto existing pimUML constructs (Classes, Associations) that B1-B12 already handle.
 
-Die Grenzlinie der Erweiterbarkeit: das Hinzufügen einer Sprache mit bestehenden PIM-Konzepten (Klassen, Assoziationen, Attribute) erfordert nur einen neuen CIM-Agenten. Das Hinzufügen einer Sprache mit genuinen neuen PIM-Konzepten (wie MERODEs sequenzielle FSMs) erfordert zusätzlich eine minimale additive Schema-Erweiterung und neue PSM-Regeln.
+The extensibility boundary: adding a language with existing PIM concepts (classes, associations, attributes) only needs a new CIM agent. Adding a language with genuinely new PIM concepts (like MERODE's sequential FSMs) additionally needs a minimal additive schema extension and new PSM rules.
 
 ---
 
 ## 7. Meta-Envelope
 
-Jede Nachricht auf dem Bus trägt neben der Modell-Nutzlast einen Meta-Envelope. Der Envelope wird vor der Schema-Validierung abgetrennt und danach wieder angehängt, damit `additionalProperties: false` nicht verletzt wird.
+Every message on the bus carries a meta-envelope alongside the model payload. The envelope is stripped before schema validation and re-attached afterwards, so `additionalProperties: false` isn't violated.
 
 ```
 {
-  ...Modell-Nutzlast...,
+  ...model payload...,
   "_source": { "format": "demo" | "merode" },
   "_target": {
-    "appId":      "<Mendix-App-UUID>",
-    "moduleName": "<Modulname>",
-    "branch":     "<Branch>"
+    "appId":      "<Mendix app UUID>",
+    "moduleName": "<module name>",
+    "branch":     "<branch>"
   },
   "_trace": [
     {
@@ -271,16 +271,16 @@ Jede Nachricht auf dem Bus trägt neben der Modell-Nutzlast einen Meta-Envelope.
 }
 ```
 
-Das `_trace`-Array liefert vollständige Ende-zu-Ende-Nachvollziehbarkeit: jede Regelanwendung wird als `TraceEntry` aufgezeichnet. Einträge mit `targetType: "NotMapped"` dokumentieren explizit, welche Quellkonzepte außerhalb des Scopes liegen (z.B. M9-Propagierung, abgeleitete OCL-Attribute).
+The `_trace` array gives full end-to-end traceability: every rule application gets recorded as a `TraceEntry`. Entries with `targetType: "NotMapped"` explicitly document which source concepts are out of scope (e.g. M9 propagation, derived OCL attributes).
 
 ---
 
-## 8. Geplante Einbindung realer Tool-Exporte
+## 8. Planned Real Tool Export Integration
 
-Der aktuelle Prototyp verwendet handgefertigte JSON-Fixtures als Eingabe. Als letzter Schritt ist die Einbindung echter Modellexporte aus bestehenden DEMO- und MERODE-Modellierungstools geplant.
+Right now the prototype uses hand-crafted JSON fixtures as input. Wiring up real model exports from actual DEMO and MERODE tools is planned as a final step, after all rules are validated against the fixtures.
 
-Für MERODE ist Merlin (das Referenztool aus Snoeck [21]) der vorgesehene Exportweg. Merlin exportiert `.mxp`-Dateien; der Abschnitt betrifft, ob und wie das Format direkt oder nach einer Zwischenumwandlung als Eingabe für den `merode-to-pim-agent` dienen kann.
+For MERODE the plan is to use Merlin (the reference tool from Snoeck [21]). Merlin exports `.mxp` files; the open question is whether that format can feed directly into `merode-to-pim-agent` or whether an intermediate conversion step is needed first.
 
-Für DEMO ist die Lage weniger klar. simplified.engineering ist ein webbasiertes DEMO-Modellierungstool, das prinzipiell OFD-Exporte unterstützt. Ob und in welchem Umfang diese Exporte die für die A-Regeln nötigen Strukturen (Entitätstypen, Fakttypen, Ereignistypen) vollständig abbilden, ist noch nicht geprüft. Die Einbindung von simplified.engineering ist daher als Ziel vorgemerkt, aber mit Unsicherheit behaftet; je nach Exportformat könnte es einen eigenen Parsing-Schritt vor der eigentlichen Agentenverarbeitung erfordern.
+For DEMO the situation is less clear. simplified.engineering is a web-based DEMO modelling tool that in principle supports OFD exports. Whether those exports actually carry the full structure the A-rules need (entity types, fact types, event types) hasn't been checked yet. It's on the list but with explicit uncertainty; depending on the export format it might need its own parsing step before the agent can process it.
 
-Beide Einbindungen kommen erst ganz am Ende, nachdem alle Regeln gegen die handgefertigten Fixtures vollständig validiert sind.
+Both integrations come last, after the handcrafted fixtures are fully validated.
