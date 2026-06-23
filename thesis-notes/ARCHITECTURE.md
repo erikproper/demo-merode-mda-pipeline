@@ -272,3 +272,15 @@ Jede Nachricht auf dem Bus trägt neben der Modell-Nutzlast einen Meta-Envelope.
 ```
 
 Das `_trace`-Array liefert vollständige Ende-zu-Ende-Nachvollziehbarkeit: jede Regelanwendung wird als `TraceEntry` aufgezeichnet. Einträge mit `targetType: "NotMapped"` dokumentieren explizit, welche Quellkonzepte außerhalb des Scopes liegen (z.B. M9-Propagierung, abgeleitete OCL-Attribute).
+
+---
+
+## 8. Geplante Einbindung realer Tool-Exporte
+
+Der aktuelle Prototyp verwendet handgefertigte JSON-Fixtures als Eingabe. Als letzter Schritt ist die Einbindung echter Modellexporte aus bestehenden DEMO- und MERODE-Modellierungstools geplant.
+
+Für MERODE ist Merlin (das Referenztool aus Snoeck [21]) der vorgesehene Exportweg. Merlin exportiert `.mxp`-Dateien; der Abschnitt betrifft, ob und wie das Format direkt oder nach einer Zwischenumwandlung als Eingabe für den `merode-to-pim-agent` dienen kann.
+
+Für DEMO ist die Lage weniger klar. simplified.engineering ist ein webbasiertes DEMO-Modellierungstool, das prinzipiell OFD-Exporte unterstützt. Ob und in welchem Umfang diese Exporte die für die A-Regeln nötigen Strukturen (Entitätstypen, Fakttypen, Ereignistypen) vollständig abbilden, ist noch nicht geprüft. Die Einbindung von simplified.engineering ist daher als Ziel vorgemerkt, aber mit Unsicherheit behaftet; je nach Exportformat könnte es einen eigenen Parsing-Schritt vor der eigentlichen Agentenverarbeitung erfordern.
+
+Beide Einbindungen kommen erst ganz am Ende, nachdem alle Regeln gegen die handgefertigten Fixtures vollständig validiert sind.

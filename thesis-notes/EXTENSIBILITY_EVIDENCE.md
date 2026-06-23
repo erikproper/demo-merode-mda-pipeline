@@ -106,6 +106,12 @@ Wenn diese Vorhersage stimmt, ist das starker Nachweis für den Extensibilitäts
 
 Nach dem Hinzufügen des dritten Agenten: DEMO-Rent-A-Car-Test ausführen und prüfen, ob die Ausgabe identisch ist (Regressionstest). MERODE-Rent-A-Car-Test ausführen und dasselbe prüfen. ER-Rent-A-Car-Test ausführen und prüfen, ob das Mendix-Modell korrekt generiert wird. Den `git diff` zeigen und die Änderungsfläche quantifizieren.
 
+### Einschätzung: eher Future Work
+
+Das ER-Diagramm-Experiment ist innerhalb des Thesis-Scopes wahrscheinlich nicht mehr realisierbar. Der Implementierungsaufwand für den dritten Agenten selbst ist gering, aber die verbleibende Zeit fehlt. Der Extensibilitätsnachweis ruht damit auf der MERODE-Integration allein, was in der Thesis explizit so argumentiert werden muss.
+
+Für die Thesis ist das vertretbar: die MERODE-Integration ist ein reales, nicht konstruiertes Experiment. Zwei Sprachen belegen das Muster, und der `git diff` (null Änderungen an `demo-to-pim-agent.ts`, `bus-client.ts`, `agent-utils.ts`) ist ein konkreter Nachweis. Das ER-Experiment sollte in der Thesis als natürlicher nächster Schritt beschrieben werden, der das Muster vollends abstrakt bestätigen würde.
+
 ---
 
 ## 6. Was "Extensibilität" in dieser Thesis bedeutet
