@@ -66,7 +66,7 @@ Implementierung: `{ name: ot.name, ownedAttributes: [{ name: \`${ot.name}ID\`, t
 
 Mendix-Hinweis: `id` ist ein reservierter Systemfeldname in Mendix (CE7247). Der Name `<TypName>ID` umgeht das. Diese Namenskonvention ist konsistent mit A3 in Bzowskis Implementierung.
 
-Bezug zu DEMO: Analog zu A3. Der Hauptunterschied: MERODE-ObjectTypes tragen explizit Lebenszyklusinformationen (`lifecycleStates`), DEMO-Entitätstypen tun das nicht -- ihr Lebenszyklus wird vollständig aus der Ereignisbeteiligung abgeleitet. Die StateMachine wird deshalb separat über M5 angehängt.
+Bezug zu DEMO: Analog zu A3. Der Hauptunterschied: MERODE-ObjectTypes tragen explizit Lebenszyklusinformationen (`lifecycleStates`), DEMO-Entitätstypen tun das nicht, ihr Lebenszyklus wird vollständig aus der Ereignisbeteiligung abgeleitet. Die StateMachine wird deshalb separat über M5 angehängt.
 
 ### M2 - Attribut nach Property
 
@@ -109,7 +109,7 @@ associations.push({
 
 Lebenszyklus-Implikation (nicht implementiert): Snoeck (S. 88, Abschnitt 4.2.5) weist darauf hin, dass Existenzabhängigkeit Lebenszyklus-Implikationen hat: ein abhängiger Objekttyp muss nach dem Hauptobjekt erzeugt werden und muss vor oder gleichzeitig mit ihm enden. Diese Constraints würden idealerweise als OCL-Invarianten auf der Association ausgedrückt. Das ist als Einschränkung dokumentiert.
 
-Bezug zu DEMO: Analog zu A11/A12. Der wichtigste Unterschied: in MERODE drückt jede Association eine Existenzabhängigkeit aus -- es gibt keine "bloßen" Assoziationen. Das ist eine bewusste Designbeschränkung in MERODE, die den EDG semantisch präziser macht als ein Standard-UML-Klassendiagramm.
+Bezug zu DEMO: Analog zu A11/A12. Der wichtigste Unterschied: in MERODE drückt jede Association eine Existenzabhängigkeit aus, es gibt keine "bloßen" Assoziationen. Das ist eine bewusste Designbeschränkung in MERODE, die den EDG semantisch präziser macht als ein Standard-UML-Klassendiagramm.
 
 ### M5 - ObjectType-Lebenszyklus nach sequenzieller StateMachine
 
@@ -121,7 +121,7 @@ MERODE ist explizit lebenszyklus-orientiert. Jeder Objekttyp besitzt eine FSM, d
 
 Der triviale (Standard-)Lebenszyklus besteht aus einer Erzeugungsphase, null oder mehr Modifikationsphasen und einer Beendigungsphase. Snoeck stellt das als einen einzigen aktiven Zustand mit Schleifen für alle modifizierenden Ereignisse dar (Abb. 3.12, S. 68). Nicht-triviale Lebenszyklen haben Zwischenzustände mit stärker eingeschränkten Übergangssequenzen.
 
-Die pimUML-Kodierung verwendet `kind: "initial"` für den initialen Pseudozustand, `kind: "simple"` für jeden benannten Lebenszykluszustand und `kind: "final"` für den finalen Pseudozustand. Das erforderte die Erweiterung von `State.kind` von `{initial, false, true}` auf `{initial, false, true, simple, final}` -- additiv und rückwärtskompatibel (DD5 in DESIGN_DECISIONS.md).
+Die pimUML-Kodierung verwendet `kind: "initial"` für den initialen Pseudozustand, `kind: "simple"` für jeden benannten Lebenszykluszustand und `kind: "final"` für den finalen Pseudozustand. Das erforderte die Erweiterung von `State.kind` von `{initial, false, true}` auf `{initial, false, true, simple, final}`, additiv und rückwärtskompatibel (DD5 in DESIGN_DECISIONS.md).
 
 Zum Vergleich DEMO-FSMs vs. MERODE-FSMs: DEMO-FSMs bestehen aus orthogonalen Regionen, eine pro Ereignistyp. Jede Region hat genau zwei Zustände: `false` und `true`. Die Regionen können in beliebiger Kombination gleichzeitig aktiv sein. Ereignisse sind monoton (einmal wahr, immer wahr). MERODE-FSMs haben eine Region mit mehreren benannten, sequenziellen Zuständen. Zustände schließen sich gegenseitig aus. Ereignisse bewegen das Objekt von einem Zustand zum nächsten. Ein Beendigungsereignis bewegt das Objekt in einen finalen Zustand, danach sind keine weiteren Ereignisse möglich.
 
@@ -184,7 +184,7 @@ Bezug zu DEMO: Analog zu den Set-Aktivitäten von A6. Der Hauptunterschied: in D
 
 Quellkonzept: BusinessEventType mit `role: "E"`. Ziel: Übergang vom letzten Lebenszykluszustand nach `__final` + `End_<Typ>`-Aktivität (kind: "end").
 
-Ein beendendes Geschäftsereignis (E) beendet das Leben des Objekts (Snoeck, S. 64). Das Objekt tritt in den finalen Zustand ein und gilt als "beendet" -- keine weiteren Ereignisse sind möglich. Snoeck betont (S. 53), dass ein Objekt nicht physisch gelöscht werden muss: es existiert für eine Zeitspanne und hört dann auf, Veränderungen zu unterliegen.
+Ein beendendes Geschäftsereignis (E) beendet das Leben des Objekts (Snoeck, S. 64). Das Objekt tritt in den finalen Zustand ein und gilt als "beendet", keine weiteren Ereignisse sind möglich. Snoeck betont (S. 53), dass ein Objekt nicht physisch gelöscht werden muss: es existiert für eine Zeitspanne und hört dann auf, Veränderungen zu unterliegen.
 
 Der Übergang geht immer von `lcStates[lcStates.length - 1]` (dem letzten Lebenszykluszustand) nach `__final`. Das ist konsistent mit dem einfachen sequenziellen Lebenszyklusmodell. Bei einem nicht-trivialen FSM mit mehreren möglichen Endzuständen würde jeder seinen eigenen Beendigungsübergang benötigen, aber das aktuelle Schema und Testfixture setzen einen einzigen terminalen Zustand voraus.
 
@@ -195,7 +195,7 @@ smTransitions.push({ from: lastState, to: "__final", trigger: evt.name })
 smActivities.push({ name: `End_${ot.name}`, kind: "end", targetType: ot.name })
 ```
 
-Bezug zu DEMO: Kein Gegenstück. Das ist eine der beiden genuinen neuen Regeln (die andere ist M9). DEMO-Ereignisse sind monotone boolesche Flags -- einmal eingetreten, dauerhaft aufgezeichnet. Ein Konzept des "Beendens" eines Objektlebens gibt es in DEMO nicht, weil DEMO-Entitätstypen in diesem Sinne keine Lebenszyklen haben. Diese Regel ist einzigartig für MERODE und motiviert die `end`-Aktivitätskind-Erweiterung in pimUML.
+Bezug zu DEMO: Kein Gegenstück. Das ist eine der beiden genuinen neuen Regeln (die andere ist M9). DEMO-Ereignisse sind monotone boolesche Flags, einmal eingetreten, dauerhaft aufgezeichnet. Ein Konzept des "Beendens" eines Objektlebens gibt es in DEMO nicht, weil DEMO-Entitätstypen in diesem Sinne keine Lebenszyklen haben. Diese Regel ist einzigartig für MERODE und motiviert die `end`-Aktivitätskind-Erweiterung in pimUML.
 
 ### M9 - Gemeinsame Ereignisbeteiligung und Propagierungsregel (Future Work)
 
@@ -203,7 +203,7 @@ Quellkonzept: OET-Einträge, bei denen mehrere Objekttypen am selben Ereignis be
 
 Das ist MERODEs charakteristischstes Feature und das ohne jedes DEMO-Gegenstück. In MERODE wird ein einziges Geschäftsereignis von allen beteiligten Objekttypen geteilt. Wenn das Ereignis `startRental` eintritt, erzeugt es nicht nur ein `Rental`-Objekt (O/C in der Rental-Zeile), sondern löst auch modifizierendes Verhalten in `Car` und `Person` aus (A/M-Einträge aus der Propagierungsregel, Snoeck, Kap. 5.3.1, S. 114).
 
-Die Propagierungsregel besagt: wenn Objekttyp B existenzabhängig von A ist (B hängt von A ab), dann bezieht jedes Ereignis, das B einbezieht, auch A mit Beteiligungstyp M ein. Das bedeutet, dass der vollständige OET nicht nur aus ObjectTypes und BusinessEventTypes abgeleitet werden kann -- er benötigt auch die ExistenceDependency-Struktur.
+Die Propagierungsregel besagt: wenn Objekttyp B existenzabhängig von A ist (B hängt von A ab), dann bezieht jedes Ereignis, das B einbezieht, auch A mit Beteiligungstyp M ein. Das bedeutet, dass der vollständige OET nicht nur aus ObjectTypes und BusinessEventTypes abgeleitet werden kann, er benötigt auch die ExistenceDependency-Struktur.
 
 Für die Implementierung würde M9 erfordern: alle Existenzabhängigkeiten zu parsen, um die Propagierungshülle aufzubauen; für jeden BusinessEventType die zusätzlichen Objekttypen, die über transitive Propagierung beteiligt sind, abzuleiten; und M-Rollen-Übergänge in den FSMs der betroffenen Hauptobjekttypen zu generieren.
 

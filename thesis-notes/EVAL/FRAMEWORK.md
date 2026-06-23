@@ -100,7 +100,7 @@ Quellmodell: `mda-agents/tests/rent-a-car-mock.json`
 
 Dieser Abschnitt wird beim Durchführen der Regressionsevaluation ausgefüllt. Die DEMO-Evaluation folgt derselben Struktur wie Bzowskis Tabelle 10.1.
 
-Zu evaluierende Aussagen: EntityTypes (A3) -- Car, Person, Rental (zu Classes mit IDs), FactTypes und Assoziationen (A12), EventTypes (A6) mit booleschen Regionen in FSMs, AttributeTypes (A5) auf den Entitätstypen.
+Zu evaluierende Aussagen: EntityTypes (A3), Car, Person, Rental (zu Classes mit IDs), FactTypes und Assoziationen (A12), EventTypes (A6) mit booleschen Regionen in FSMs, AttributeTypes (A5) auf den Entitätstypen.
 
 Erwartetes Ergebnis: alle vorher korrekt funktionierenden DEMO-Elemente bleiben nach den MERODE-Ergänzungen als Correct klassifiziert. Jede Regression wäre kritisch.
 
@@ -110,7 +110,7 @@ Erwartetes Ergebnis: alle vorher korrekt funktionierenden DEMO-Elemente bleiben 
 
 Nach dem Ausführen der Pipeline das generierte Mendix-Modell in Mendix Studio Pro öffnen und prüfen: keine Fehler (CE-Präfix) und idealerweise keine Warnungen (CW-Präfix) oder diese dokumentieren.
 
-Nach dem Beheben von CE7247, CE0117 und CW0263 sollte das Modell ohne Fehler öffnen. Diesen Check nach jeder Code-Änderung wiederholen. Screenshot des Mendix-Fehlerbereichs mit Anzahl und Typ möglicher Probleme erstellen -- das ist der empirische Nachweis für den 100%-SVR-Anspruch.
+Nach dem Beheben von CE7247, CE0117 und CW0263 sollte das Modell ohne Fehler öffnen. Diesen Check nach jeder Code-Änderung wiederholen. Screenshot des Mendix-Fehlerbereichs mit Anzahl und Typ möglicher Probleme erstellen, das ist der empirische Nachweis für den 100%-SVR-Anspruch.
 
 ---
 

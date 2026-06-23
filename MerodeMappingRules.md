@@ -70,7 +70,7 @@ Option C würde BusinessEventTypes als NotMapped dokumentieren. Ehrlich, und es 
 | 3 | `Region` | Keine Änderung; eine einzelne nicht-orthogonale Region ist bereits ausdrückbar | keine Änderung |
 | 4 | `merode-schema.json` (Eingabeseite) | Erweiterung um FSM-Daten: Zustände, Übergänge und C/M/E-Klassifikation jedes BusinessEventType | unabhängig von A/B/C verpflichtend |
 
-Die Punkte 1 und 2 sind klein und gehören in die Thesis, weil sie Teil des Beitrags sind. Punkt 4 ist für jede Option obligatorisch. Die umfangreichere Arbeit -- neue PSM-Regeln zur Realisierung sequenzieller Lebenszyklen in Mendix -- sollte in der Thesis spezifiziert und soweit wie möglich implementiert werden; der Rest ist legitimes Future Work, sofern die Grenze explizit genannt wird.
+Die Punkte 1 und 2 sind klein und gehören in die Thesis, weil sie Teil des Beitrags sind. Punkt 4 ist für jede Option obligatorisch. Die umfangreichere Arbeit, neue PSM-Regeln zur Realisierung sequenzieller Lebenszyklen in Mendix, sollte in der Thesis spezifiziert und soweit wie möglich implementiert werden; der Rest ist legitimes Future Work, sofern die Grenze explizit genannt wird.
 
 ---
 
@@ -94,14 +94,14 @@ Resultierendes pimUML, Klassendiagramm (M1-M4):
 - `Person`: Class, `personID: Integer`, `name: String`
 - `Car`: Class, `carID: Integer`, `licensePlate: String`
 - `Rental`: Class, `rentalID: Integer`, `startDate: DateTime`
-- Association `Rental` zu `Person`: `[Rental 0..*] -- [Person 1..1]` (Existenzabhängigkeit, Hauptobjekt verpflichtend)
-- Association `Rental` zu `Car`: `[Rental 0..*] -- [Car 1..1]`
+- Association `Rental` zu `Person`: `[Rental 0..*], [Person 1..1]` (Existenzabhängigkeit, Hauptobjekt verpflichtend)
+- Association `Rental` zu `Car`: `[Rental 0..*], [Car 1..1]`
 
 Resultierendes pimUML, Zustandsmaschinendiagramm (M5-M9):
 
-- `Rental`-SM (eine Region): `initial -> (startRental / CreateRental) -> [Ongoing] -> (completeRental / EndRental) -> [Completed, final]` -- wendet M5, M6, M8 an
-- `Person`-SM: `initial -> (registerPerson / CreatePerson) -> [Registered]`; Selbstübergänge auf `startRental` und `completeRental` als modifizierend (propagiert) -- wendet M6, M9 an
-- `Car`-SM: `initial -> (registerCar / CreateCar) -> [Registered]`; Selbstübergänge auf `startRental`, `completeRental` als modifizierend (propagiert) -- wendet M9 an
+- `Rental`-SM (eine Region): `initial -> (startRental / CreateRental) -> [Ongoing] -> (completeRental / EndRental) -> [Completed, final]`, wendet M5, M6, M8 an
+- `Person`-SM: `initial -> (registerPerson / CreatePerson) -> [Registered]`; Selbstübergänge auf `startRental` und `completeRental` als modifizierend (propagiert), wendet M6, M9 an
+- `Car`-SM: `initial -> (registerCar / CreateCar) -> [Registered]`; Selbstübergänge auf `startRental`, `completeRental` als modifizierend (propagiert), wendet M9 an
 
 Aktivitäten: `CreatePerson` (create), `CreateCar` (create), `CreateRental` (create), `EndRental` (terminate), plus Modify-Aktivitäten für die propagierten Beteiligungen.
 

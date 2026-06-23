@@ -1,4 +1,4 @@
-# Architekturübersicht — MDA Modelling Bus Prototyp
+# Architekturübersicht: MDA Modelling Bus Prototyp
 
 Dieses Dokument beschreibt die technische Architektur des für diese Masterarbeit implementierten Prototyps. Das System automatisiert die Transformation heterogener Enterprise-Modelle (aktuell DEMO und MERODE) in Mendix Low-Code-Applikationen nach dem MDA-Abstraktionshierarchie-Prinzip.
 
@@ -89,7 +89,7 @@ flowchart TB
 
 ## 2. Internes Verarbeitungsmuster eines Agenten
 
-Jeder Agent -- ob CIM-nach-PIM oder PIM-nach-PSM -- folgt demselben internen Verarbeitungsmuster. Diese einheitliche Struktur wird durch die gemeinsam genutzte Infrastruktur aus `bus-client.ts` und `agent-utils.ts` erzwungen.
+Jeder Agent, ob CIM-nach-PIM oder PIM-nach-PSM, folgt demselben internen Verarbeitungsmuster. Diese einheitliche Struktur wird durch die gemeinsam genutzte Infrastruktur aus `bus-client.ts` und `agent-utils.ts` erzwungen.
 
 ```mermaid
 flowchart LR
@@ -149,7 +149,7 @@ flowchart LR
     PS --> MX_IN
 ```
 
-Das pimUML-Schema ist der einzige gemeinsame Vertrag zwischen allen CIM-Agenten und dem PSM-Agenten. Als MERODE hinzugefügt wurde, wurde das Schema additiv erweitert (neue `kind`-Enum-Werte, `forEvent` optional) -- kein bestehendes DEMO-generiertes PIM-Dokument muss angepasst werden.
+Das pimUML-Schema ist der einzige gemeinsame Vertrag zwischen allen CIM-Agenten und dem PSM-Agenten. Als MERODE hinzugefügt wurde, wurde das Schema additiv erweitert (neue `kind`-Enum-Werte, `forEvent` optional), kein bestehendes DEMO-generiertes PIM-Dokument muss angepasst werden.
 
 ---
 
@@ -169,7 +169,7 @@ Der Bus folgt der BIG Modelling Bus-Namenskonvention (Schicht 1 der Go-Referenzi
 | `agentID` | `api-server`, `demo-to-pim-agent`, `merode-to-pim-agent`, `pim-to-mendix-agent` |
 | `artefactID` | `model.cim.raw`, `model.pim.created` |
 | `jsonVersion` | `cim-v1.0-v1.0`, `pimuml-v1.0-v1.0` |
-| `state` | retained -- neu gestartete Agenten erhalten sofort das letzte bekannte Modell |
+| `state` | retained, neu gestartete Agenten erhalten sofort das letzte bekannte Modell |
 
 Vollständige Beispiel-Topics:
 ```
