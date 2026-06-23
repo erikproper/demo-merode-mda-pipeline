@@ -1,159 +1,109 @@
-# Design Decisions (D2)
+# Designentscheidungen (D2)
 
-Architecture documentation for the Modelling Bus. These notes record the decisions made during design and implementation, including what was considered and rejected. The goal is to have enough detail to write the design chapter of the thesis and to answer the inevitable "why didn't you use X instead?" questions from reviewers.
-
----
-
-## 1. System Overview
-
-The Modelling Bus is a loosely coupled, agent-based MDA pipeline. The core idea — borrowed and extended from Blanc et al. [2] — is to decouple each CIM language's transformation logic into an independent agent that publishes to a shared bus. Any number of agents can coexist. The downstream agent (`pim-to-mendix-agent`) subscribes to PIM artefacts regardless of which upstream agent published them.
-
-The system has three layers:
-
-1. **CIM layer**: format-specific agents that parse CIM models and emit PIM models
-2. **Bus layer**: MQTT broker (Eclipse Mosquitto) carrying schema-validated PIM messages
-3. **PSM layer**: `pim-to-mendix-agent` that consumes PIM models and writes Mendix SDK calls
-
-What distinguishes this from prior work: Bzowski [4] defined the pimUML vocabulary and the A-rules theoretically, but never automated the pipeline. Krouwel et al. [11] automated a pipeline but hardcoded DEMO as the only input and had no explicit PIM. This thesis automates Bzowski's pipeline and extends it to multiple input languages by making the PIM the contract between the layers.
+Architekturdokumentation des Modelling Bus. Diese Notizen halten fest, welche Entscheidungen wann und warum getroffen wurden, einschließlich verworfener Alternativen. Das Ziel ist, das Designkapitel der Thesis auf dieser Grundlage schreiben zu können und die typische Frage "warum nicht X stattdessen?" beantworten zu können.
 
 ---
 
-## 2. Decision Log
+## 1. Systemüberblick
 
-### DD1 — MQTT as the message bus
+Der Modelling Bus ist eine lose gekoppelte, agentenbasierte MDA-Pipeline. Die Grundidee, die von Blanc et al. [2] übernommen und erweitert wurde, besteht darin, die Transformationslogik jeder CIM-Sprache in einen eigenständigen Agenten auszulagern, der auf einem gemeinsamen Bus veröffentlicht. Beliebig viele Agenten können nebeneinander existieren. Der nachgelagerte Agent (`pim-to-mendix-agent`) abonniert PIM-Artefakte unabhängig davon, welcher vorgelagerte Agent sie veröffentlicht hat.
 
-**Decision:** Use Eclipse Mosquitto (MQTT 3.1.1) as the broker.
+Das System hat drei Schichten. Die CIM-Schicht enthält formatspezifische Agenten, die CIM-Modelle einlesen und PIM-Modelle ausgeben. Die Bus-Schicht ist der MQTT-Broker (Eclipse Mosquitto), über den schema-validierte PIM-Nachrichten fließen. Die PSM-Schicht besteht aus dem `pim-to-mendix-agent`, der PIM-Modelle konsumiert und Mendix-SDK-Aufrufe erzeugt.
 
-**Context:** The system needs to decouple agents in time and location. Several messaging approaches were considered.
-
-**Options:**
-- *REST/HTTP*: Synchronous, tightly coupled. Agent B would need to know Agent A's address. Fails AR6 (loose coupling). Rejected.
-- *Shared database*: A central database where agents write/read model states. More coupling, harder to run independently. Rejected.
-- *Apache Kafka*: More powerful but heavyweight for a research prototype. Requires more infrastructure. The consumer group model doesn't add value here since we don't need partitioning. Rejected as overkill.
-- *MQTT*: Lightweight, publish/subscribe, well-suited for IoT and distributed agent architectures. Eclipse Mosquitto is free and runs trivially in Docker. The retained message feature is particularly useful: any agent that connects receives the latest state of each topic immediately, without waiting for a new publication. This means agents can be restarted during development without losing the bus state.
-
-**Verdict:** MQTT is the right choice for this prototype. The retained message semantics give the bus a "memory" that makes development and debugging significantly easier. The publish/subscribe model naturally enforces the decoupling required by AR2.
-
-**Limitation:** MQTT does not provide guaranteed delivery ordering across topics, and the broker is a single point of failure. Both are acceptable for a research prototype.
-
-### DD2 — JSON Schema as the PIM meta-language
-
-**Decision:** Represent the pimUML PIM as a JSON Schema-validated JSON document.
-
-**Context:** Bzowski [4] defined pimUML as a UML profile. To automate the pipeline, a concrete serialisation format is needed. The proposal explicitly references Colantoni et al. [5], who demonstrate that JSON Schema can be used as a meta-language for MDE artefacts.
-
-**Options:**
-- *XMI (XML Metadata Interchange)*: Standard format for UML models, used by Eclipse EMF. But it requires a heavy toolchain (Eclipse, Ecore metamodels) and is verbose. The Mendix SDK is TypeScript-based and JSON-native, making XMI an impedance mismatch. Rejected.
-- *YAML*: Human-readable alternative to JSON. Less tooling support for schema validation. No benefit over JSON for this use case. Rejected.
-- *Plain TypeScript objects*: Could define the PIM as TypeScript interfaces only. Loses the language-independence and the ability to validate schema compliance programmatically. Rejected.
-- *JSON Schema*: JSON is native to the Mendix SDK, natively transported over MQTT, and directly validatable with AJV. JSON Schema's `additionalProperties: false` enforcement is exactly what we need to prevent silent schema drift. Already used by Bzowski as a design choice. Adopted.
-
-**Note on schema strictness:** All schemas use `additionalProperties: false`. This is intentional. Without it, an agent could add fields that the schema doesn't define and no one would notice until something downstream broke silently. Strict schemas make schema evolution explicit and catch bugs early.
-
-### DD3 — pimUML as the PIM language
-
-**Decision:** Use Bzowski's pimUML as the starting point for the PIM.
-
-**Context:** The thesis builds directly on Bzowski [4]. He defined the A-rules from DEMO Fact Model to pimUML and the B-rules from pimUML to Mendix. My job is to (a) automate these rules and (b) extend pimUML to cover MERODE.
-
-**Why not define a new PIM?** Defining a new PIM from scratch would be a much larger contribution but would also require justifying every design decision independently. Building on Bzowski grounds the PIM in prior academic work and lets me focus the thesis contribution on the automation and extension rather than the PIM design itself. The contribution is the *pipeline architecture* and the *MERODE extension*, not the PIM language.
-
-**What pimUML covers:** Three UML diagram types — class diagram (structural), state machine diagram (behavioural), and activity diagram (operations). For the prototype, the class and state machine diagrams are fully used; the activity diagram is partially used (activities are recorded as typed objects in the PIM but not rendered as full UML activity diagrams).
-
-### DD4 — Sequential FSM for MERODE lifecycles (Option B)
-
-**Decision:** Represent MERODE object lifecycles as sequential state machines with named, ordered states and a final state — not as orthogonal boolean regions (which is what DEMO produces).
-
-**Context:** This was the most consequential design decision in the MERODE extension. Three options existed:
-
-**Option A — reuse DEMO's boolean-region encoding.** Represent each business event type as an orthogonal region with `false`/`true` states, regardless of whether the source is DEMO or MERODE. Maximum schema reuse, zero PIM extension needed. But semantically wrong. A MERODE object's lifecycle states are mutually exclusive (an object is either `active` or `completed`, never both), but boolean regions represent independent flags that can be in any combination. Using Option A would produce structurally invalid models of MERODE lifecycles. The thesis would not be able to claim semantic correctness for MERODE. Rejected on semantic grounds.
-
-**Option B — sequential state machine with named states.** One region, one initial pseudostate, named lifecycle states (kind: `simple`), one final state. This is how Snoeck [21] describes MERODE FSMs in Chapter 6: "life cycle states are successive phases of the object's life" (p. 127). Requires extending `State.kind` and making `Region.forEvent` optional. Cost is real but the benefit is semantic fidelity. **Adopted.**
-
-**Option C — NotMapped.** Simply don't map MERODE FSMs at all, document them as out of scope. This would preserve the "no schema change" extensibility result but would mean the thesis can only claim structural transformation (classes, attributes, associations) for MERODE, not behavioural transformation. This would undermine the heterogeneity claim of the thesis. Rejected.
-
-**Verdict:** Option B is the only defensible choice given the thesis's claims. The fact that it forces a minimal PIM extension is *itself* a finding: the pimUML schema designed for DEMO is nearly but not completely sufficient for MERODE. Documenting exactly what had to change and why is a contribution to the understanding of what a "shared PIM" for heterogeneous enterprise models must support.
-
-### DD5 — Additive, backward-compatible PIM schema extension
-
-**Decision:** Extend `pimuml-schema.json` in the minimal way required for MERODE, ensuring all DEMO-generated PIM instances continue to validate without any changes to the DEMO agent.
-
-**Changes made:**
-1. `State.kind` extended from `["initial","false","true"]` to `["initial","false","true","simple","final"]`
-   — DEMO states use only `initial`, `false`, `true`. MERODE states use `initial`, `simple`, `final`. No conflict.
-
-2. `Activity.kind` extended from `["set","create"]` to `["set","create","end"]`
-   — DEMO activities are only `create` and `set`. MERODE adds `end` for ending events (M8). DEMO agents produce no `end` activities, so adding the value doesn't affect their output.
-
-3. `Region.forEvent` made optional (previously implicitly required because all DEMO regions always set it)
-   — MERODE regions don't have a `forEvent` annotation (there is no event-per-region structure in a sequential FSM). Making it optional allows MERODE regions to validate while DEMO regions continue to set it as before.
-
-These are the minimal changes. The spirit of the extension is: add exactly what MERODE needs, change nothing that DEMO uses. The only debatable point is (3): one could argue that making `forEvent` optional is not purely additive since it relaxes a constraint. In practice, no DEMO-generated PIM would fail if this is made optional — they all set it. But conceptually it is a relaxation. I document this in LIMITATIONS.md.
-
-### DD6 — `isMerodeFSM()` distinguisher in the PSM agent
-
-**Decision:** The `pim-to-mendix-agent` uses a helper function `isMerodeFSM(sm)` to distinguish MERODE-style from DEMO-style state machines and apply different B-rules accordingly.
-
-**Context:** When the PIM arrives at the Mendix agent, it no longer carries metadata about which CIM language produced it. But the B-rules for DEMO FSMs (B11–B12: Workflow generation) and MERODE FSMs (B13–B16: status enum + microflows) are different. The agent needs to dispatch to the right set of rules.
-
-**The distinguisher:** `isMerodeFSM` returns `true` if all regions in the state machine have no `forEvent` annotation. DEMO FSMs always set `forEvent` on every region (one region per event). MERODE FSMs never do (one region per object type, no event annotation). This is a structural property of the PIM encoding, not an explicit language tag.
-
-**Why not add an explicit `sourceLanguage` tag to the PIM?** That would violate AR2 (language isolation). The PIM is supposed to be a language-independent intermediate format. Adding `sourceLanguage: "merode"` to the PIM would mean the downstream agent knows which CIM language produced the model, which couples the downstream to upstream language choices. Using a structural property of the PIM encoding as the distinguisher keeps the language isolation intact — the downstream only sees pimUML, not "MERODE-flavoured pimUML".
-
-**Trade-off:** This approach is clever but fragile if a third language uses a similar FSM structure. Documented in LIMITATIONS.md. For the current scope (DEMO + MERODE), the discriminator is unambiguous.
-
-### DD7 — TypeScript/Node.js for all agents
-
-**Decision:** All agents are TypeScript on Node.js.
-
-**Rationale:**
-- The Mendix Platform SDK is TypeScript-native. Using TypeScript for the agent that calls the SDK is the only practical choice given the current SDK documentation and community.
-- Using the same language for all agents reduces cognitive overhead and allows sharing utility code (`bus-client.ts`, `agent-utils.ts`, `schemas/types.ts`).
-- Bzowski [4] used TypeScript for his (manual) transformations. Using the same language makes the connection to prior work more direct.
-- JSON Schema validation with AJV is excellent in the TypeScript ecosystem.
-
-**Considered and rejected:** Python (good NLP/AI libraries but no Mendix SDK), Java (verbose, no Mendix SDK), Go (no Mendix SDK). The Mendix SDK dependency effectively mandates TypeScript.
-
-### DD8 — Docker Compose for deployment
-
-**Decision:** All services (MQTT broker, API server, agents) run as Docker containers, orchestrated by Docker Compose on a Raspberry Pi 4.
-
-**Rationale:** The deployment target (Raspberry Pi) is a fixed constraint. Docker Compose gives a reproducible, version-controlled deployment configuration. Adding a new agent means adding a service block in `docker-compose.yml` — this is another concrete indicator of what "adding a new language" costs.
-
-**Raspberry Pi choice:** Running on a Pi rather than a cloud VM demonstrates that the system is lightweight and doesn't require heavy infrastructure. It also makes the system more interesting as a demonstration (it's running on a €60 board with a public URL, not on an enterprise server).
-
-### DD9 — Retained MQTT messages
-
-**Decision:** All published artefacts use the MQTT `retain: true` flag.
-
-**Why this matters:** Without retained messages, an agent that connects after a publication would receive nothing and would not know the current state of the bus. Retained messages make the broker act as a persistent state store. This means:
-- A freshly started `pim-to-mendix-agent` immediately receives the latest PIM for each artefact without waiting for someone to republish
-- During development, I can restart a single agent and it immediately re-processes the latest model
-- The "bus" has memory, which is semantically important: the bus is supposed to represent the current agreed-upon state of each artefact, not just a transient communication channel
-
-### DD10 — `X-Input-Format` header for language selection
-
-**Decision:** The API server dispatches to the correct CIM schema validator and MQTT topic based on an `X-Input-Format` header (`demo` or `merode`).
-
-**Context:** A single `/api/model` endpoint receives all models. The API server needs to know which CIM language the submitted model is in to validate it and publish it on the right MQTT topic.
-
-**Alternative:** Autodetect the language from the model structure. Rejected because it introduces fragility — two languages might share some structural elements, making autodetection unreliable. An explicit header is simpler and clearer.
-
-### DD11 — Shared `PIM_SOURCE_AGENTS` subscription in the Mendix agent
-
-**Decision:** The `pim-to-mendix-agent` subscribes to PIM artefacts from *all* CIM agents, not just the DEMO agent.
-
-**Context:** The original prototype hardcoded `SOURCE_AGENT_ID = "demo-to-pim-agent"`. When MERODE was added, the Mendix agent received MERODE PIM models but ignored them because it was only subscribed to the DEMO agent's topic.
-
-**Fix:** Use an environment variable `PIM_PUBLISHER_AGENT_IDS` (defaulting to `"demo-to-pim-agent,merode-to-pim-agent"`) and subscribe to all listed agent IDs at startup. This is a minor change to the Mendix agent but it is a change, and it's worth documenting because it shows that the "no change to existing components" claim requires nuance — see EXTENSIBILITY_EVIDENCE.md.
+Was diesen Ansatz von bisherigen Arbeiten unterscheidet: Bzowski [4] hat das pimUML-Vokabular und die A-Regeln theoretisch definiert, aber die Pipeline nie automatisiert. Krouwel et al. [11] haben eine Pipeline automatisiert, aber DEMO als einzige Eingabe hartcodiert und kein explizites PIM verwendet. Diese Thesis automatisiert Bzowskis Pipeline und erweitert sie auf mehrere Eingabesprachen, indem das PIM zum Vertrag zwischen den Schichten wird.
 
 ---
 
-## 3. Decisions That Are Implementation Details (Not Architectural)
+## 2. Entscheidungsprotokoll
 
-Some decisions were pragmatic and don't need thesis-level justification, but I record them here for completeness:
+### DD1 - MQTT als Nachrichtenbus
 
-- **`${ot.name}ID` not `id` for the logical identifier**: Mendix reserves `id` as a system field. Using the object type name as a prefix avoids this collision (CE7247).
-- **No quotes around enum literals in microflow expressions**: Mendix microflow expressions reference enum values as `Module.Enum.Value`, not `'Module.Enum.Value'`. This caused CE0117 and took some debugging.
-- **English captions for enum values**: The Mendix SDK requires at least one language caption for each enumeration value. An empty caption causes CW0263. The agent adds an English caption automatically by capitalising the first letter of the value name.
-- **Workflow generation skipped for MERODE**: Generating Mendix Workflows for MERODE sequential FSMs is possible in principle but requires mapping lifecycle states to Workflow activities, which is significantly more complex than the status-attribute approach (B13–B16). The stub implementation uses microflows only. This is documented as a limitation.
+Eclipse Mosquitto (MQTT 3.1.1) wurde als Broker gewählt, nachdem mehrere Ansätze verglichen wurden.
+
+REST/HTTP scheidet aus, weil es synchron und eng gekoppelt ist: Agent B müsste Agents A Adresse kennen, was AR6 verletzt. Eine geteilte Datenbank wäre ebenfalls möglich, würde aber mehr Kopplung einführen und es schwerer machen, Agenten unabhängig zu starten. Apache Kafka wäre leistungsfähiger, aber für einen Forschungsprototyp deutlich überdimensioniert; das Consumer-Group-Modell bringt hier keinen Mehrwert, weil keine Partitionierung benötigt wird.
+
+MQTT ist leichtgewichtig, publish/subscribe-basiert und für verteilte Agentenarchitekturen gut geeignet. Eclipse Mosquitto läuft trivial als Docker-Container. Das entscheidende Feature ist die Retained-Message-Funktion: jeder Agent, der sich verbindet, erhält sofort den letzten bekannten Zustand jedes Topics, ohne auf eine Neuveröffentlichung warten zu müssen. Das macht den Broker zu einem persistenten Zustandsspeicher, was die Entwicklung und das Debugging erheblich vereinfacht. Das Publish/Subscribe-Modell setzt die Entkopplung von AR2 auf natürliche Weise um.
+
+Bekannte Einschränkungen: MQTT garantiert keine geordnete Auslieferung über verschiedene Topics hinweg, und der Broker ist ein Single Point of Failure. Beides ist für einen Forschungsprototyp akzeptabel.
+
+### DD2 - JSON Schema als PIM-Metasprache
+
+Das pimUML-PIM wird als JSON-Schema-validiertes JSON-Dokument repräsentiert. Bzowski [4] definierte pimUML als UML-Profil, aber für die Automatisierung der Pipeline wird ein konkretes Serialisierungsformat benötigt. Das Proposal verweist explizit auf Colantoni et al. [5], die zeigen, dass JSON Schema als Metasprache für MDE-Artefakte geeignet ist.
+
+XMI als Standard-UML-Format scheidet aus, weil es eine schwere Toolchain (Eclipse, Ecore-Metamodelle) erfordert und schlecht zur TypeScript-nativen Mendix-SDK-Umgebung passt. YAML ist menschenlesbar, hat aber keine bessere Tooling-Unterstützung für Schema-Validierung als JSON. Reine TypeScript-Interfaces verlieren die Sprachneutralität und erlauben keine programmatische Schema-Compliance-Prüfung.
+
+JSON ist im Mendix-SDK nativ, wird nativ über MQTT transportiert und lässt sich direkt mit AJV validieren. Die `additionalProperties: false`-Enforcement ist genau das, was gebraucht wird, um stilles Schema-Drift zu verhindern. Dieses Designprinzip kommt bereits von Bzowski.
+
+### DD3 - pimUML als PIM-Sprache
+
+Die Thesis baut direkt auf Bzowski [4] auf. Er hat die A-Regeln von DEMO Fact Model zu pimUML und die B-Regeln von pimUML zu Mendix definiert. Die Aufgabe hier ist, diese Regeln zu automatisieren und pimUML auf MERODE zu erweitern.
+
+Ein vollständig neues PIM zu definieren wäre ein größerer Beitrag, würde aber auch erfordern, jede Designentscheidung eigenständig zu rechtfertigen. Das Aufbauen auf Bzowski verankert das PIM in vorhandener akademischer Arbeit und erlaubt es, den Thesis-Beitrag auf Pipelinearchitektur und MERODE-Erweiterung zu konzentrieren, nicht auf das PIM-Sprachdesign selbst.
+
+pimUML deckt drei UML-Diagrammtypen ab: Klassendiagramm (strukturell), Zustandsmaschinendiagramm (verhaltensbezogen) und Aktivitätsdiagramm (Operationen). Im Prototyp werden Klassen- und Zustandsmaschinendiagramme vollständig genutzt; das Aktivitätsdiagramm wird teilweise genutzt (Aktivitäten werden als typisierte Objekte im PIM erfasst, aber nicht als vollständige UML-Aktivitätsdiagramme dargestellt).
+
+### DD4 - Sequenzielle FSM für MERODE-Lebenszyklen
+
+MERODE-Objektlebenszyklen werden als sequenzielle Zustandsmaschinen mit benannten, geordneten Zuständen und einem finalen Zustand repräsentiert, nicht als orthogonale boolesche Regionen wie bei DEMO.
+
+Das war die folgenreichste Designentscheidung in der MERODE-Erweiterung. Drei Optionen standen zur Wahl.
+
+Option A hätte die boolesche Regionenkodierung von DEMO wiederverwendet: jeder Geschäftsereignistyp als orthogonale Region mit `false`/`true`-Zuständen, unabhängig von der Quellsprache. Das hätte maximale Schema-Wiederverwendung bedeutet, wäre aber semantisch falsch. MERODE-Lebenszykluszustände schließen sich gegenseitig aus (ein Objekt ist entweder `active` oder `completed`, nie beides), boolesche Regionen repräsentieren aber unabhängige Flags in beliebiger Kombination. Das hätte strukturell invalide Modelle erzeugt, und die Thesis könnte für MERODE keine semantische Korrektheit beanspruchen.
+
+Option C hätte MERODE-FSMs komplett aus dem Scope herausgenommen. Das hätte die Extensibilitätseigenschaft des Schemas unangetastet gelassen, würde aber bedeuten, für MERODE nur strukturelle Transformation zu beanspruchen, nicht verhaltensbezogene. Das würde den Heterogenitätsanspruch der Thesis untergraben.
+
+Option B wurde gewählt: eine Region, ein initialer Pseudozustand, benannte Lebenszykluszustände (kind: `simple`), ein finaler Zustand. Das entspricht Snoecks Beschreibung in Kapitel 6: "life cycle states are successive phases of the object's life" (S. 127). Der Preis ist eine minimale PIM-Erweiterung. Der Gewinn ist semantische Treue. Dass diese Option eine Erweiterung erzwingt, ist selbst ein Befund: das für DEMO entworfene pimUML-Schema ist fast, aber nicht vollständig, ausreichend für MERODE. Genau das zu dokumentieren ist ein Beitrag zur Frage, was ein "gemeinsames PIM" für heterogene Enterprise-Modelle leisten muss.
+
+### DD5 - Additive, rückwärtskompatible PIM-Schema-Erweiterung
+
+`pimuml-schema.json` wurde minimal erweitert, sodass alle DEMO-erzeugten PIM-Instanzen weiterhin ohne Änderungen am DEMO-Agenten validieren.
+
+Drei Änderungen wurden vorgenommen. `State.kind` wurde von `["initial","false","true"]` auf `["initial","false","true","simple","final"]` erweitert, wobei DEMO-Zustände nur `initial`, `false`, `true` verwenden und MERODE-Zustände `initial`, `simple`, `final` -- kein Konflikt. `Activity.kind` wurde von `["set","create"]` auf `["set","create","end"]` erweitert, weil MERODE `end`-Aktivitäten für Beendigungsereignisse benötigt; der DEMO-Agent erzeugt keine `end`-Aktivitäten, also ändert sich dort nichts. `Region.forEvent` wurde von de facto verpflichtend auf optional geändert, weil MERODE-Regionen keine Pro-Ereignis-Annotation haben.
+
+Der debattierbare Punkt ist die Optionalisierung von `forEvent`: das ist technisch eine Lockerung einer Beschränkung, nicht eine rein additive Ergänzung. In der Praxis schlägt kein DEMO-generiertes PIM deshalb fehl, alle setzen dieses Feld weiterhin. Konzeptuell ist es aber eine Relaxierung, die in LIMITATIONS.md dokumentiert ist.
+
+### DD6 - Der `isMerodeFSM()`-Unterscheider im PSM-Agenten
+
+Der `pim-to-mendix-agent` nutzt eine Hilfsfunktion `isMerodeFSM(sm)`, um MERODE-Zustandsmaschinen von DEMO-Zustandsmaschinen zu unterscheiden und entsprechend verschiedene B-Regeln anzuwenden.
+
+Wenn das PIM beim Mendix-Agenten ankommt, trägt es keine Metadaten mehr über die Quellsprache. Aber die B-Regeln für DEMO-FSMs (B11-B12: Workflow-Generierung) und MERODE-FSMs (B13-B16: Status-Enum und Microflows) sind verschieden.
+
+Die Unterscheidungsfunktion gibt `true` zurück, wenn alle Regionen in der Zustandsmaschine keine `forEvent`-Annotation tragen. DEMO-FSMs setzen `forEvent` immer (eine Region pro Ereignis). MERODE-FSMs tun es nie (eine Region pro Objekttyp, keine Ereignisannotation). Das ist eine strukturelle Eigenschaft der PIM-Kodierung, kein explizites Sprach-Tag.
+
+Ein explizites `sourceLanguage`-Tag im PIM würde AR2 verletzen, weil das PIM ein sprachneutrales Zwischenformat sein soll. Wenn der nachgelagerte Agent wüsste, welche CIM-Sprache das Modell erzeugt hat, würde das die Sprachenisolation aufheben. Die Verwendung einer strukturellen PIM-Eigenschaft als Unterscheidungsmerkmal hält die Isolation intakt.
+
+Bekannte Einschränkung: der Ansatz ist elegant, aber fragil, wenn eine dritte Sprache eine ähnliche FSM-Struktur ohne Ereignisannotationen verwendet. Für den aktuellen Scope (DEMO und MERODE) ist der Diskriminator eindeutig. Ein robusteres Design würde ein explizites `fsmStyle: "orthogonal" | "sequential"`-Feld in der StateMachine-Definition verwenden, was aber eine intrusivere Schema-Änderung wäre.
+
+### DD7 - TypeScript/Node.js für alle Agenten
+
+Alle Agenten sind in TypeScript auf Node.js implementiert. Das Mendix Platform SDK ist TypeScript-nativ, was für den Agenten, der das SDK aufruft, keine echte Alternative lässt. Dieselbe Sprache für alle Agenten zu verwenden reduziert den kognitiven Overhead und ermöglicht das Teilen von Hilfscode (`bus-client.ts`, `agent-utils.ts`). Bzowski [4] hat TypeScript für seine manuellen Transformationen genutzt, was die Anknüpfung an frühere Arbeiten erleichtert. AJV als JSON-Schema-Validator ist im TypeScript-Ökosystem ausgezeichnet.
+
+Python hat gute NLP/KI-Bibliotheken, aber kein Mendix-SDK. Java und Go scheiden aus demselben Grund aus.
+
+### DD8 - Docker Compose für das Deployment
+
+Alle Dienste (MQTT-Broker, API-Server, Agenten) laufen als Docker-Container, orchestriert durch Docker Compose auf einem Raspberry Pi 4. Docker Compose liefert eine reproduzierbare, versionierte Deployment-Konfiguration. Einen neuen Agenten hinzuzufügen bedeutet, einen Service-Block in `docker-compose.yml` einzufügen. Das ist ein konkreter Indikator für den Aufwand "neue Sprache hinzufügen".
+
+Der Raspberry Pi als Zielplattform demonstriert, dass das System leichtgewichtig ist und keine schwere Infrastruktur erfordert.
+
+### DD9 - Retained MQTT-Nachrichten
+
+Alle veröffentlichten Artefakte verwenden das MQTT-Flag `retain: true`. Ohne Retained Messages würde ein Agent, der sich nach einer Veröffentlichung verbindet, nichts empfangen und den aktuellen Busstatus nicht kennen. Mit Retained Messages wirkt der Broker wie ein persistenter Zustandsspeicher. Ein frisch gestarteter `pim-to-mendix-agent` empfängt sofort das aktuelle PIM für jedes Artefakt. Das macht den Bus semantisch bedeutsam: er repräsentiert den zuletzt vereinbarten Zustand jedes Artefakts, nicht nur einen flüchtigen Kommunikationskanal.
+
+### DD10 - `X-Input-Format`-Header für die Sprachauswahl
+
+Der API-Server dispatcht basierend auf dem Header `X-Input-Format` (Werte: `demo` oder `merode`) an den richtigen CIM-Schema-Validator und das richtige MQTT-Topic. Eine automatische Spracherkennung aus der Modellstruktur wurde verworfen, weil zwei Sprachen strukturelle Gemeinsamkeiten haben können, die eine zuverlässige Erkennung erschweren. Ein expliziter Header ist einfacher und klarer.
+
+### DD11 - Mehrfach-Abonnement im Mendix-Agenten
+
+Der `pim-to-mendix-agent` abonniert PIM-Artefakte von allen CIM-Agenten, nicht nur vom DEMO-Agenten. Der ursprüngliche Prototyp hatte `SOURCE_AGENT_ID = "demo-to-pim-agent"` hartcodiert. Als MERODE hinzugefügt wurde, empfing der Mendix-Agent zwar MERODE-PIM-Nachrichten, ignorierte sie aber, weil er nur das DEMO-Agenten-Topic abonniert hatte.
+
+Die Lösung war eine Umgebungsvariable `PIM_PUBLISHER_AGENT_IDS` (Standardwert: `"demo-to-pim-agent,merode-to-pim-agent"`), aus der beim Start alle Agenten-IDs ausgelesen werden. Das ist eine Änderung am Mendix-Agenten und damit für die Extensibilitätsbehauptung relevant, was in EXTENSIBILITY_EVIDENCE.md diskutiert wird.
+
+---
+
+## 3. Implementierungsdetails ohne Architekturcharakter
+
+Einige Entscheidungen sind pragmatisch und brauchen keine Thesis-Level-Rechtfertigung, werden aber der Vollständigkeit halber festgehalten.
+
+Der logische Bezeichner heißt `${ot.name}ID` statt `id`, weil Mendix `id` als reservierten Systemfeldnamen behandelt (CE7247). Enum-Literale in Microflow-Ausdrücken werden ohne Anführungszeichen geschrieben (`Module.Enum.Value`), weil Mendix keine gequoteten Enum-Referenzen akzeptiert (CE0117). Enum-Werte bekommen automatisch einen englischen Caption mit großgeschriebenem ersten Buchstaben, weil Mendix mindestens einen Sprachcaption verlangt und sonst CW0263 wirft. Für MERODE-FSMs wird keine Mendix-Workflow-Generierung durchgeführt, weil MERODE-Regionen kein `forEvent` tragen und die Workflow-Generierung sonst `Wait_undefined` produziert.

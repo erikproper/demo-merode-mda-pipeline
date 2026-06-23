@@ -1,12 +1,12 @@
-# Architecture Overview — MDA Modelling Bus Prototype
+# Architekturübersicht — MDA Modelling Bus Prototyp
 
-This document describes the technical architecture of the prototype implemented for this master's thesis. The system automates the transformation of heterogeneous enterprise models — currently DEMO and MERODE — into Mendix low-code applications, following the MDA (Model-Driven Architecture) abstraction hierarchy.
+Dieses Dokument beschreibt die technische Architektur des für diese Masterarbeit implementierten Prototyps. Das System automatisiert die Transformation heterogener Enterprise-Modelle (aktuell DEMO und MERODE) in Mendix Low-Code-Applikationen nach dem MDA-Abstraktionshierarchie-Prinzip.
 
 ---
 
-## 1. End-to-End Pipeline
+## 1. Ende-zu-Ende-Pipeline
 
-The pipeline implements three MDA abstraction layers connected by an asynchronous message bus. Source models enter at the CIM level, are transformed into a shared PIM representation, and are then realised as a Mendix application at the PSM level.
+Die Pipeline implementiert drei MDA-Abstraktionsschichten, verbunden durch einen asynchronen Nachrichtenbus. Quellmodelle treten auf CIM-Ebene ein, werden in eine gemeinsame PIM-Repräsentation transformiert und dann als Mendix-Applikation auf PSM-Ebene realisiert.
 
 ```mermaid
 flowchart TB
@@ -87,9 +87,9 @@ flowchart TB
 
 ---
 
-## 2. Internal Agent Processing Pattern
+## 2. Internes Verarbeitungsmuster eines Agenten
 
-Every agent — whether CIM-to-PIM or PIM-to-PSM — follows the same internal processing pattern. This uniform structure is enforced by the shared `bus-client.ts` and `agent-utils.ts` infrastructure.
+Jeder Agent -- ob CIM-nach-PIM oder PIM-nach-PSM -- folgt demselben internen Verarbeitungsmuster. Diese einheitliche Struktur wird durch die gemeinsam genutzte Infrastruktur aus `bus-client.ts` und `agent-utils.ts` erzwungen.
 
 ```mermaid
 flowchart LR
@@ -122,9 +122,9 @@ flowchart LR
 
 ---
 
-## 3. Schema Hierarchy and Validation
+## 3. Schema-Hierarchie und Validierung
 
-Schema validation is a first-class concern. Each boundary in the pipeline is guarded by a JSON Schema compiled with AJV (`additionalProperties: false`). The pipeline aborts — without publishing — whenever validation fails.
+Schema-Validierung ist ein zentrales Anliegen. Jede Grenze in der Pipeline wird durch ein mit AJV kompiliertes JSON-Schema abgesichert (`additionalProperties: false`). Die Pipeline bricht ohne Veröffentlichung ab, wenn eine Validierung fehlschlägt.
 
 ```mermaid
 flowchart LR
@@ -149,42 +149,42 @@ flowchart LR
     PS --> MX_IN
 ```
 
-**Key design decision:** the pimUML schema is the single shared contract between all CIM agents and the PSM agent. When MERODE was added, the schema was extended additively (new `kind` enum values, `forEvent` made optional) — no existing DEMO-generated PIM document requires modification.
+Das pimUML-Schema ist der einzige gemeinsame Vertrag zwischen allen CIM-Agenten und dem PSM-Agenten. Als MERODE hinzugefügt wurde, wurde das Schema additiv erweitert (neue `kind`-Enum-Werte, `forEvent` optional) -- kein bestehendes DEMO-generiertes PIM-Dokument muss angepasst werden.
 
 ---
 
-## 4. MQTT Topic Structure
+## 4. MQTT-Topic-Struktur
 
-The bus follows the BIG Modelling Bus naming convention (Layer 1 of the Go reference implementation). Every agent writes to its own namespace; agents never share a write topic.
+Der Bus folgt der BIG Modelling Bus-Namenskonvention (Schicht 1 der Go-Referenzimplementierung). Jeder Agent schreibt in seinen eigenen Namensraum; Schreibtopics werden nie geteilt.
 
 ```
 {prefix}/{bus-version}/{environmentID}/{agentID}/artefacts/json/{artefactID}/{jsonVersion}/state
 ```
 
-| Field | Value (this prototype) |
-|---|---|
+| Feld | Wert (dieser Prototyp) |
+|------|----------------------|
 | `prefix` | `big` |
 | `bus-version` | `bus-version-1.0` |
 | `environmentID` | `dev` |
-| `agentID` | `api-server` · `demo-to-pim-agent` · `merode-to-pim-agent` · `pim-to-mendix-agent` |
-| `artefactID` | `model.cim.raw` · `model.pim.created` |
-| `jsonVersion` | `cim-v1.0-v1.0` · `pimuml-v1.0-v1.0` |
-| `state` | retained — agents that restart receive the last known model immediately |
+| `agentID` | `api-server`, `demo-to-pim-agent`, `merode-to-pim-agent`, `pim-to-mendix-agent` |
+| `artefactID` | `model.cim.raw`, `model.pim.created` |
+| `jsonVersion` | `cim-v1.0-v1.0`, `pimuml-v1.0-v1.0` |
+| `state` | retained -- neu gestartete Agenten erhalten sofort das letzte bekannte Modell |
 
-**Full example topics:**
+Vollständige Beispiel-Topics:
 ```
 big/bus-version-1.0/dev/api-server/artefacts/json/model.cim.raw/cim-v1.0-v1.0/state
 big/bus-version-1.0/dev/demo-to-pim-agent/artefacts/json/model.pim.created/pimuml-v1.0-v1.0/state
 big/bus-version-1.0/dev/merode-to-pim-agent/artefacts/json/model.pim.created/pimuml-v1.0-v1.0/state
 ```
 
-The PSM agent subscribes to **both** CIM agents' PIM topics. The set of upstream agents is controlled by the `PIM_PUBLISHER_AGENT_IDS` environment variable — adding a third CIM agent requires only updating this variable, with no code changes to the PSM agent.
+Der PSM-Agent abonniert die PIM-Topics beider CIM-Agenten. Die Menge der vorgelagerten Agenten wird über die Umgebungsvariable `PIM_PUBLISHER_AGENT_IDS` gesteuert. Das Hinzufügen eines dritten CIM-Agenten erfordert nur die Aktualisierung dieser Variable, keine Code-Änderungen am PSM-Agenten.
 
 ---
 
-## 5. Deployment View
+## 5. Deployment-Sicht
 
-All components run as Docker containers on a Raspberry Pi. Public access is provided through a Cloudflare Tunnel, which terminates TLS and forwards HTTPS traffic to the local API gateway.
+Alle Komponenten laufen als Docker-Container auf einem Raspberry Pi. Der öffentliche Zugang erfolgt über einen Cloudflare-Tunnel, der TLS terminiert und HTTPS-Verkehr an das lokale API-Gateway weiterleitet.
 
 ```mermaid
 flowchart TB
@@ -220,46 +220,46 @@ flowchart TB
     MQTT_C     -.->|"healthcheck\nrestart: unless-stopped"| API_C
 ```
 
-**CI/CD:** A GitHub Actions workflow (`deploy-pi.yml`) deploys the stack automatically on push to `main`. The workflow SSHs into the Pi, pulls the latest image, and runs `docker compose up -d`.
+CI/CD: Ein GitHub-Actions-Workflow (`deploy-pi.yml`) deployed den Stack automatisch bei jedem Push auf `main`. Der Workflow verbindet sich per SSH mit dem Pi, zieht das aktuelle Image und führt `docker compose up -d` aus.
 
 ---
 
-## 6. Extensibility
+## 6. Erweiterbarkeit
 
-The architecture was designed to accommodate new CIM languages without modifying existing components. The MERODE integration provides concrete evidence:
+Die Architektur ist darauf ausgelegt, neue CIM-Sprachen aufzunehmen, ohne bestehende Komponenten zu ändern. Die MERODE-Integration liefert den konkreten Nachweis.
 
-| Component | Change when adding MERODE |
-|---|---|
-| `demo-to-pim-agent.ts` | **Zero** — untouched |
-| `bus-client.ts` | **Zero** — untouched |
-| `agent-utils.ts` | **Zero** — untouched |
-| `merode-to-pim-agent.ts` | **New file** — entirely additive |
-| `merode-schema.json` | **New file** — entirely additive |
-| `pimuml-schema.json` | Additive extension (new `kind` values, `forEvent` optional) |
-| `types.ts` | New interfaces + minor type extensions |
-| `pim-to-mendix-agent.ts` | New B13–B16 rule blocks + `isMerodeFSM()` discriminator |
-| `docker-compose.yml` | One new service block |
+| Komponente | Änderung beim Hinzufügen von MERODE |
+|------------|-------------------------------------|
+| `demo-to-pim-agent.ts` | Keine Änderungen |
+| `bus-client.ts` | Keine Änderungen |
+| `agent-utils.ts` | Keine Änderungen |
+| `merode-to-pim-agent.ts` | Neue Datei (vollständig additiv) |
+| `merode-schema.json` | Neue Datei (vollständig additiv) |
+| `pimuml-schema.json` | Additive Erweiterung (neue `kind`-Werte, `forEvent` optional) |
+| `types.ts` | Neue Interfaces und kleine Typerweiterungen |
+| `pim-to-mendix-agent.ts` | Neue B13-B16-Regelblöcke und `isMerodeFSM()`-Diskriminator |
+| `docker-compose.yml` | Ein neuer Service-Block |
 
-A planned third-agent experiment (ER diagram language) predicts **zero changes** to any existing file — only new files and a `docker-compose.yml` addition — because ER concepts map to existing pimUML constructs (Classes, Associations) that B1–B12 already handle.
+Ein geplantes Dritte-Agenten-Experiment (ER-Diagramm-Sprache) prognostiziert null Änderungen an bestehenden Dateien, weil ER-Konzepte auf bestehende pimUML-Konstrukte (Classes, Associations) abbilden, die B1-B12 bereits verarbeiten.
 
-The extensibility boundary: adding a language with **existing PIM concepts** (classes, associations, attributes) requires only a new CIM agent. Adding a language with **new PIM concepts** (as MERODE's sequential FSMs were) additionally requires a minimal additive schema extension and new PSM rules.
+Die Grenzlinie der Erweiterbarkeit: das Hinzufügen einer Sprache mit bestehenden PIM-Konzepten (Klassen, Assoziationen, Attribute) erfordert nur einen neuen CIM-Agenten. Das Hinzufügen einer Sprache mit genuinen neuen PIM-Konzepten (wie MERODEs sequenzielle FSMs) erfordert zusätzlich eine minimale additive Schema-Erweiterung und neue PSM-Regeln.
 
 ---
 
 ## 7. Meta-Envelope
 
-Every message on the bus carries a meta-envelope alongside the model payload. The envelope is stripped before schema validation and re-attached after, so `additionalProperties: false` is not violated.
+Jede Nachricht auf dem Bus trägt neben der Modell-Nutzlast einen Meta-Envelope. Der Envelope wird vor der Schema-Validierung abgetrennt und danach wieder angehängt, damit `additionalProperties: false` nicht verletzt wird.
 
 ```
 {
-  ...model payload...,
+  ...Modell-Nutzlast...,
   "_source": { "format": "demo" | "merode" },
-  "_target": {                                   ← optional, from HTTP headers
-    "appId":      "<Mendix app UUID>",
-    "moduleName": "<module name>",
-    "branch":     "<branch>"
+  "_target": {
+    "appId":      "<Mendix-App-UUID>",
+    "moduleName": "<Modulname>",
+    "branch":     "<Branch>"
   },
-  "_trace": [                                    ← attached by CIM agents
+  "_trace": [
     {
       "sourceType": "EntityType",
       "sourceName": "Rental",
@@ -271,4 +271,4 @@ Every message on the bus carries a meta-envelope alongside the model payload. Th
 }
 ```
 
-The `_trace` array provides complete end-to-end traceability: every mapping rule application is recorded as a `TraceEntry`. Entries with `targetType: "NotMapped"` document explicitly which source concepts are out of scope (e.g. M9 propagation, derived OCL attributes).
+Das `_trace`-Array liefert vollständige Ende-zu-Ende-Nachvollziehbarkeit: jede Regelanwendung wird als `TraceEntry` aufgezeichnet. Einträge mit `targetType: "NotMapped"` dokumentieren explizit, welche Quellkonzepte außerhalb des Scopes liegen (z.B. M9-Propagierung, abgeleitete OCL-Attribute).

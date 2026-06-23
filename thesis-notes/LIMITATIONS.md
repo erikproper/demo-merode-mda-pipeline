@@ -1,140 +1,109 @@
-# Limitations and Scope Decisions
+# Einschränkungen und Scopegrenzen
 
-These notes document what the prototype does not do and why. For the thesis, this material goes into a Limitations section and a Future Work section — the distinction being: a limitation is something the system cannot do within the defined scope, while future work is something outside the defined scope that would be a natural next step.
-
-The tone in the thesis should be honest and analytical: every limitation should come with a justification (why it's acceptable) and ideally a brief indication of what it would take to address it. Reviewers appreciate this — it shows I understand the boundaries of the work.
+Dieses Dokument hält fest, was der Prototyp nicht kann und warum. Für die Thesis gehört dieses Material in einen Limitations-Abschnitt und einen Future-Work-Abschnitt. Der Unterschied: eine Einschränkung ist etwas, das das System innerhalb des definierten Scopes nicht leistet; Future Work liegt außerhalb des Scopes und wäre ein natürlicher nächster Schritt. Jede Einschränkung sollte mit einer Begründung (warum akzeptabel) und einem kurzen Ausblick (was es bräuchte, um sie zu beheben) dargestellt werden.
 
 ---
 
-## 1. M-Rule Gaps
+## 1. Lücken bei den M-Regeln
 
-### M3 — Attribute domains not modelled
+### M3 - Attributdomänen nicht modelliert
 
-**What's missing:** When a MERODE attribute has an enumerated domain (e.g., `carGroup: {economy, standard, luxury}`) or a user-defined scalar domain, the current implementation treats it as a plain `String` attribute. No pimUML Enumeration or DataType is generated for the domain.
+Wenn ein MERODE-Attribut eine aufgezählte Domäne hat (z.B. `carGroup: {economy, standard, luxury}`) oder eine benutzerdefinierte skalare Domäne, behandelt die aktuelle Implementierung das Attribut als einfaches `String`-Attribut. Es wird weder eine pimUML-Enumeration noch ein DataType für die Domäne erzeugt.
 
-**Why it's missing:** The `merode-schema.json` defines attribute type as a plain string (`"type": { "type": "string" }`). There is no mechanism in the schema to specify that a type name refers to an enumerated domain with a given set of values. Supporting M3 would require either:
-1. Adding a `domains` array to the MERODE schema (like DEMO's `valueTypes`), or
-2. Allowing attributes to carry inline enum definitions
+Das Problem liegt im Schema: `merode-schema.json` definiert den Attributtyp als einfachen String (`"type": { "type": "string" }`). Es gibt keinen Mechanismus, über den angegeben werden kann, dass ein Typname auf eine aufgezählte Domäne mit konkreten Werten verweist. M3 zu implementieren würde erfordern, entweder ein `domains`-Array zum MERODE-Schema hinzuzufügen (analog zu DEMOs `valueTypes`) oder Attribute inline um Enum-Definitionen zu erweitern.
 
-Both are possible but were deferred in favour of getting M5–M8 working first.
+Für die Evaluation bedeutet das: jedes MERODE-Modell, das aufgezählte Attributdomänen verwendet, verliert diese Information beim Durchlaufen der Pipeline. Die Elemente erscheinen in der Vollständigkeitsbewertung als Missing. Für das Rent-A-Car-Fixture, das nur String-Attribute hat, gibt es keine Auswirkung.
 
-**Impact on evaluation:** Any MERODE model that uses enumerated attribute domains will have those attributes as Missing in the semantic completeness assessment (the domain information is dropped). For the Rent-A-Car fixture (which has only String attributes), there is no impact.
+Aufwandsschätzung für eine Korrektur: mittel. `merode-schema.json` um ein `domainTypes`-Array erweitern, `types.ts` um einen `MerodeDomainType`-Interface ergänzen, und die Verarbeitungslogik im `merode-to-pim-agent.ts` hinzufügen. Das pimUML-Schema unterstützt Enumeration und DataType bereits.
 
-**Fix estimate:** Medium effort. Extend `merode-schema.json` with a `domainTypes` array, extend `types.ts` with a `MerodeDomainType` interface, add domain processing in `merode-to-pim-agent.ts`. The pimUML schema already supports Enumeration and DataType.
+### M9 - Gemeinsame Ereignisbeteiligung und Propagierung nicht implementiert
 
-### M9 — Shared event participation and propagation not implemented
+In MERODE werden Geschäftsereignisse über mehrere Objekttypen hinweg geteilt. Die Propagierungsregel (Snoeck, Kap. 5.3.1, S. 114) besagt: wenn ein Ereignis einen abhängigen Objekttyp einbezieht, bezieht es automatisch auch alle Hauptobjekttypen mit ein (mit Typ M). Zum Beispiel schließt `startRental` Rental (O/C), Car (A/M) und Person (A/M) ein.
 
-**What's missing:** In MERODE, business events are shared across multiple object types. The Propagation Rule (Snoeck, Ch. 5.3.1, p. 114) states that when an event involves a dependent object type, it automatically also involves all master object types (with type M). For example, `startRental` involves Rental (O/C), Car (A/M), and Person (A/M).
+Die aktuelle Implementierung verarbeitet nur die Eigentümerbeteiligung. Das `role`-Feld auf einem BusinessEventType entspricht der C/M/E-Rolle des Eigentümers im OET. Die propagierten A/M-Beteiligungen der Hauptobjekttypen werden nicht verarbeitet.
 
-The current implementation only handles the owner participation — the `role` field on a BusinessEventType corresponds to the owner's C/M/E in the OET. The propagated A/M participations of master object types are not processed.
+Warum fehlt das: M9 korrekt zu implementieren erfordert den Aufbau einer Propagierungshülle aus dem EDG (alle Existenzabhängigkeiten transitiv traversieren), für jedes Ereignis mit einem abhängigen Objekt alle über die Abhängigkeitskette erreichbaren Hauptobjekttypen zu finden, M-Rollen-Übergänge in den FSMs dieser Hauptobjekttypen einzufügen und Fälle mit mehrstufigen Propagierungsketten zu behandeln. Das ist nicht trivial, und das Testfixture modelliert nur Eigentümerbeteiligungen explizit.
 
-**Why it's missing:** Implementing M9 correctly requires:
-1. Building a propagation closure from the EDG (traverse all existence dependencies transitively)
-2. For each event that involves a dependent, finding all master object types reachable via the dependency chain
-3. Adding M-role transitions in the master object types' FSMs for each propagated event
-4. Handling the case where an event propagates to multiple levels of masters
+Auswirkung auf die Evaluation: erheblich. Das OET wird nur teilweise erfasst. Im Rent-A-Car-Fall sollten `startRental` und `completeRental` auch als modifizierende Ereignisse in Car und Person erscheinen, was in der aktuellen Ausgabe nicht der Fall ist. Diese Elemente erscheinen als Missing.
 
-This is non-trivial and the test fixture only models owner participations explicitly. I decided to treat M9 as Future Work and focus on getting M1–M8 correct first.
-
-**Impact on evaluation:** Significant. The OET is only partially captured. For the Rent-A-Car case, `startRental` and `completeRental` should also appear as modifying events in Car and Person — but they don't in the current output. These will be Missing elements in the semantic completeness evaluation.
-
-**Significance for the thesis:** M9 is arguably the most interesting rule from a research perspective — it's the rule with the least DEMO analogue and the one that most clearly shows MERODE's paradigmatic difference. The formal specification of M9 should appear in the thesis even though the implementation is incomplete. The honest framing is: "The rule is formally defined and its implementation would require X and Y; it is left for future work due to time constraints."
+M9 ist aus Forschungsperspektive die interessanteste Regel: sie hat das geringste DEMO-Analogon und zeigt am deutlichsten MERODEs paradigmatischen Unterschied. Die formale Spezifikation von M9 sollte in der Thesis stehen, auch wenn die Implementierung unvollständig ist.
 
 ---
 
-## 2. B-Rule Gaps
+## 2. Lücken bei den B-Regeln
 
-### B16 — End microflow is a stub
+### B16 - End-Microflow ist ein Stub
 
-**What's missing:** The `End_<Entity>` microflow is generated with only a parameter node. It does not implement any actual end behaviour: no deletion, no archival, no status change.
+Der `End_<Entity>`-Microflow wird mit einem Parameter-Knoten generiert. Er implementiert kein tatsächliches Beendigungsverhalten: keine Löschung, keine Archivierung, keine Statusänderung.
 
-**Why:** How an object should be "ended" in Mendix is an application-level decision, not a model-level one. Options include:
-- Setting `status = final` (if using the status attribute from B13)
-- Soft-deleting: setting a `deletedAt` timestamp attribute and filtering queries
-- Hard-deleting: calling `DeleteObjectAction`
-- Archiving: moving to a separate entity or table
+Wie ein Objekt in Mendix "beendet" werden soll, ist eine Anwendungsentscheidung, keine Modellentscheidung. Möglichkeiten sind das Setzen von `status = final` (wenn das Status-Attribut aus B13 genutzt wird), Soft-Deletion über ein `deletedAt`-Zeitstempel-Attribut mit Filterung, Hard-Deletion über `DeleteObjectAction` oder Archivierung. Die richtige Wahl hängt von den Anwendungsanforderungen ab, die das pimUML-`end`-Aktivitätskonstrukt nicht vorschreibt.
 
-The right choice depends on the application requirements. The pimUML `end` activity kind doesn't prescribe any of these. For the prototype, generating a non-empty stub that at minimum takes the object as a parameter is sufficient to demonstrate the B16 rule exists.
+Aufwandsschätzung: gering, sobald die Designentscheidung (Hard-Delete vs. Soft-Delete) getroffen ist.
 
-**Fix estimate:** Low effort once the design decision (hard-delete vs. soft-delete) is made. Add a `DeleteObjectAction` or a `MemberChange` for a `deletedAt` field.
+### Workflow-Generierung für MERODE entfällt
 
-### Workflow generation for MERODE is skipped
+Die DEMO-Pipeline erzeugt für jeden Entitytyp-FSM einen Mendix-Workflow mit WaitForNotification-Aktivitäten. Die MERODE-Pipeline tut das nicht. Der `isMerodeFSM()`-Check im `pim-to-mendix-agent` überspringt die Workflow-Generierung für MERODE-Zustandsmaschinen.
 
-**What's missing:** The DEMO pipeline generates a Mendix Workflow (with WaitForNotification activities) for each entity type's FSM. The MERODE pipeline does not. The `isMerodeFSM()` check in the `pim-to-mendix-agent` skips workflow generation for MERODE state machines.
+Mendix-Workflows sind für langläufige Prozesse mit menschlichen Interaktionspunkten konzipiert. Sie passen gut zu DEMOs booleschen Regionen, weil jede Region eine Workflow-Warteaktivität werden kann. MERODEs sequenzielle FSMs lassen sich nicht so direkt auf Mendix-Workflows abbilden: die Lebenszykluszustände würden zu Workflow-Aktivitäten, aber die Trigger-und-Übergangs-Struktur ist grundlegend anders.
 
-**Why:** Mendix Workflows are designed for long-running processes with human interaction points (WaitForNotification). They map well to DEMO's boolean-region FSMs because each region can become a Workflow wait activity (waiting for the event to occur). MERODE's sequential FSMs don't map as cleanly to Mendix Workflows: the lifecycle states would become Workflow activities, but the trigger/transition structure is different.
+Konkret: Als der Workflow-Generator auf einen MERODE-FSM traf, versuchte er eine `WaitForNotification`-Aktivität namens `Wait_<forEvent>` anzulegen. MERODE-Regionen haben aber kein `forEvent`, was den Namen `Wait_undefined` erzeugte. Das war der Fehler, der zum `isMerodeFSM()`-Skip geführt hat.
 
-More concretely: when the workflow generator encountered a MERODE FSM, it tried to create a `WaitForNotification` activity named `Wait_<forEvent>`, but MERODE regions have no `forEvent` — the name came out as `Wait_undefined`. This was the bug that motivated the `isMerodeFSM()` skip.
-
-**Potential approach:** Map each lifecycle state to a Workflow activity type (user task or automated task) and each transition to the progression logic. This would require new B-rule definitions and is left as future work.
+Möglicher Lösungsansatz: jeden Lebenszykluszustand auf einen Workflow-Aktivitätstyp abbilden und jeden Übergang auf die Fortschrittslogik. Das würde neue B-Regel-Definitionen erfordern und ist als Future Work vorgesehen.
 
 ---
 
-## 3. MERODE Concept Coverage
+## 3. Nicht abgedeckte MERODE-Konzepte
 
-The following MERODE concepts from Snoeck [21] are explicitly out of scope:
+Die folgenden MERODE-Konzepte aus Snoeck [21] sind explizit nicht im Scope.
 
-### Inheritance (Chapter 8)
+### Vererbung (Kapitel 8)
 
-Snoeck devotes a full chapter to inheritance in MERODE. Object types can be specialised based on attributes (attribute-defined subclass), existence (existence-defined subclass), or state (state-defined subclass). Each form has different implications for event participation and lifecycle modelling.
+Snoeck widmet der Vererbung in MERODE ein vollständiges Kapitel. Objekttypen können durch Attribute (attribut-definierte Unterklasse), Existenz (existenz-definierte Unterklasse) oder Zustand (zustands-definierte Unterklasse) spezialisiert werden. Jede Form hat andere Implikationen für Ereignisbeteiligung und Lebenszyklus-Modellierung.
 
-The current implementation does not handle inheritance. No `generalizations` field is produced in the MERODE pimUML output. The pimUML schema supports Generalization (B10 exists in the B-rules), so implementing it would primarily require extending the MERODE schema and agent.
+Die aktuelle Implementierung behandelt Vererbung nicht. Das Rent-A-Car-Fallbeispiel benötigt sie nicht, und das Proposal listet sie nicht als erforderliches Lieferobjekt. Vererbung könnte durch M-Regeln analog zu A10 umgesetzt werden und wäre in der Thesis als natürliche Erweiterung zu dokumentieren.
 
-**Justification for exclusion:** The Rent-A-Car case study does not require inheritance. The proposal does not list inheritance as a required deliverable. For the thesis, inheritance can be mentioned as a natural extension and documented as Future Work with a brief note on how it would be handled (likely M-rules analogous to A10).
+### Constraints (Kapitel 7.2)
 
-### Constraints (Chapter 7.2)
+Snoeck definiert Eindeutigkeitsbedingungen, Attributbeschränkungen, Methodenbedingungen (Vorbedingungen für Ereignisse), referenzielle Integritätsbedingungen und Sequenzbeschränkungen. Nichts davon wird aktuell in `merode-schema.json` erfasst oder vom Agenten verarbeitet. Das korrekte Erfassen von Constraints würde das Schema erheblich erweitern und entsprechende Mendix-Logik erfordern.
 
-Snoeck defines several types of constraints that can be added to a MERODE model:
-- Uniqueness constraints (like a unique key in a database)
-- Attribute constraints (value ranges, formats)
-- Method constraints (preconditions on events, like "a copy cannot be borrowed if it is already borrowed")
-- Referential integrity constraints (derived from existence dependencies)
-- Sequence constraints (more detailed ordering than the FSM alone)
+### IS-Service-Schicht und Business-Process-Schicht (Kapitel 9 und 10)
 
-None of these are currently captured in `merode-schema.json` or processed by the agent. Capturing constraints properly would require significantly extending the schema and generating corresponding Mendix logic (validation microflows, entity constraints, etc.).
-
-**Justification for exclusion:** Constraints would be an extension of M4's lifecycle implications. The current M4 generates the structural association but not the constraint. The proposal does not list constraints as a required deliverable. For the thesis, this is Future Work.
-
-### IS-Service Layer (Chapter 9) and Business Process Layer (Chapter 10)
-
-Snoeck's IS-Service Layer describes input services (event generation) and output services (information retrieval). The Business Process Layer shows how to link business processes to the domain model. Neither is in scope for this thesis — the focus is on the domain model (EDG + OET + FSMs) as the CIM input.
+Snoecks IS-Service-Schicht beschreibt Eingabedienste (Ereigniserzeugung) und Ausgabedienste (Informationsabruf). Die Business-Process-Schicht zeigt, wie Geschäftsprozesse mit dem Domänenmodell verknüpft werden. Beides liegt außerhalb des Scopes. Der Fokus liegt auf dem Domänenmodell (EDG, OET und FSMs) als CIM-Eingabe.
 
 ---
 
-## 4. Architectural Limitations
+## 4. Architektonische Einschränkungen
 
-### The `isMerodeFSM()` discriminator is fragile
+### Der `isMerodeFSM()`-Diskriminator ist fragil
 
-The mechanism that distinguishes DEMO FSMs from MERODE FSMs in the downstream agent is: DEMO regions always have `forEvent` set; MERODE regions never do. This is a property of the PIM encoding, not an explicit language tag.
+Der Mechanismus, der DEMO-FSMs von MERODE-FSMs im nachgelagerten Agenten unterscheidet, basiert darauf, dass DEMO-Regionen immer `forEvent` setzen und MERODE-Regionen das nie tun. Das ist eine Eigenschaft der PIM-Kodierung, kein explizites Sprach-Tag.
 
-A third language that uses FSMs without event-annotated regions would be incorrectly classified as "MERODE-like" by this discriminator. The workaround would be to add an explicit `fsmStyle: "orthogonal" | "sequential"` field to the StateMachine definition in pimUML. But this would be a more intrusive schema change, and since the current scope is only DEMO and MERODE, the structural discriminator is sufficient.
+Eine dritte Sprache, die FSMs ohne Ereignisannotationen verwendet, würde vom Diskriminator falsch als "MERODE-artig" klassifiziert. Der sauberere Ansatz wäre ein explizites `fsmStyle: "orthogonal" | "sequential"`-Feld in der StateMachine-Definition. Aber für den aktuellen Scope (DEMO und MERODE) ist der strukturelle Diskriminator ausreichend.
 
-### Single case study limits evaluation scope
+### Einzelne Fallstudie begrenzt den Evaluationsumfang
 
-The evaluation (D7) applies only to the Rent-A-Car case study. Snoeck uses a library case study as his running example; Bzowski uses Rent-A-Car. Using Rent-A-Car allows direct comparison with Bzowski's results but means the evaluation doesn't test edge cases not present in that model (no inheritance, no constraints, no multi-level propagation chains, single creating event per object type, etc.).
+Die Evaluation (D7) gilt nur für das Rent-A-Car-Fallbeispiel. Snoeck nutzt eine Bibliotheks-Fallstudie als laufendes Beispiel; Bzowski nutzt Rent-A-Car. Der direkte Vergleich mit Bzowskis Ergebnissen ist damit möglich, aber die Evaluation testet keine Randfälle, die im Modell nicht vorkommen: keine Vererbung, keine Constraints, keine mehrstufigen Propagierungsketten, nur ein erzeugender Ereignistyp pro Objekttyp. Eine vollständigere Evaluation würde mehrere Fallstudien verwenden.
 
-A more thorough evaluation would use multiple case studies. This is acknowledged as a limitation of the empirical scope.
+### Mendix-Applikation braucht Cloud-Lizenz zum Ausführen
 
-### The Mendix application cannot be deployed without a Mendix cloud licence
+Die Ausgabe ist ein valides Mendix-Modell, das in Mendix Studio Pro geöffnet werden kann. Das tatsächliche Ausführen der Applikation erfordert eine Mendix-Cloud-Umgebung oder eine lokale Runtime-Lizenz. Die Evaluation bewertet daher die strukturelle Validität des generierten Modells (keine Mendix-Fehler/Warnungen), nicht das Laufzeitverhalten.
 
-The output is a valid Mendix model that can be opened in Mendix Studio Pro, but actually running the application requires a Mendix cloud environment or a local runtime licence. The evaluation therefore assesses the structural validity of the generated model (no Mendix errors/warnings) rather than runtime behaviour.
+### Konfigurationsabhängigkeit bei PIM-Quellagenten
 
-### Soft-coded environment variable for PIM source agents
-
-The `pim-to-mendix-agent` subscribes to PIM topics from agents listed in the `PIM_PUBLISHER_AGENT_IDS` environment variable. When a third agent is added, this variable must be updated. This is a configuration change (not a code change), but it means the downstream agent is not entirely oblivious to the set of upstream agents. For the extensibility criterion this is borderline — discussed in EXTENSIBILITY_EVIDENCE.md.
+Der `pim-to-mendix-agent` abonniert PIM-Topics von den Agenten, die in der Umgebungsvariable `PIM_PUBLISHER_AGENT_IDS` aufgelistet sind. Wenn ein dritter Agent hinzugefügt wird, muss diese Variable aktualisiert werden. Das ist eine Konfigurationsänderung, kein Codechange, aber der nachgelagerte Agent ist dadurch nicht vollständig oblivious gegenüber der Menge der vorgelagerten Agenten. Für das Extensibilitätskriterium ist das ein Grenzfall, der in EXTENSIBILITY_EVIDENCE.md diskutiert wird.
 
 ---
 
-## 5. Known Implementation Bugs Fixed During Development
+## 5. Behobene Implementierungsfehler
 
-These are included here for documentation completeness, in case reviewers ask about them.
+Diese werden dokumentiert, falls Gutachter danach fragen.
 
-**CE7247 — Reserved field name `id`:** The initial M1 implementation used `name: "id"` for the logical identifier attribute. Mendix reserves `id` as a system attribute name. Fixed by using `name: \`${ot.name}ID\`` (e.g., `RentalID`).
+**CE7247:** Der anfängliche M1-Code nutzte `name: "id"` für den logischen Bezeichner. Mendix reserviert `id` als Systemattributname. Behoben durch Verwendung von `name: \`${ot.name}ID\`` (z.B. `RentalID`).
 
-**CE0117 — Quoted enum expression:** The initial B14 implementation wrapped enum literal expressions in single quotes (`'Module.Enum.Value'`). Mendix microflow expressions use unquoted enum references (`Module.Enum.Value`). Fixed by removing the quotes from the `MemberChange.value` string.
+**CE0117:** Die anfängliche B14-Implementierung umschloss Enum-Literal-Ausdrücke in einfache Anführungszeichen (`'Module.Enum.Value'`). Mendix-Microflow-Ausdrücke verwenden Enum-Referenzen ohne Anführungszeichen (`Module.Enum.Value`). Behoben durch Entfernen der Anführungszeichen aus dem `MemberChange.value`-String.
 
-**CW0263 — Empty enum caption:** Mendix requires at least one language-specific caption for each enumeration value. The initial implementation created enum values without captions. Fixed by adding an English caption (capitalised value name) using `texts.Text.createInEnumerationValueUnderCaption(v)`.
+**CW0263:** Mendix verlangt mindestens einen sprachspezifischen Caption für jeden Enum-Wert. Die anfängliche Implementierung erstellte Enum-Werte ohne Captions. Behoben durch automatisches Hinzufügen eines englischen Captions (erster Buchstabe großgeschrieben) über `texts.Text.createInEnumerationValueUnderCaption(v)`.
 
-**`Wait_undefined` in Workflow generation:** The Workflow generator tried to create a WaitForNotification activity named `Wait_${region.forEvent}`. For MERODE regions (where `forEvent` is undefined), this produced `Wait_undefined`. Fixed by adding the `isMerodeFSM()` check to skip Workflow generation for MERODE FSMs entirely.
+**Wait_undefined im Workflow-Generator:** Der Workflow-Generator versuchte eine WaitForNotification-Aktivität namens `Wait_${region.forEvent}` anzulegen. Für MERODE-Regionen, wo `forEvent` undefined ist, ergab das `Wait_undefined`. Behoben durch den `isMerodeFSM()`-Check, der die Workflow-Generierung für MERODE-FSMs überspringt.
 
-**MERODE PIM never reached the Mendix agent:** The `pim-to-mendix-agent` was hardcoded to subscribe only to the DEMO agent's MQTT topic. MERODE PIM messages were published to a different topic and silently ignored. Fixed by switching to the `PIM_SOURCE_AGENTS` multi-subscription approach.
+**MERODE-PIM erreichte den Mendix-Agenten nicht:** Der `pim-to-mendix-agent` war darauf hardcodiert, nur das MQTT-Topic des DEMO-Agenten zu abonnieren. MERODE-PIM-Nachrichten wurden stillschweigend ignoriert. Behoben durch Umstellung auf den `PIM_SOURCE_AGENTS`-Mehrfach-Abonnement-Ansatz.

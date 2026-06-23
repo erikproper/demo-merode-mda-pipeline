@@ -1,119 +1,102 @@
-# Transformation Rules (D4)
+# Transformationsregeln (D4)
 
-Working notes on the formal mapping rules for both CIM→PIM and PIM→PSM transformations. The A-rules (DEMO→pimUML) are from Bzowski [4]. The M-rules (MERODE→pimUML) are derived in this thesis from Snoeck [21]. The B-rules (pimUML→Mendix) are from Bzowski [4] with MERODE extensions added in this work.
+Arbeitsdokument zu den formalen Abbildungsregeln für beide Transformationsstufen. Die A-Regeln (DEMO nach pimUML) stammen aus Bzowski [4]. Die M-Regeln (MERODE nach pimUML) werden in dieser Thesis aus Snoeck [21] abgeleitet. Die B-Regeln (pimUML nach Mendix) stammen ebenfalls aus Bzowski [4], mit den MERODE-Erweiterungen dieser Arbeit.
 
-For the thesis I need a chapter that (a) presents the rules formally, (b) justifies each one from the source literature, and (c) compares DEMO and MERODE rules at the points where they diverge. These notes serve that purpose.
+Das Thesis-Kapitel soll die Regeln formal präsentieren, jede aus der Quellliteratur begründen und DEMO- und MERODE-Regeln dort vergleichen, wo sie auseinanderlaufen.
 
 ---
 
-## 1. Overview of the Transformation Chain
+## 1. Überblick über die Transformationskette
 
 ```
-CIM (DEMO Fact Model)   →   pimUML (PIM)   →   Mendix (PSM)
-CIM (MERODE Domain Model) /         ↑
-                                     |
-                           pimuml-schema.json
-                           (JSON Schema, strict)
+CIM (DEMO Fact Model)     pimUML (PIM)   Mendix (PSM)
+CIM (MERODE Domänenmodell)    |
+                          pimuml-schema.json
+                          (JSON Schema, strikt)
 ```
 
-The pimUML PIM acts as the junction point. The A-rules and M-rules define the two upstream paths (CIM→PIM). The B-rules define the single downstream path (PIM→PSM). A key design goal is that the B-rules are language-agnostic — they operate on pimUML constructs, not on DEMO or MERODE constructs directly. Whether a given pimUML Class came from a DEMO EntityType or a MERODE ObjectType should not matter to the B-rules. In practice there is some language-specific logic in the B-rules for FSMs (see B13–B16), but the structural B-rules (B1–B12) are fully language-agnostic.
+Das pimUML-PIM ist der Knotenpunkt. Die A-Regeln und M-Regeln definieren die beiden vorgelagerten Pfade (CIM nach PIM). Die B-Regeln definieren den einzelnen nachgelagerten Pfad (PIM nach PSM). Das Designziel ist, dass die B-Regeln sprachagnostisch sind: sie operieren auf pimUML-Konstrukten, nicht auf DEMO- oder MERODE-Konstrukten direkt. Ob eine gegebene pimUML-Klasse aus einem DEMO-EntityType oder einem MERODE-ObjectType entstammt, sollte für die B-Regeln keine Rolle spielen. In der Praxis gibt es für FSMs eine sprachspezifische Logik (B13-B16), aber die strukturellen B-Regeln (B1-B12) sind vollständig sprachagnostisch.
 
 ---
 
-## 2. Source Concepts in MERODE (Quick Reference)
+## 2. Quellkonzepte in MERODE (Kurzreferenz)
 
-Before the rules, it helps to have a crisp summary of what MERODE actually contains. Based on Snoeck [21], Chapter 3:
+Vor den Regeln hilft ein prägnanter Überblick darüber, was MERODE enthält. Basierend auf Snoeck [21], Kapitel 3.
 
-**Domain model = three sub-models:**
-1. **Existence-Dependency Graph (EDG)** — structural view. Like a UML class diagram but with the constraint that *all* associations must express existence dependency. An object type B is existence-dependent on A if the life of a B instance is always contained within the life of an A instance. (Snoeck, Ch. 4, pp. 79–105)
-2. **Object-Event Table (OET)** — interaction view. A table with business event types as rows and object types as columns. Each cell indicates whether the object type Creates (C), Modifies (M), or Ends (E) in response to the event. Crucially: owner participations are marked first, then propagated participations are derived automatically from the EDG via the Propagation Rule. (Snoeck, Ch. 5, pp. 107–125)
-3. **Finite-State Machines (FSMs)** — lifecycle view. One FSM per object type, specifying constraints on the ordering of events beyond what the OET already captures (the OET implies a trivial default lifecycle: C* → M* → E). FSMs are only needed for non-trivial lifecycles. (Snoeck, Ch. 6, pp. 127–147)
+Das Domänenmodell besteht aus drei Teilmodellen. Der Existence-Dependency Graph (EDG) ist die strukturelle Sicht: wie ein UML-Klassendiagramm, aber mit der Bedingung, dass alle Assoziationen Existenzabhängigkeiten ausdrücken müssen. Ein Objekttyp B ist existenzabhängig von A, wenn die Lebenszeit einer B-Instanz immer in der Lebenszeit einer A-Instanz enthalten ist (Snoeck, Kap. 4, S. 79-105). Die Object-Event Table (OET) ist die Interaktionssicht: eine Tabelle mit Geschäftsereignistypen als Zeilen und Objekttypen als Spalten. Jede Zelle gibt an, ob der Objekttyp auf das Ereignis hin erstellt (C), modifiziert (M) oder beendet wird (E). Entscheidend: Eigentümerbeteiligungen werden zunächst manuell markiert, propagierte Beteiligungen werden automatisch aus dem EDG via Propagierungsregel abgeleitet (Snoeck, Kap. 5, S. 107-125). Die Finite-State Machines (FSMs) sind die Lebenszyklussicht: eine FSM pro Objekttyp, die Reihenfolgebeschränkungen für Ereignisse über das hinaus spezifiziert, was die OET bereits impliziert (Snoeck, Kap. 6, S. 127-147).
 
-**Key concepts:**
-- **ObjectType** (business object type): has an identity, state described by attributes, duration (exists for a period of time), and is always involved in at least two events (creation + ending). Written in SMALL CAPS in the book.
-- **BusinessEventType** (business event type): atomic, occurs at one point in time, involves one or more object types. Written in *italics*.
-- **ExistenceDependency**: directed relationship where the dependent object type's lifetime is fully contained in the master's lifetime. Carried in the EDG.
-- **OET cell values**: `O/C` = owner, creates; `O/M` = owner, modifies; `O/E` = owner, ends; `A/M` = affiliated (propagated), modifies. The `A/M` entries are derived automatically from the Propagation Rule — they don't need to be specified manually.
-- **Lifecycle states**: named phases of an object's life, ordered sequentially. The default lifecycle is trivial (creating events → one active state with self-loops for modifying events → ending events). Non-trivial lifecycles require explicit FSM diagrams.
+Wichtige Konzepte im Überblick: Ein ObjectType (Geschäftsobjekttyp) hat eine Identität, einen durch Attribute beschriebenen Zustand und eine Dauer. Er ist immer an mindestens zwei Ereignissen beteiligt (Erzeugung und Beendigung), im Buch in KAPITÄLCHEN geschrieben. Ein BusinessEventType (Geschäftsereignistyp) ist atomar, tritt zu einem Zeitpunkt auf und bezieht einen oder mehrere Objekttypen ein. Eine ExistenceDependency ist eine gerichtete Beziehung, bei der die Lebenszeit des abhängigen Objekttyps vollständig in der Lebenszeit des Hauptobjekttyps enthalten ist. Die OET-Zellenwerte sind: `O/C` = Eigentümer, erzeugt; `O/M` = Eigentümer, modifiziert; `O/E` = Eigentümer, beendet; `A/M` = affiliiert (propagiert), modifiziert. Die `A/M`-Einträge werden automatisch aus der Propagierungsregel abgeleitet und müssen nicht manuell angegeben werden. Lebenszykluszustände sind benannte Phasen im Leben eines Objekts, sequenziell geordnet.
 
 ---
 
-## 3. A-Rules: DEMO Fact Model → pimUML
+## 3. A-Regeln: DEMO Fact Model nach pimUML
 
-These are Bzowski's rules [4], Table 10.1. Included here for completeness and for the cross-language comparison in Section 5.
+Bzowskis Regeln [4], Tabelle 10.1. Hier zur Vollständigkeit und für den Sprachvergleich in Abschnitt 6.
 
-| ID  | DEMO Fact Model source concept                           | pimUML target                                                                                                         |
-|-----|----------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
-| A1  | Value type — user-declared, categorical                  | Enumeration                                                                                                           |
-| A2  | Value type — user-declared, non-categorical              | User-defined DataType                                                                                                 |
-| A3  | Declared entity type                                     | Class + Integer logical identifier (isID=true) + StateMachine                                                        |
-| A4  | Derived entity type                                      | Class (isDerived=true) + StateMachine                                                                                 |
-| A5  | Attribute type                                           | Property                                                                                                              |
-| A6  | Event type                                               | Boolean Property (default false) + orthogonal Region in owner's StateMachine with false/true states and trigger       |
-| A7  | Specialisation of entity type with event type            | Integer ID for child + directed Association (child→parent, role "parent") + Create activity in parent's true state   |
-| A8  | Specialisation of value type with event type + property  | AssociationClass                                                                                                       |
-| A9  | Specialisation of entity type with derivation rule       | Class (isDerived) + Association (child→parent) + OCL derivation expression                                           |
-| A10 | Generalisation                                           | Abstract parent Class + Generalization                                                                                |
-| A11 | Aggregation                                              | Integer ID for part in whole class + Association with aggregation adornment                                           |
-| A12 | Property type + cardinality laws                         | Association + multiplicities                                                                                          |
+| ID  | DEMO Fact Model Quellkonzept | pimUML Ziel |
+|-----|------------------------------|-------------|
+| A1  | Value type, benutzerdefiniert, kategorisch | Enumeration |
+| A2  | Value type, benutzerdefiniert, nicht-kategorisch | DataType (benutzerdefiniert) |
+| A3  | Deklarierter Entitätstyp | Class + Integer-Bezeichner (isID=true) + StateMachine |
+| A4  | Abgeleiteter Entitätstyp | Class (isDerived=true) + StateMachine |
+| A5  | Attributtyp | Property |
+| A6  | Ereignistyp | Boolean Property (Standard false) + orthogonale Region in der Owner-StateMachine mit false/true-Zuständen und Trigger |
+| A7  | Spezialisierung eines Entitätstyps mit Ereignistyp | Integer-ID für Kind + gerichtete Association (Kind zu Elternteil, Rolle "parent") + Create-Aktivität im true-Zustand des Elternteils |
+| A8  | Spezialisierung eines Value Type mit Ereignistyp und Eigenschaft | AssociationClass |
+| A9  | Spezialisierung eines Entitätstyps mit Ableitungsregel | Class (isDerived) + Association (Kind zu Elternteil) + OCL-Ableitungsausdruck |
+| A10 | Generalisierung | Abstrakte Eltern-Class + Generalization |
+| A11 | Aggregation | Integer-ID für Teil in Ganzklasse + Association mit Aggregations-Adornment |
+| A12 | Eigenschaftstyp + Kardinalitätsgesetze | Association + Multiplizitäten |
 
-**Implementation location:** `mda-agents/demo-to-pim-agent.ts`
-
-**Status in prototype:** All 12 rules implemented and validated against the Rent-A-Car DEMO fixture.
+Implementierungsort: `mda-agents/demo-to-pim-agent.ts`. Alle 12 Regeln sind implementiert und gegen das Rent-A-Car-DEMO-Fixture validiert.
 
 ---
 
-## 4. M-Rules: MERODE Domain Model → pimUML
+## 4. M-Regeln: MERODE Domänenmodell nach pimUML
 
-These rules are derived in this thesis from Snoeck [21]. The numbering M1–M9 is my own; they parallel Bzowski's A-rules where applicable and introduce new rules for concepts with no DEMO equivalent.
+Diese Regeln werden in dieser Thesis aus Snoeck [21] abgeleitet. Die Nummerierung M1-M9 stammt von mir; sie parallelisiert Bzowskis A-Regeln, wo das möglich ist, und führt neue Regeln für Konzepte ohne DEMO-Gegenstück ein.
 
-### M1 — ObjectType → Class + Integer ID
+### M1 - ObjectType nach Class + Integer-ID
 
-**Source:** MERODE ObjectType  
-**Target:** pimUML Class + Property (name: `<TypeName>ID`, type: Integer, isID: true)
+Quellkonzept: MERODE ObjectType. Ziel: pimUML Class + Property (Name: `<TypName>ID`, Typ: Integer, isID: true).
 
-A MERODE ObjectType is a business object that has an identity, state (attributes), and duration (Snoeck, p. 53). The structural projection of this concept corresponds directly to Bzowski's rule A3: the Class captures the identity and structural description. The integer logical identifier is added following A3's convention.
+Ein MERODE-ObjectType ist ein Geschäftsobjekt mit Identität, Zustand (Attributen) und Dauer (Snoeck, S. 53). Die strukturelle Projektion entspricht direkt Bzowskis Regel A3: die Class erfasst Identität und strukturelle Beschreibung. Der ganzzahlige logische Bezeichner wird nach der Konvention von A3 hinzugefügt.
 
-**Implementation:** `{ name: ot.name, ownedAttributes: [{ name: \`${ot.name}ID\`, type: "Integer", isID: true }, ...] }`
+Implementierung: `{ name: ot.name, ownedAttributes: [{ name: \`${ot.name}ID\`, type: "Integer", isID: true }, ...] }`
 
-**Mendix note:** `id` is a reserved system field name in Mendix (CE7247). The name `<TypeName>ID` avoids this. This naming convention is consistent with A3 as implemented by Bzowski.
+Mendix-Hinweis: `id` ist ein reservierter Systemfeldname in Mendix (CE7247). Der Name `<TypName>ID` umgeht das. Diese Namenskonvention ist konsistent mit A3 in Bzowskis Implementierung.
 
-**Relation to DEMO:** Similar to A3. Main difference: MERODE ObjectTypes explicitly carry lifecycle information (lifecycleStates), whereas DEMO entity types don't — their lifecycle is derived entirely from event participation. The StateMachine is therefore attached separately via M5.
+Bezug zu DEMO: Analog zu A3. Der Hauptunterschied: MERODE-ObjectTypes tragen explizit Lebenszyklusinformationen (`lifecycleStates`), DEMO-Entitätstypen tun das nicht -- ihr Lebenszyklus wird vollständig aus der Ereignisbeteiligung abgeleitet. Die StateMachine wird deshalb separat über M5 angehängt.
 
-### M2 — Attribute → Property
+### M2 - Attribut nach Property
 
-**Source:** MERODE Attribute  
-**Target:** pimUML Property (name, type)
+Quellkonzept: MERODE Attribut. Ziel: pimUML Property (Name, Typ).
 
-Attributes describe the observable state of a MERODE object type (Snoeck, p. 149). They map one-to-one to pimUML Properties, equivalent to Bzowski's A5. The attribute's declared type determines the property's type string. If no type is declared, `String` is used as a default.
+Attribute beschreiben den beobachtbaren Zustand eines MERODE-Objekttyps (Snoeck, S. 149). Sie bilden 1:1 auf pimUML-Properties ab, äquivalent zu Bzowskis A5. Der deklarierte Typ des Attributs bestimmt den Typ-String der Property. Wenn kein Typ deklariert ist, wird `String` als Standard verwendet.
 
-**Implementation:** `{ name: a.name, type: a.type ?? "String" }`
+Implementierung: `{ name: a.name, type: a.type ?? "String" }`
 
-**Relation to DEMO:** Equivalent to A5. No semantic divergence at this level.
+Bezug zu DEMO: Äquivalent zu A5. Keine semantische Divergenz auf dieser Ebene.
 
-### M3 — Attribute with Enumerated / User-Defined Domain → Enumeration / DataType
+### M3 - Attribut mit aufgezählter oder benutzerdefinierter Domäne nach Enumeration/DataType
 
-**Source:** MERODE Attribute where the declared type is a known enumerated or user-defined domain  
-**Target:** pimUML Enumeration (if categorical) or DataType (if non-categorical)
+Quellkonzept: MERODE-Attribut, dessen deklarierter Typ eine bekannte aufgezählte oder benutzerdefinierte Domäne ist. Ziel: pimUML Enumeration (wenn kategorisch) oder DataType (wenn nicht-kategorisch).
 
-Snoeck discusses attribute domains in Chapter 7 (pp. 149–168). Where an attribute ranges over a fixed set of literal values (e.g., a car category: economy, standard, luxury), the domain is categorical and maps to a pimUML Enumeration. Where the domain is a user-defined scalar (e.g., a custom date format), it maps to a user-defined DataType.
+Snoeck diskutiert Attributdomänen in Kapitel 7 (S. 149-168). Wenn ein Attribut über eine feste Menge von Literalwerten rangiert (z.B. eine Fahrzeugkategorie: economy, standard, luxury), ist die Domäne kategorisch und bildet auf eine pimUML-Enumeration ab. Wenn es sich um eine benutzerdefinierte skalare Domäne handelt (z.B. ein eigenes Datumsformat), bildet sie auf einen benutzerdefinierten DataType ab.
 
-This mirrors Bzowski's A1/A2 distinction, applied at the level of the attribute domain rather than as a first-class concept. The difference: in DEMO, value types are defined as top-level concepts in the Fact Model. In MERODE, the domain constraint lives on the attribute itself and there is no equivalent "value type" concept at the top level.
+Das spiegelt die A1/A2-Unterscheidung von Bzowski wider, angewendet auf Attributdomänen statt auf eigenständige Konzepte. Der Unterschied: in DEMO sind Value Types Top-Level-Konzepte im Fact Model. In MERODE lebt die Domänenbeschränkung am Attribut selbst.
 
-**Implementation status: NOT IMPLEMENTED.** The current `merode-schema.json` defines attribute `type` as a plain string. No enumeration construction happens in the agent. This is a known gap — documented in LIMITATIONS.md.
+Implementierungsstatus: nicht implementiert. Das aktuelle `merode-schema.json` definiert den Attributtyp als einfachen String. Es findet keine Enumerations-Konstruktion im Agenten statt. Das ist eine bekannte Lücke, dokumentiert in LIMITATIONS.md. Für die Umsetzung würde `merode-schema.json` eine reichhaltigere Attributdomänen-Spezifikation benötigen (z.B. `domain: { kind: "categorical", values: [...] }` oder eine Referenz auf eine Top-Level-Typdefinition).
 
-**What would be needed:** The `merode-schema.json` would need a richer attribute domain specification (either a `domain: { kind: "categorical", values: [...] }` structure or a reference to a top-level type definition). The agent would then check whether the type reference resolves to an enumerated domain and emit a pimUML Enumeration accordingly.
+### M4 - ExistenceDependency nach Association
 
-### M4 — ExistenceDependency → Association
+Quellkonzept: MERODE ExistenceDependency (abhängig, Hauptobjekt, Multiplizität). Ziel: pimUML Association (gerichtet, mit Multiplizitäten).
 
-**Source:** MERODE ExistenceDependency (dependent, master, multiplicity)  
-**Target:** pimUML Association (directed, with multiplicities)
+Existenzabhängigkeiten sind das Herzstück von MERODE (Snoeck, Kap. 4, S. 79). Eine ExistenceDependency besagt, dass jede Instanz des abhängigen Objekttyps immer mit genau einer Instanz des Hauptobjekttyps assoziiert ist und dass der Abhängige nicht über die Lebenszeit des Hauptobjekts hinaus existieren kann.
 
-Existence dependencies are the cornerstone of MERODE (Snoeck, Ch. 4, p. 79). An ExistenceDependency states that every instance of the dependent object type is always associated with exactly one instance of the master object type, and that the dependent cannot exist beyond the master's lifetime.
+Die strukturelle Projektion ist eine gerichtete Association vom Abhängigen zum Hauptobjekt mit den angegebenen Multiplizitäten. Die obligatorische `lower`-Schranke auf der Hauptobjektseite (typischerweise 1) spiegelt die existenzielle Bedingung wider.
 
-The structural projection is a directed Association from dependent to master, carrying the specified multiplicities. The mandatory `lower` bound on the master end (typically 1) reflects the existential constraint — every dependent must have a master.
-
-**Implementation:** 
+Implementierung:
 ```
 associations.push({
   name: dep.name,
@@ -124,37 +107,27 @@ associations.push({
 })
 ```
 
-**Lifecycle implication (not implemented):** Snoeck (p. 88, Section 4.2.5) points out that existence dependency has lifecycle implications: a dependent object type must be created after its master exists and must end before or at the same time as its master. These constraints would ideally be expressed as OCL invariants on the association (equivalent to what A12 captures for DEMO). This is documented as a limitation.
+Lebenszyklus-Implikation (nicht implementiert): Snoeck (S. 88, Abschnitt 4.2.5) weist darauf hin, dass Existenzabhängigkeit Lebenszyklus-Implikationen hat: ein abhängiger Objekttyp muss nach dem Hauptobjekt erzeugt werden und muss vor oder gleichzeitig mit ihm enden. Diese Constraints würden idealerweise als OCL-Invarianten auf der Association ausgedrückt. Das ist als Einschränkung dokumentiert.
 
-**Relation to DEMO:** Similar to A11/A12. The key difference is that in MERODE *every* association expresses existence dependency — there are no "mere" associations. This is a deliberate design constraint in MERODE that makes the EDG more semantically precise than a standard UML class diagram.
+Bezug zu DEMO: Analog zu A11/A12. Der wichtigste Unterschied: in MERODE drückt jede Association eine Existenzabhängigkeit aus -- es gibt keine "bloßen" Assoziationen. Das ist eine bewusste Designbeschränkung in MERODE, die den EDG semantisch präziser macht als ein Standard-UML-Klassendiagramm.
 
-### M5 — ObjectType Lifecycle → Sequential StateMachine
+### M5 - ObjectType-Lebenszyklus nach sequenzieller StateMachine
 
-**Source:** MERODE ObjectType with `lifecycleStates` array  
-**Target:** pimUML StateMachine with one Region containing an initial pseudostate, named simple states, and a final state
+Quellkonzept: MERODE ObjectType mit `lifecycleStates`-Array. Ziel: pimUML StateMachine mit einer Region, die einen initialen Pseudozustand, benannte Simple-Zustände und einen finalen Zustand enthält.
 
-This is the central new rule — the one with no DEMO equivalent.
+Das ist die zentrale neue Regel ohne DEMO-Gegenstück.
 
-MERODE is explicitly lifecycle-oriented. Each object type owns a finite-state machine (FSM) describing the sequential phases of its life. The states are ordered and mutually exclusive: an object is in exactly one lifecycle state at any point in time. Transitions between states are triggered by business events (Snoeck, Ch. 6, p. 127).
+MERODE ist explizit lebenszyklus-orientiert. Jeder Objekttyp besitzt eine FSM, die die sequenziellen Phasen seines Lebens beschreibt. Die Zustände sind geordnet und schließen sich gegenseitig aus: ein Objekt befindet sich zu jedem Zeitpunkt in genau einem Lebenszykluszustand. Übergänge zwischen Zuständen werden durch Geschäftsereignisse ausgelöst (Snoeck, Kap. 6, S. 127).
 
-The trivial (default) lifecycle — which applies to most object types — consists of a creation phase, zero or more modification phases, and an ending phase. Snoeck represents this as a single active state with self-loops for all modifying events, as shown in Fig. 3.12 (p. 68). Non-trivial lifecycles have intermediate states with more constrained transition sequences (the example in the book is COPY with `acquire → classify → borrow/return/renew* → lose/dispose`).
+Der triviale (Standard-)Lebenszyklus besteht aus einer Erzeugungsphase, null oder mehr Modifikationsphasen und einer Beendigungsphase. Snoeck stellt das als einen einzigen aktiven Zustand mit Schleifen für alle modifizierenden Ereignisse dar (Abb. 3.12, S. 68). Nicht-triviale Lebenszyklen haben Zwischenzustände mit stärker eingeschränkten Übergangssequenzen.
 
-The pimUML encoding uses:
-- `kind: "initial"` for the initial pseudostate
-- `kind: "simple"` for each named lifecycle state (one per element of `lifecycleStates`)
-- `kind: "final"` for the final pseudostate
+Die pimUML-Kodierung verwendet `kind: "initial"` für den initialen Pseudozustand, `kind: "simple"` für jeden benannten Lebenszykluszustand und `kind: "final"` für den finalen Pseudozustand. Das erforderte die Erweiterung von `State.kind` von `{initial, false, true}` auf `{initial, false, true, simple, final}` -- additiv und rückwärtskompatibel (DD5 in DESIGN_DECISIONS.md).
 
-This required extending `State.kind` from `{initial, false, true}` to `{initial, false, true, simple, final}`. The extension is additive and backward-compatible (DD5 in DESIGN_DECISIONS.md).
+Zum Vergleich DEMO-FSMs vs. MERODE-FSMs: DEMO-FSMs bestehen aus orthogonalen Regionen, eine pro Ereignistyp. Jede Region hat genau zwei Zustände: `false` und `true`. Die Regionen können in beliebiger Kombination gleichzeitig aktiv sein. Ereignisse sind monoton (einmal wahr, immer wahr). MERODE-FSMs haben eine Region mit mehreren benannten, sequenziellen Zuständen. Zustände schließen sich gegenseitig aus. Ereignisse bewegen das Objekt von einem Zustand zum nächsten. Ein Beendigungsereignis bewegt das Objekt in einen finalen Zustand, danach sind keine weiteren Ereignisse möglich.
 
-**How MERODE FSMs differ from DEMO FSMs:**
+Der im Prototyp genutzte strukturelle Diskriminator: DEMO-Regionen setzen `forEvent` immer (eine Region pro Ereignis), MERODE-Regionen setzen es nie (eine Region gesamt, keine Ereignisannotation). Das wird von `isMerodeFSM()` im nachgelagerten Agenten genutzt.
 
-DEMO FSMs consist of *orthogonal* regions, one per event type. Each region has exactly two states: `false` and `true`. The regions can be in any combination of states simultaneously — the FSM records which events have occurred, not what "phase" the object is in. Events are monotonic (once true, always true).
-
-MERODE FSMs have *one* region with *multiple named, sequential* states. States are mutually exclusive. Events move the object from one state to the next. An ending event moves the object to a final state, after which it accepts no further events.
-
-The structural discriminator used in the pipeline: DEMO regions always have `forEvent` set (one region per event). MERODE regions never have `forEvent` (one region total, no event annotation). This is used by `isMerodeFSM()` in the downstream agent.
-
-**Implementation:**
+Implementierung:
 ```typescript
 stateMachines.push({
   name: `SM_${ot.name}`,
@@ -172,33 +145,31 @@ stateMachines.push({
 })
 ```
 
-### M6 — Creating Event (C) → Transition from Initial + Create Activity
+### M6 - Erzeugendes Ereignis (C) nach Übergang vom Initial-Zustand + Create-Aktivität
 
-**Source:** BusinessEventType with `role: "C"` for an ObjectType  
-**Target:** Transition from `__initial` to the first lifecycle state, with trigger = event name; plus a `Create_<Type>` activity (kind: "create")
+Quellkonzept: BusinessEventType mit `role: "C"` für einen ObjectType. Ziel: Übergang von `__initial` zum ersten Lebenszykluszustand mit Trigger = Ereignisname, plus eine `Create_<Typ>`-Aktivität (kind: "create").
 
-In MERODE, a creating business event (marked `C` in the OET) brings an object instance into existence (Snoeck, p. 64). It corresponds to the creation method in the object's class. In the sequential FSM, it is modelled as the transition leaving the initial pseudostate.
+In MERODE bringt ein erzeugendes Geschäftsereignis (C im OET) eine Objektinstanz ins Dasein (Snoeck, S. 64). In der sequenziellen FSM wird es als der Übergang modelliert, der den initialen Pseudozustand verlässt.
 
-The first lifecycle state is always `lcStates[0]` — whatever the first element of the `lifecycleStates` array is. If no explicit lifecycle states are given, no FSM is generated (the object type defaults to "no lifecycle modelled").
+Der erste Lebenszykluszustand ist immer `lcStates[0]`. Wenn keine expliziten Lebenszykluszustände angegeben sind, wird keine FSM generiert.
 
-**Implementation:**
+Implementierung:
 ```typescript
 smTransitions.push({ from: "__initial", to: lcStates[0], trigger: evt.name })
 smActivities.push({ name: `Create_${ot.name}`, kind: "create", targetType: ot.name })
 ```
 
-**Relation to DEMO:** Similar to A6/A7, which also produce Create activities. The difference is that in DEMO the create activity is attached to the `true` state of the event's region in the parent entity's FSM. In MERODE it's a top-level transition on the object type's own FSM.
+Bezug zu DEMO: Analog zu A6/A7, die ebenfalls Create-Aktivitäten erzeugen. Der Unterschied: in DEMO ist die Create-Aktivität am `true`-Zustand der Ereignisregion in der übergeordneten Entitäts-FSM angehängt. In MERODE ist es ein Top-Level-Übergang in der eigenen FSM des Objekttyps.
 
-### M7 — Modifying Event (M) → State Transition + Set Activity
+### M7 - Modifizierendes Ereignis (M) nach Zustandsübergang + Set-Aktivität
 
-**Source:** BusinessEventType with `role: "M"`, optional `fromState` and `toState`  
-**Target:** Transition between two lifecycle states + `Set_<Type>_<EventName>` activity (kind: "set")
+Quellkonzept: BusinessEventType mit `role: "M"`, optionale `fromState` und `toState`. Ziel: Übergang zwischen zwei Lebenszykluszuständen + `Set_<Typ>_<Ereignisname>`-Aktivität (kind: "set").
 
-A modifying business event (marked `M`) changes the state of an existing object without creating or ending it (Snoeck, p. 64). In the FSM it's a transition between named lifecycle states.
+Ein modifizierendes Geschäftsereignis (M) ändert den Zustand eines existierenden Objekts, ohne es zu erzeugen oder zu beenden (Snoeck, S. 64). In der FSM ist es ein Übergang zwischen benannten Lebenszykluszuständen.
 
-The `fromState` and `toState` fields in the MERODE schema allow explicit specification of which states the transition connects. If not given, the implementation defaults to sequential order within `lifecycleStates` (from the current state to the next one).
+Die Felder `fromState` und `toState` im MERODE-Schema erlauben die explizite Angabe, welche Zustände der Übergang verbindet. Wenn nicht angegeben, verfällt die Implementierung auf sequenzielle Reihenfolge innerhalb von `lifecycleStates`.
 
-**Implementation:**
+Implementierung:
 ```typescript
 const from  = evt.fromState ?? lcStates[0]
 const toIdx = lcStates.indexOf(from) + 1
@@ -207,124 +178,119 @@ smTransitions.push({ from, to, trigger: evt.name })
 smActivities.push({ name: `Set_${ot.name}_${evt.name}`, kind: "set", targetType: ot.name })
 ```
 
-**Relation to DEMO:** Similar to the Set activities of A6. The key difference: in DEMO the transition moves a boolean region from `false` to `true` (monotonic). In MERODE the transition moves between two named, mutually exclusive lifecycle states.
+Bezug zu DEMO: Analog zu den Set-Aktivitäten von A6. Der Hauptunterschied: in DEMO bewegt der Übergang eine boolesche Region von `false` nach `true` (monoton). In MERODE bewegt er sich zwischen zwei benannten, sich gegenseitig ausschließenden Lebenszykluszuständen.
 
-### M8 — Ending Event (E) → Transition to Final State + End Activity
+### M8 - Beendendes Ereignis (E) nach Übergang zum finalen Zustand + End-Aktivität
 
-**Source:** BusinessEventType with `role: "E"`  
-**Target:** Transition from the last lifecycle state to `__final` + `End_<Type>` activity (kind: "end")
+Quellkonzept: BusinessEventType mit `role: "E"`. Ziel: Übergang vom letzten Lebenszykluszustand nach `__final` + `End_<Typ>`-Aktivität (kind: "end").
 
-An ending business event (marked `E`) terminates the object's life (Snoeck, p. 64). The object enters the final state and is considered "dead" — no further events apply. Snoeck makes the important point (p. 53) that an object does not need to be physically deleted: it exists for a period of time and then ceases to be subject to change.
+Ein beendendes Geschäftsereignis (E) beendet das Leben des Objekts (Snoeck, S. 64). Das Objekt tritt in den finalen Zustand ein und gilt als "beendet" -- keine weiteren Ereignisse sind möglich. Snoeck betont (S. 53), dass ein Objekt nicht physisch gelöscht werden muss: es existiert für eine Zeitspanne und hört dann auf, Veränderungen zu unterliegen.
 
-The transition is always from `lcStates[lcStates.length - 1]` (the last lifecycle state) to `__final`. This is consistent with the simple sequential lifecycle model. If a non-trivial FSM had multiple possible end states, each would need its own ending transition — but the current schema and test fixture assume a single terminal state.
+Der Übergang geht immer von `lcStates[lcStates.length - 1]` (dem letzten Lebenszykluszustand) nach `__final`. Das ist konsistent mit dem einfachen sequenziellen Lebenszyklusmodell. Bei einem nicht-trivialen FSM mit mehreren möglichen Endzuständen würde jeder seinen eigenen Beendigungsübergang benötigen, aber das aktuelle Schema und Testfixture setzen einen einzigen terminalen Zustand voraus.
 
-**Implementation:**
+Implementierung:
 ```typescript
 const lastState = lcStates[lcStates.length - 1]
 smTransitions.push({ from: lastState, to: "__final", trigger: evt.name })
 smActivities.push({ name: `End_${ot.name}`, kind: "end", targetType: ot.name })
 ```
 
-**Relation to DEMO:** **No equivalent.** This is one of the two genuinely new rules (the other being M9). DEMO events are monotonic boolean flags — once an event occurs, it's recorded permanently. There is no concept of "ending" an object's lifecycle in DEMO because DEMO entity types don't have lifecycles in this sense. This rule is unique to MERODE and motivates the `end` activity kind extension in pimUML.
+Bezug zu DEMO: Kein Gegenstück. Das ist eine der beiden genuinen neuen Regeln (die andere ist M9). DEMO-Ereignisse sind monotone boolesche Flags -- einmal eingetreten, dauerhaft aufgezeichnet. Ein Konzept des "Beendens" eines Objektlebens gibt es in DEMO nicht, weil DEMO-Entitätstypen in diesem Sinne keine Lebenszyklen haben. Diese Regel ist einzigartig für MERODE und motiviert die `end`-Aktivitätskind-Erweiterung in pimUML.
 
-### M9 — Shared Event Participation + Propagation Rule (Future Work)
+### M9 - Gemeinsame Ereignisbeteiligung und Propagierungsregel (Future Work)
 
-**Source:** OET entries where multiple object types participate in the same event, including `A/M` entries derived via the Propagation Rule  
-**Target:** Synchronised transition triggers across multiple FSMs (one per participating object type)
+Quellkonzept: OET-Einträge, bei denen mehrere Objekttypen am selben Ereignis beteiligt sind, einschließlich der `A/M`-Einträge, die über die Propagierungsregel abgeleitet werden. Ziel: synchronisierte Übergangstrigger über mehrere FSMs hinweg (eine pro beteiligtem Objekttyp).
 
-This is MERODE's most distinctive feature and the one without any DEMO equivalent. In MERODE, a single business event is *shared* by all object types that participate in it. When the event `startRental` occurs, it not only creates a `Rental` object (O/C in the Rental row) but also triggers modifying behaviour in `Car` and `Person` (A/M entries derived via the Propagation Rule — Snoeck, Ch. 5.3.1, p. 114).
+Das ist MERODEs charakteristischstes Feature und das ohne jedes DEMO-Gegenstück. In MERODE wird ein einziges Geschäftsereignis von allen beteiligten Objekttypen geteilt. Wenn das Ereignis `startRental` eintritt, erzeugt es nicht nur ein `Rental`-Objekt (O/C in der Rental-Zeile), sondern löst auch modifizierendes Verhalten in `Car` und `Person` aus (A/M-Einträge aus der Propagierungsregel, Snoeck, Kap. 5.3.1, S. 114).
 
-The Propagation Rule states: if object type B is existence-dependent on A (B depends on A), then every event that involves B also involves A with participation type M. This means the complete OET cannot be derived from just the ObjectTypes and BusinessEventTypes — it also requires the ExistenceDependency structure.
+Die Propagierungsregel besagt: wenn Objekttyp B existenzabhängig von A ist (B hängt von A ab), dann bezieht jedes Ereignis, das B einbezieht, auch A mit Beteiligungstyp M ein. Das bedeutet, dass der vollständige OET nicht nur aus ObjectTypes und BusinessEventTypes abgeleitet werden kann -- er benötigt auch die ExistenceDependency-Struktur.
 
-**What this would require to implement:**
-1. Parse all existence dependencies to build the propagation closure
-2. For each BusinessEventType, derive which additional object types participate (as M) via transitive propagation
-3. Generate M-role transitions in the FSMs of those master object types
+Für die Implementierung würde M9 erfordern: alle Existenzabhängigkeiten zu parsen, um die Propagierungshülle aufzubauen; für jeden BusinessEventType die zusätzlichen Objekttypen, die über transitive Propagierung beteiligt sind, abzuleiten; und M-Rollen-Übergänge in den FSMs der betroffenen Hauptobjekttypen zu generieren.
 
-**Why not implemented:** M9 is complex and the test fixture does not model propagated events explicitly. Adding M9 would require a non-trivial change to the transformation algorithm and a richer test fixture. Given the timeline, this is documented as Future Work. The formal rule is specified here and in MerodeMappingRules.md so that the thesis chapter can present it completely even though the implementation is incomplete.
+M9 ist komplex und das Testfixture modelliert propagierte Ereignisse nicht explizit. Das Hinzufügen würde eine nicht-triviale Änderung des Transformationsalgorithmus und ein umfangreicheres Testfixture erfordern. Die formale Regel ist hier und in MerodeMappingRules.md spezifiziert, damit das Thesis-Kapitel sie vollständig präsentieren kann, auch wenn die Implementierung unvollständig ist.
 
-**Scope note from the proposal:** The proposal's evaluation methodology lists "business event types" as source facts for MERODE (Section 3.3). Without M9, the OET entries for master objects are Missing in the evaluation — they'll be counted against semantic completeness. This needs to be acknowledged honestly in the evaluation chapter.
+Evaluationshinweis: Das Proposal listet "Geschäftsereignistypen" als Quellfakten für MERODE (Abschnitt 3.3). Ohne M9 erscheinen die OET-Einträge für Hauptobjekte in der Evaluation als Missing. Das muss im Evaluationskapitel ehrlich angesprochen werden.
 
 ---
 
-## 5. B-Rules: pimUML → Mendix
+## 5. B-Regeln: pimUML nach Mendix
 
-These are Bzowski's B-rules [4], Table 11.1, with MERODE-specific extensions (B13–B16 in this prototype's numbering, corresponding to new rules not in Bzowski).
+Bzowskis B-Regeln [4], Tabelle 11.1, mit MERODE-spezifischen Erweiterungen (B13-B16 in der Nummerierung dieses Prototyps, entsprechend neuen Regeln, die nicht in Bzowski enthalten sind).
 
-**Note on numbering:** Bzowski's table goes B1–B24. The prototype's implementation doesn't implement all 24 rules (some are only needed for derived types, constraints, etc.). The prototype numbering B1–B16 reflects what is actually implemented, not a one-to-one mapping to Bzowski's numbering. For the thesis I should reconcile these.
+Hinweis zur Nummerierung: Bzowskis Tabelle geht bis B24. Der Prototyp implementiert nicht alle 24 Regeln (einige werden nur für abgeleitete Typen, Constraints usw. benötigt). Die Prototyp-Nummerierung B1-B16 spiegelt wider, was tatsächlich implementiert ist, nicht eine 1:1-Abbildung auf Bzowskis Nummerierung. Für die Thesis muss das abgeglichen werden.
 
-| ID  | pimUML source concept                         | Mendix target                                                          | Status     |
-|-----|-----------------------------------------------|------------------------------------------------------------------------|------------|
-| B1  | Model (top-level)                             | Mendix App + Module                                                    | ✅          |
-| B2  | Class                                         | Entity (domain model)                                                  | ✅          |
-| B3  | Class (isAbstract)                            | Abstract Entity                                                        | ✅          |
-| B4  | Enumeration + EnumerationLiteral              | Mendix Enumeration + EnumerationValue (with English caption)           | ✅          |
-| B5  | DataType                                      | Entity (no domain model equivalent, treated as entity)                 | ✅          |
-| B6  | Property (isID=true)                          | Integer Attribute                                                      | ✅          |
-| B7  | Property (regular)                            | String / Integer / Boolean Attribute                                   | ✅          |
-| B8  | AssociationClass                              | Entity + two Associations                                              | ✅          |
-| B9  | Association + multiplicities                  | Mendix Association with owner/reference settings                       | ✅          |
-| B10 | Generalization                                | Mendix Generalization/Specialization                                   | ✅          |
-| B11 | StateMachine (DEMO)                           | ACR Microflow + Workflow trigger                                       | ✅          |
-| B12 | DEMO Region + false/true states               | Workflow with WaitForNotification activities                           | ✅          |
-| B13 | MERODE StateMachine (lifecycle states)        | `<Entity>_Status` Enumeration                                         | ✅          |
-| B14 | MERODE Create activity                        | `Create_<Entity>` Microflow: CreateObject + set status to first state | ✅          |
-| B15 | MERODE Set activity                           | `Set_<Entity>_<Event>` Microflow: ChangeObject status to toState      | ✅          |
-| B16 | MERODE End activity                           | `End_<Entity>` Microflow (stub, parameter only)                       | ⚠️ Stub     |
-| —   | Overview + Detail pages for each Entity       | Mendix Pages                                                           | ✅          |
+| ID  | pimUML Quellkonzept | Mendix Ziel | Status |
+|-----|---------------------|-------------|--------|
+| B1  | Modell (Top-Level) | Mendix App + Modul | implementiert |
+| B2  | Class | Entity (Domänenmodell) | implementiert |
+| B3  | Class (isAbstract) | Abstrakte Entity | implementiert |
+| B4  | Enumeration + EnumerationLiteral | Mendix Enumeration + EnumerationValue (mit englischem Caption) | implementiert |
+| B5  | DataType | Entity (kein direktes Domänenmodell-Äquivalent) | implementiert |
+| B6  | Property (isID=true) | Integer-Attribut | implementiert |
+| B7  | Property (regulär) | String / Integer / Boolean Attribut | implementiert |
+| B8  | AssociationClass | Entity + zwei Associations | implementiert |
+| B9  | Association + Multiplizitäten | Mendix Association mit Owner/Reference-Einstellungen | implementiert |
+| B10 | Generalization | Mendix Generalization/Specialization | implementiert |
+| B11 | StateMachine (DEMO) | ACR-Microflow + Workflow-Trigger | implementiert |
+| B12 | DEMO-Region + false/true-Zustände | Workflow mit WaitForNotification-Aktivitäten | implementiert |
+| B13 | MERODE StateMachine (Lebenszykluszustände) | `<Entity>_Status`-Enumeration | implementiert |
+| B14 | MERODE Create-Aktivität | `Create_<Entity>`-Microflow: CreateObject + Status auf ersten Zustand | implementiert |
+| B15 | MERODE Set-Aktivität | `Set_<Entity>_<Ereignis>`-Microflow: ChangeObject Status auf toState | implementiert |
+| B16 | MERODE End-Aktivität | `End_<Entity>`-Microflow (Stub, nur Parameter) | Stub |
+| | Übersichts- und Detailseiten je Entity | Mendix Pages | implementiert |
 
-### B13 — MERODE lifecycle states → Mendix status enumeration
+### B13 - MERODE-Lebenszykluszustände nach Mendix-Status-Enumeration
 
-When a MERODE StateMachine arrives with `simple`-kind states, the agent creates a `<Entity>_Status` enumeration in the Mendix domain model. Each lifecycle state name becomes an enumeration value, with an English caption (capitalised name). A `status` attribute of this enumeration type is added to the corresponding entity.
+Wenn eine MERODE-StateMachine mit `simple`-kind-Zuständen ankommt, erstellt der Agent eine `<Entity>_Status`-Enumeration im Mendix-Domänenmodell. Jeder Lebenszykluszustandsname wird ein Enumerationswert mit einem englischen Caption (Name mit großgeschriebenem Anfangsbuchstaben). Ein `status`-Attribut dieses Enumerationstyps wird der entsprechenden Entity hinzugefügt.
 
-This is the simplest way to represent lifecycle state in Mendix without using Workflows. The trade-off: Mendix Workflows are the "proper" way to model state machines, but generating Workflows for sequential MERODE FSMs requires significantly more complex SDK code (mapping lifecycle transitions to Workflow activities, handling wait nodes, etc.). The status attribute approach is simpler to implement and still makes the lifecycle state visible in the domain model and queryable in microflows.
+Das ist der einfachste Weg, Lebenszykluszustand in Mendix ohne Workflows darzustellen. Mendix-Workflows sind der "richtige" Weg für Zustandsmaschinen, aber Workflows für sequenzielle MERODE-FSMs zu generieren erfordert wesentlich komplexeren SDK-Code. Der Status-Attribut-Ansatz ist einfacher umzusetzen und macht den Lebenszykluszustand im Domänenmodell sichtbar und in Microflows abfragbar.
 
-### B14 — MERODE Create activity → Create microflow
+### B14 - MERODE Create-Aktivität nach Create-Microflow
 
-The `Create_<Entity>` microflow:
-1. Creates a new Entity object with `CreateObjectAction`
-2. Sets the `status` attribute to the first lifecycle state using a `ChangeObjectAction` with a `MemberChange`
+Der `Create_<Entity>`-Microflow erzeugt ein neues Entity-Objekt mit `CreateObjectAction` und setzt das `status`-Attribut auf den ersten Lebenszykluszustand mit einem `ChangeObjectAction` und einem `MemberChange`. Der Ausdruck für die Status-Zuweisung ist `<Modul>.<Entity>_Status.<ersterZustand>` ohne Anführungszeichen, weil Mendix-Microflow-Ausdrücke Enum-Referenzen unquoted verwenden, nicht als String-Literale. Das korrekt zu bekommen hat etwas Debugging erfordert (CE0117 durch gequotete Ausdrücke).
 
-The expression for the status assignment is `<Module>.<Entity>_Status.<firstState>` (without quotes — Mendix enum expressions are unquoted references, not string literals). Getting this right took some debugging (CE0117 error from quoted expressions).
+### B15 - MERODE Set-Aktivität nach Change-Microflow
 
-### B15 — MERODE Set activity → Change microflow
+Der `Set_<Entity>_<Ereignisname>`-Microflow ändert das `status`-Attribut auf den `toState` des Übergangs. Er nimmt die Entity als Parameter und setzt den Status auf den Zielzustand.
 
-The `Set_<Entity>_<EventName>` microflow changes the `status` attribute to the `toState` of the transition. Takes the entity as a parameter and sets the status to the target state.
+### B16 - MERODE End-Aktivität nach End-Microflow (Stub)
 
-### B16 — MERODE End activity → End microflow (stub)
-
-The `End_<Entity>` microflow is currently a stub: it creates a microflow with a parameter for the entity but does not implement any actual end behaviour. Options would be to archive the object, set a `deleted` flag, or soft-delete via a `status = end` assignment. Which is most appropriate depends on the Mendix application requirements and is left as application-level design. The microflow stub ensures the Mendix model doesn't have an undefined reference for the End activity but doesn't prescribe the deletion strategy.
+Der `End_<Entity>`-Microflow ist aktuell ein Stub: er erstellt einen Microflow mit einem Parameter für die Entity, implementiert aber kein tatsächliches Beendigungsverhalten. Möglichkeiten wären das Archivieren des Objekts, das Setzen eines `deleted`-Flags oder Soft-Delete über eine `status = end`-Zuweisung. Was am sinnvollsten ist, hängt von den Mendix-Anwendungsanforderungen ab. Der Stub stellt sicher, dass das Mendix-Modell keine undefinierten Referenzen für die End-Aktivität hat, schreibt aber keine Löschstrategie vor.
 
 ---
 
-## 6. Cross-Language Comparison at the PIM Level
+## 6. Sprachübergreifender Vergleich auf PIM-Ebene
 
-This table shows how DEMO and MERODE source concepts map to pimUML, highlighting where they produce the same PIM constructs and where they diverge. This is the comparison the thesis needs to make the heterogeneity claim concrete.
+Diese Tabelle zeigt, wie DEMO- und MERODE-Quellkonzepte auf pimUML abbilden, und hebt hervor, wo sie dieselben PIM-Konstrukte erzeugen und wo sie auseinanderlaufen. Das ist der Vergleich, den die Thesis benötigt, um den Heterogenitätsanspruch konkret zu machen.
 
-| Concept category       | DEMO source            | MERODE source                     | pimUML target              | Same? |
-|------------------------|------------------------|-----------------------------------|----------------------------|-------|
-| Business object        | EntityType (declared)  | ObjectType                        | Class                      | ✅ Yes |
-| Identity               | (integer ID from A3)   | ObjectType (ID from M1)           | Property (isID=true)       | ✅ Yes |
-| Attribute              | AttributeType (A5)     | Attribute (M2)                    | Property                   | ✅ Yes |
-| Categorical domain     | ValueType/categorical (A1) | Attribute with enum domain (M3) | Enumeration               | ✅ Similar |
-| Scalar domain          | ValueType/non-cat. (A2) | Attribute with scalar domain (M3)| DataType                  | ✅ Similar |
-| Relationship           | FactType / Property (A12) | ExistenceDependency (M4)       | Association                | ✅ Similar |
-| Aggregation            | Aggregation fact (A11) | (no direct equivalent)            | Association with aggregation | — |
-| Inheritance            | Generalisation (A10)   | (Ch. 8, not in scope)            | Generalization             | — |
-| Lifecycle FSM          | Orthogonal region FSM (A6) | Sequential FSM (M5–M8)        | StateMachine               | ⚠️ **Different** |
-| Creating event         | Event type (A6/A7)     | BET with role C (M6)             | Transition + Create act.   | ⚠️ Similar but context differs |
-| Modifying event        | Event type (A6)        | BET with role M (M7)             | Transition + Set act.      | ⚠️ Similar but monotonic vs. sequential |
-| Ending event           | (no equivalent)        | BET with role E (M8)             | Transition to final + End act. | ❌ **New in MERODE** |
-| Shared event / propagation | (no equivalent)  | Propagation Rule (M9)            | Synchronised triggers       | ❌ **New in MERODE** |
+| Konzeptkategorie | DEMO-Quelle | MERODE-Quelle | pimUML-Ziel | Gleichwertig? |
+|------------------|------------|---------------|-------------|---------------|
+| Geschäftsobjekt | EntityType (deklariert) | ObjectType | Class | Ja |
+| Identität | Integer-ID aus A3 | ObjectType (ID aus M1) | Property (isID=true) | Ja |
+| Attribut | AttributeType (A5) | Attribut (M2) | Property | Ja |
+| Kategorische Domäne | ValueType/kategorisch (A1) | Attribut mit Enum-Domäne (M3) | Enumeration | Ähnlich |
+| Skalare Domäne | ValueType/nicht-kat. (A2) | Attribut mit skalarer Domäne (M3) | DataType | Ähnlich |
+| Beziehung | FactType / Property (A12) | ExistenceDependency (M4) | Association | Ähnlich |
+| Aggregation | Aggregation Fact (A11) | Kein direktes Gegenstück | Association mit Aggregation | Einseitig |
+| Vererbung | Generalisierung (A10) | Kap. 8, nicht im Scope | Generalization | Einseitig |
+| Lebenszyklus-FSM | Orthogonale Regionen-FSM (A6) | Sequenzielle FSM (M5-M8) | StateMachine | Verschieden |
+| Erzeugendes Ereignis | Event type (A6/A7) | BET mit Rolle C (M6) | Übergang + Create-Aktivität | Ähnlich, Kontext unterschiedlich |
+| Modifizierendes Ereignis | Event type (A6) | BET mit Rolle M (M7) | Übergang + Set-Aktivität | Ähnlich, aber monoton vs. sequenziell |
+| Beendendes Ereignis | Kein Gegenstück | BET mit Rolle E (M8) | Übergang zu final + End-Aktivität | Neu in MERODE |
+| Gemeinsames Ereignis / Propagierung | Kein Gegenstück | Propagierungsregel (M9) | Synchronisierte Trigger | Neu in MERODE |
 
-The two rows marked "New in MERODE" (M8, M9) are what makes MERODE paradigmatically different from DEMO at the PIM level and justify the PIM extension. The FSM row is different but can be accommodated by the same PIM construct with different internal structure.
+Die beiden als "Neu in MERODE" markierten Zeilen (M8, M9) sind es, die MERODE auf PIM-Ebene paradigmatisch von DEMO unterscheiden und die PIM-Erweiterung rechtfertigen. Die FSM-Zeile unterscheidet sich im internen Aufbau, kann aber durch dasselbe PIM-Konstrukt mit unterschiedlicher interner Struktur aufgenommen werden.
 
 ---
 
-## 7. Notes for the Thesis Chapter
+## 7. Hinweise für das Thesis-Kapitel
 
-- The formal presentation of M-rules should follow Bzowski's format: a table with source concept, target concept, and relation to DEMO (see MerodeMappingRules.md for the full justification text).
-- The cross-language comparison table (Section 6 above) can become a figure in the thesis.
-- The FSM comparison (orthogonal regions vs. sequential) is the key conceptual contribution and deserves a dedicated subsection with diagrams — the DEMO FSM for `Rental` (with `startRental`/`completeRental` boolean regions) next to the MERODE FSM (with `active` state and `__initial`/`__final` pseudostates).
-- The pimUML schema changes (State.kind extension, Activity.kind extension, Region.forEvent made optional) should be presented as a small diff table, not a full schema listing.
-- For M9: present the formal rule even though the implementation is incomplete. The thesis explicitly allows for specifying more than is implemented, and M9 is the most academically interesting rule.
+Die formale Präsentation der M-Regeln sollte Bzowskis Format folgen: eine Tabelle mit Quellkonzept, Zielkonzept und Bezug zu DEMO (für vollständigen Begründungstext: MerodeMappingRules.md).
+
+Der sprachübergreifende Vergleich (Abschnitt 6) eignet sich als Abbildung in der Thesis.
+
+Der FSM-Vergleich (orthogonale Regionen vs. sequenziell) ist der zentrale konzeptuelle Beitrag und verdient einen eigenen Unterabschnitt mit Diagrammen: die DEMO-FSM für `Rental` (mit `startRental`/`completeRental` booleschen Regionen) neben der MERODE-FSM (mit `active`-Zustand und `__initial`/`__final`-Pseudozuständen).
+
+Die pimUML-Schema-Änderungen (State.kind-Erweiterung, Activity.kind-Erweiterung, Region.forEvent optional) sollten als kleine Diff-Tabelle präsentiert werden, nicht als vollständiges Schema-Listing.
+
+Für M9: die formale Regel präsentieren, auch wenn die Implementierung unvollständig ist. M9 ist die akademisch interessanteste Regel und rechtfertigt eine vollständige formale Spezifikation in der Thesis.

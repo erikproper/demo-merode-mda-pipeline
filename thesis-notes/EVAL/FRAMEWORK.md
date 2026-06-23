@@ -1,170 +1,143 @@
-# Evaluation Framework (D6)
+# Evaluationsrahmen (D6)
 
-Notes on how to run and document the evaluation (D7). The evaluation follows the methodology described in the proposal (Section 3.3), which combines the Semiotic Quality Framework [12] and the Quality Framework for Conceptual Models [14].
+Arbeitsdokument zur Planung und Durchführung der Evaluation (D7). Die Methodik folgt Proposal-Abschnitt 3.3 und kombiniert das Semiotic Quality Framework [12] mit dem Quality Framework for Conceptual Models [14].
 
-The goal is to measure four dimensions: semantic completeness, semantic validity, schema validation rate, and traceability coverage. Extensibility is assessed separately (see EXTENSIBILITY_EVIDENCE.md).
+Gemessen werden vier Dimensionen: semantische Vollständigkeit, semantische Validität, Schema Validation Rate und Traceability Coverage. Extensibilität wird separat bewertet (EXTENSIBILITY_EVIDENCE.md).
 
 ---
 
-## 1. Evaluation Procedure Overview
+## 1. Evaluationsablauf
 
-The evaluation has three phases:
+Die Evaluation läuft in drei Phasen.
 
-**Phase 1 — Ground truth extraction.** List all atomic statements in the source model (the Rent-A-Car MERODE and DEMO models). An "atomic statement" is the smallest unit of meaning in the source language. For DEMO these are: entity types, fact types (with multiplicities), property types, value types, and derivation rules. For MERODE these are: object types (with attributes), existence dependencies (with multiplicities), business event types (with C/M/E role), and lifecycle states (with transition structure).
+In der ersten Phase wird die Ground Truth extrahiert: alle atomaren Aussagen im Quellmodell (Rent-A-Car DEMO und MERODE) werden aufgelistet. Eine "atomare Aussage" ist die kleinste Bedeutungseinheit in der Quellsprache. Für DEMO sind das: Entitätstypen, Faktentypen (mit Multiplizitäten), Eigenschaftstypen, Werttypen und Ableitungsregeln. Für MERODE: Objekttypen (mit Attributen), Existenzabhängigkeiten (mit Multiplizitäten), Geschäftsereignistypen (mit C/M/E-Rolle) und Lebenszykluszustände (mit Übergangsstruktur).
 
-**Phase 2 — Transformation execution.** Run the pipeline end-to-end:
+In der zweiten Phase wird die Pipeline ausgeführt:
 ```bash
 curl -X POST https://mda.tlolab.com/api/model \
   -H "Content-Type: application/json" \
   -H "X-Input-Format: merode" \
   -d @mda-agents/tests/rent-a-car-merode.json
 ```
-Capture the published PIM (from MQTT) and the generated Mendix model structure. Also capture the `_trace` array from the PIM message.
+Das veröffentlichte PIM (aus MQTT) und die generierte Mendix-Modellstruktur werden festgehalten, ebenso das `_trace`-Array aus der PIM-Nachricht.
 
-**Phase 3 — Classification.** For each ground-truth statement, classify the corresponding output element as:
-- **Correct** (C): present in the output with the correct type and structure
-- **Missing** (M): not present in the output at all, or silently dropped
-- **Incorrect** (I): present but with wrong type, wrong structure, or wrong relationships
-- **Added** (A): present in the output but without a corresponding source element — subdivided into Added_justified (structurally necessary, e.g. `__initial` pseudostates) and Added_unjustified (spurious additions)
+In der dritten Phase werden die Ausgabeelemente klassifiziert. Für jede Ground-Truth-Aussage wird das entsprechende Ausgabeelement bewertet:
 
-Then compute:
-- Completeness = C / (C + M + I)
-- Validity = C / (C + I + Added_unjustified)
-- Schema Validation Rate = always 100% or pipeline aborts
-- Traceability Coverage = elements with trace links / (all elements excluding explicitly NotMapped)
+- **Correct (C):** im Ausgabemodell vorhanden, mit korrektem Typ und korrekter Struktur
+- **Missing (M):** nicht vorhanden oder stillschweigend verworfen
+- **Incorrect (I):** vorhanden, aber mit falschem Typ, falscher Struktur oder falschen Beziehungen
+- **Added (A):** im Ausgabemodell vorhanden, aber ohne Gegenstück im Quellmodell; unterteilt in Added_justified (strukturell notwendig, z.B. `__initial`-Pseudozustände) und Added_unjustified (überflüssige Ergänzungen)
+
+Daraus ergeben sich die Metriken: Completeness = C / (C + M + I), Validity = C / (C + I + Added_unjustified), Schema Validation Rate = immer 100% oder die Pipeline bricht ab, Traceability Coverage = Elemente mit Trace-Links / (alle Elemente ausgenommen explizit NotMapped).
 
 ---
 
 ## 2. Ground Truth: Rent-A-Car MERODE
 
-Source model: `mda-agents/tests/rent-a-car-merode.json`
+Quellmodell: `mda-agents/tests/rent-a-car-merode.json`
 
-### Object types (M1, M2)
+### Objekttypen (M1, M2)
 
-| Statement | Expected PIM output | Classification |
-|-----------|--------------------|----|
-| ObjectType: Rental | Class "Rental" + Property "RentalID" (Integer, isID) | to be assessed |
-| ObjectType: Car | Class "Car" + Property "CarID" (Integer, isID) | to be assessed |
-| ObjectType: Person | Class "Person" + Property "PersonID" (Integer, isID) | to be assessed |
-| Attribute: Rental.startingDay (String) | Property "startingDay" on Rental | to be assessed |
-| Attribute: Rental.endingDay (String) | Property "endingDay" on Rental | to be assessed |
-| Attribute: Car.licensePlate (String) | Property "licensePlate" on Car | to be assessed |
-| Attribute: Person.name (String) | Property "name" on Person | to be assessed |
+| Aussage | Erwartete PIM-Ausgabe | Klassifikation |
+|---------|----------------------|----------------|
+| ObjectType: Rental | Class "Rental" + Property "RentalID" (Integer, isID) | noch zu prüfen |
+| ObjectType: Car | Class "Car" + Property "CarID" (Integer, isID) | noch zu prüfen |
+| ObjectType: Person | Class "Person" + Property "PersonID" (Integer, isID) | noch zu prüfen |
+| Attribut: Rental.startingDay (String) | Property "startingDay" auf Rental | noch zu prüfen |
+| Attribut: Rental.endingDay (String) | Property "endingDay" auf Rental | noch zu prüfen |
+| Attribut: Car.licensePlate (String) | Property "licensePlate" auf Car | noch zu prüfen |
+| Attribut: Person.name (String) | Property "name" auf Person | noch zu prüfen |
 
-### Existence dependencies (M4)
+### Existenzabhängigkeiten (M4)
 
-| Statement | Expected PIM output | Classification |
-|-----------|--------------------|----|
-| ExistenceDependency: Rental→Car (0..* : 1..1) | Association "RentalDependsOnCar" with correct multiplicities | to be assessed |
-| ExistenceDependency: Rental→Person (0..* : 1..1) | Association "RentalDependsOnPerson" with correct multiplicities | to be assessed |
+| Aussage | Erwartete PIM-Ausgabe | Klassifikation |
+|---------|----------------------|----------------|
+| ExistenceDependency: Rental zu Car (0..* : 1..1) | Association "RentalDependsOnCar" mit korrekten Multiplizitäten | noch zu prüfen |
+| ExistenceDependency: Rental zu Person (0..* : 1..1) | Association "RentalDependsOnPerson" mit korrekten Multiplizitäten | noch zu prüfen |
 
-### Business event types and lifecycle (M5–M8)
+### Geschäftsereignistypen und Lebenszyklus (M5-M8)
 
-| Statement | Expected PIM output | Classification |
-|-----------|--------------------|----|
-| BET: startRental, role C for Rental | SM_Rental: transition __initial→active, trigger startRental | to be assessed |
-| BET: completeRental, role E for Rental | SM_Rental: transition active→__final, trigger completeRental | to be assessed |
-| BET: registerCar, role C for Car | SM_Car: transition __initial→registered, trigger registerCar | to be assessed |
-| BET: registerPerson, role C for Person | SM_Person: transition __initial→registered, trigger registerPerson | to be assessed |
-| Lifecycle: Rental has state "active" | SM_Rental: State {name:"active", kind:"simple"} | to be assessed |
-| Lifecycle: Car has state "registered" | SM_Car: State {name:"registered", kind:"simple"} | to be assessed |
-| Lifecycle: Person has state "registered" | SM_Person: State {name:"registered", kind:"simple"} | to be assessed |
+| Aussage | Erwartete PIM-Ausgabe | Klassifikation |
+|---------|----------------------|----------------|
+| BET: startRental, Rolle C für Rental | SM_Rental: Übergang __initial nach active, Trigger startRental | noch zu prüfen |
+| BET: completeRental, Rolle E für Rental | SM_Rental: Übergang active nach __final, Trigger completeRental | noch zu prüfen |
+| BET: registerCar, Rolle C für Car | SM_Car: Übergang __initial nach registered, Trigger registerCar | noch zu prüfen |
+| BET: registerPerson, Rolle C für Person | SM_Person: Übergang __initial nach registered, Trigger registerPerson | noch zu prüfen |
+| Lebenszyklus: Rental hat Zustand "active" | SM_Rental: State {name:"active", kind:"simple"} | noch zu prüfen |
+| Lebenszyklus: Car hat Zustand "registered" | SM_Car: State {name:"registered", kind:"simple"} | noch zu prüfen |
+| Lebenszyklus: Person hat Zustand "registered" | SM_Person: State {name:"registered", kind:"simple"} | noch zu prüfen |
 
-### Propagated events (M9 — not implemented)
+### Propagierte Ereignisse (M9, nicht implementiert)
 
-These will be **Missing** in the current implementation:
+Diese werden in der aktuellen Implementierung als Missing erscheinen:
 
-| Statement | Expected PIM output | Expected classification |
-|-----------|--------------------|----|
-| BET: startRental, A/M for Car (propagated) | M-transition in SM_Car triggered by startRental | **Missing** |
-| BET: startRental, A/M for Person (propagated) | M-transition in SM_Person triggered by startRental | **Missing** |
-| BET: completeRental, A/M for Car (propagated) | M-transition in SM_Car triggered by completeRental | **Missing** |
-| BET: completeRental, A/M for Person (propagated) | M-transition in SM_Person triggered by completeRental | **Missing** |
+| Aussage | Erwartete PIM-Ausgabe | Erwartete Klassifikation |
+|---------|----------------------|--------------------------|
+| BET: startRental, A/M für Car (propagiert) | M-Übergang in SM_Car ausgelöst durch startRental | Missing |
+| BET: startRental, A/M für Person (propagiert) | M-Übergang in SM_Person ausgelöst durch startRental | Missing |
+| BET: completeRental, A/M für Car (propagiert) | M-Übergang in SM_Car ausgelöst durch completeRental | Missing |
+| BET: completeRental, A/M für Person (propagiert) | M-Übergang in SM_Person ausgelöst durch completeRental | Missing |
 
-These 4 Missing elements will reduce semantic completeness. The thesis should acknowledge this and connect it to the M9 limitation.
+Diese vier fehlenden Elemente senken die semantische Vollständigkeit. In der Thesis sollte das explizit angesprochen und mit der M9-Einschränkung verbunden werden.
 
-### Auxiliary structures (Added_justified)
+### Hilfsstrukturen (Added_justified)
 
-These appear in the PIM output but have no direct source counterpart. They are structurally necessary:
+Diese erscheinen in der PIM-Ausgabe ohne direktes Gegenstück im Quellmodell, sind aber strukturell notwendig:
 
-| Added element | Justification |
-|--------------|---------------|
-| State `__initial` in each SM | Required by pimUML StateMachine structure (initial pseudostate) |
-| State `__final` in each SM | Required by pimUML StateMachine structure (final state) |
-| Region "lifecycle" in each SM | Required wrapper for states and transitions |
+| Hinzugefügtes Element | Begründung |
+|----------------------|-----------|
+| Zustand `__initial` in jeder SM | Vom pimUML-StateMachine-Format geforderter initialer Pseudozustand |
+| Zustand `__final` in jeder SM | Vom pimUML-StateMachine-Format geforderter finaler Zustand |
+| Region "lifecycle" in jeder SM | Notwendiger Wrapper für Zustände und Übergänge |
 
-These count as Added_justified and are excluded from the validity penalty.
+Diese zählen als Added_justified und werden nicht als Validitätsfehler gewertet.
 
 ---
 
 ## 3. Ground Truth: Rent-A-Car DEMO
 
-Source model: `mda-agents/tests/rent-a-car-mock.json`
+Quellmodell: `mda-agents/tests/rent-a-car-mock.json`
 
-*(This section to be completed when running the regression evaluation. The DEMO evaluation follows the same structure as Bzowski's Table 10.1.)*
+Dieser Abschnitt wird beim Durchführen der Regressionsevaluation ausgefüllt. Die DEMO-Evaluation folgt derselben Struktur wie Bzowskis Tabelle 10.1.
 
-Statements to evaluate:
-- EntityTypes (A3): Car, Person, Rental (→ Classes + IDs)
-- FactTypes / Associations (A12): Car-Rental, Person-Rental relationships
-- EventTypes (A6): relevant events → boolean regions in FSMs
-- AttributeTypes (A5): attributes on entity types
+Zu evaluierende Aussagen: EntityTypes (A3) -- Car, Person, Rental (zu Classes mit IDs), FactTypes und Assoziationen (A12), EventTypes (A6) mit booleschen Regionen in FSMs, AttributeTypes (A5) auf den Entitätstypen.
 
-Expected result: all previously working DEMO elements remain Correct after the MERODE additions. Any regression here would be critical.
+Erwartetes Ergebnis: alle vorher korrekt funktionierenden DEMO-Elemente bleiben nach den MERODE-Ergänzungen als Correct klassifiziert. Jede Regression wäre kritisch.
 
 ---
 
-## 4. Mendix-Side Evaluation (Schema Validation Rate)
+## 4. Mendix-seitige Evaluation (Schema Validation Rate)
 
-After the pipeline runs, open the generated Mendix model in Mendix Studio Pro and check:
-- Zero errors (CE-prefixed)
-- Ideally zero warnings (CW-prefixed), or document any remaining warnings
+Nach dem Ausführen der Pipeline das generierte Mendix-Modell in Mendix Studio Pro öffnen und prüfen: keine Fehler (CE-Präfix) und idealerweise keine Warnungen (CW-Präfix) oder diese dokumentieren.
 
-**Known clean state:** After fixing CE7247, CE0117, and CW0263, the model should open without errors. Run this check after any code change.
-
-**Documentation:** Screenshot the Mendix model error panel and record the count and type of any issues. This is the empirical evidence for the 100% Schema Validation Rate claim.
+Nach dem Beheben von CE7247, CE0117 und CW0263 sollte das Modell ohne Fehler öffnen. Diesen Check nach jeder Code-Änderung wiederholen. Screenshot des Mendix-Fehlerbereichs mit Anzahl und Typ möglicher Probleme erstellen -- das ist der empirische Nachweis für den 100%-SVR-Anspruch.
 
 ---
 
 ## 5. Traceability Coverage
 
-The `_trace` array in each published PIM message records trace entries as `{ sourceType, sourceName, targetType, targetName }`. To compute Traceability Coverage:
+Das `_trace`-Array in jeder veröffentlichten PIM-Nachricht enthält Trace-Einträge als `{ sourceType, sourceName, targetType, targetName }`. Zur Berechnung der Traceability Coverage: das `_trace`-Array aus der MERODE-PIM-Nachricht extrahieren (aus der MQTT-Retained-Message oder den Konsolenausgaben), Einträge mit `targetType != "NotMapped"` zählen (nachverfolgte Elemente), Einträge mit `targetType == "NotMapped"` zählen (explizit nicht nachverfolgbar, akzeptabel für M9), und Coverage = verfolgt / (verfolgt + nicht verfolgt) berechnen.
 
-1. Extract the `_trace` array from the MERODE PIM message (can be read from the MQTT retained message or from console logs)
-2. Count entries with `targetType != "NotMapped"` — these are traced elements
-3. Count entries with `targetType == "NotMapped"` — these are explicitly untraced (acceptable for M9)
-4. Coverage = traced / (traced + untraced)
-
-For the current Rent-A-Car fixture, all M9 events will have `targetType: "NotMapped"` because M9 is not implemented. These are explicitly documented as out of scope and should be presented with an explicit justification in the thesis rather than silently excluded from the count.
+Im aktuellen Rent-A-Car-Fixture werden alle M9-Ereignisse `targetType: "NotMapped"` haben, weil M9 nicht implementiert ist. Diese sollten in der Thesis explizit begründet, nicht stillschweigend aus der Berechnung herausgenommen werden.
 
 ---
 
-## 6. Presentation Plan for the Thesis
+## 6. Gliederungsplan für das Thesis-Kapitel
 
-The evaluation chapter (Chapter X) should follow this structure:
-
-1. **Setup**: describe the case study (Rent-A-Car), the source models (DEMO and MERODE variants), and the pipeline configuration
-2. **Ground truth extraction**: list all atomic statements for each source language (Tables similar to Section 2 above)
-3. **Transformation results for DEMO**: classification table, completeness/validity scores, comparison with Bzowski's expected output
-4. **Transformation results for MERODE**: classification table, completeness/validity scores, explicit acknowledgement of M9 Missing elements
-5. **Mendix model validation**: screenshot, error count, schema validation rate = 100%
-6. **Traceability**: coverage percentage, list of NotMapped elements with justifications
-7. **Extensibility**: present the `git diff` from adding MERODE, reference EXTENSIBILITY_EVIDENCE.md
-8. **Discussion**: what the scores mean, what the limitations imply for the research questions, how the results answer RQ3 and RQ4
+Das Evaluationskapitel sollte folgende Struktur haben: Versuchsaufbau (Fallstudie, Quellmodelle, Pipeline-Konfiguration), Ground-Truth-Extraktion (atomare Aussagen für jede Quellsprache in tabellarischer Form), Transformationsergebnisse für DEMO (Klassifikationstabelle, Vollständigkeit/Validität, Vergleich mit Bzowskis Ergebnissen), Transformationsergebnisse für MERODE (Klassifikationstabelle, explizite Nennung der fehlenden M9-Elemente), Mendix-Modellvalidierung (Screenshot, Fehleranzahl, SVR = 100%), Traceability (Abdeckungsprozentsatz, Liste der NotMapped-Elemente mit Begründungen), Extensibilität (Git-Diff beim Hinzufügen von MERODE, Verweis auf EXTENSIBILITY_EVIDENCE.md) und Diskussion (was die Werte bedeuten, wie die Ergebnisse RQ3 und RQ4 beantworten).
 
 ---
 
-## 7. Expected Scores (Pre-Evaluation Estimate)
+## 7. Erwartete Ergebnisse (Vorab-Schätzung)
 
-Before running the formal evaluation, here's my estimate based on what I know about the implementation:
+Vor der formalen Evaluation eine grobe Einschätzung auf Basis des aktuellen Implementierungsstands.
 
-**DEMO — all four metrics:** Should be very close to Bzowski's reported results. If anything diverged, it would show up as a regression in the DEMO pipeline.
+Für DEMO sollten alle vier Metriken nah an Bzowskis Ergebnissen liegen. Jede Abweichung würde als Regression im DEMO-Pfad sichtbar.
 
-**MERODE — Semantic Completeness:** With M9 missing (4 propagated event participations), completeness will be somewhat below 100%. A rough estimate: 15 source statements, 4 Missing (the M9 propagations) → completeness ≈ 73%. This is an honest result: the system implements M1–M8 correctly but not M9.
+Für MERODE wird die semantische Vollständigkeit durch die fehlenden M9-Propagierungen unter 100% liegen. Grobe Schätzung: 15 Quellaussagen, 4 Missing (die M9-Propagierungen) ergibt etwa 73% Vollständigkeit. Das ist ein ehrliches Ergebnis: das System implementiert M1-M8 korrekt, aber nicht M9.
 
-**MERODE — Semantic Validity:** High, possibly 100% if no incorrect elements are found. The known issues (CE7247, CE0117, CW0263) are fixed.
+Die semantische Validität dürfte hoch sein, möglicherweise 100%, wenn keine falsch transformierten Elemente gefunden werden. Die bekannten Fehler CE7247, CE0117 und CW0263 sind behoben.
 
-**Schema Validation Rate:** 100% by design — the pipeline aborts on any validation error.
+Die Schema Validation Rate ist konstruktionsbedingt 100%, da die Pipeline bei jedem Validierungsfehler abbricht.
 
-**Traceability Coverage (excluding NotMapped):** Should be close to 100% since every mapped rule produces a trace entry. The 4 M9 events produce `NotMapped` entries.
-
-**Extensibility:** The MERODE integration changed `pim-to-mendix-agent.ts` (new B-rules) and `pimuml-schema.json` (additive extension). The third-agent experiment will determine whether the claim holds more cleanly for the ER language.
+Die Traceability Coverage (ohne NotMapped) dürfte nahe 100% liegen, weil jede implementierte Regel einen Trace-Eintrag erzeugt. Die vier M9-Ereignisse produzieren NotMapped-Einträge.
