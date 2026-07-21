@@ -1,6 +1,6 @@
 # Architecture Overview: MDA Modelling Bus Prototype
 
-This document covers the technical architecture of the prototype built for this thesis. The system takes enterprise models (currently DEMO and MERODE) and transforms them into Mendix low-code apps, following the MDA abstraction hierarchy.
+This document covers the technical architecture of the prototype built for my thesis. The system takes enterprise models (currently DEMO and MERODE) and transforms them into Mendix low-code apps, following the MDA abstraction hierarchy.
 
 ---
 
@@ -161,17 +161,18 @@ The bus follows the BIG Modelling Bus naming convention (layer 1 of the Go refer
 {prefix}/{bus-version}/{environmentID}/{agentID}/artefacts/json/{artefactID}/{jsonVersion}/state
 ```
 
-| Field | Value (this prototype) |
-|-------|----------------------|
-| `prefix` | `big` |
-| `bus-version` | `bus-version-1.0` |
-| `environmentID` | `dev` |
-| `agentID` | `api-server`, `demo-to-pim-agent`, `merode-to-pim-agent`, `pim-to-mendix-agent` |
-| `artefactID` | `model.cim.raw`, `model.pim.created` |
-| `jsonVersion` | `cim-v1.0-v1.0`, `pimuml-v1.0-v1.0` |
-| `state` | retained — newly connected agents immediately get the last known model |
+| Field           | Value (this prototype)                                                          |
+| --------------- | ------------------------------------------------------------------------------- |
+| `prefix`        | `big`                                                                           |
+| `bus-version`   | `bus-version-1.0`                                                               |
+| `environmentID` | `dev`                                                                           |
+| `agentID`       | `api-server`, `demo-to-pim-agent`, `merode-to-pim-agent`, `pim-to-mendix-agent` |
+| `artefactID`    | `model.cim.raw`, `model.pim.created`                                            |
+| `jsonVersion`   | `cim-v1.0-v1.0`, `pimuml-v1.0-v1.0`                                             |
+| `state`         | retained — newly connected agents immediately get the last known model          |
 
 Example topics:
+
 ```
 big/bus-version-1.0/dev/api-server/artefacts/json/model.cim.raw/cim-v1.0-v1.0/state
 big/bus-version-1.0/dev/demo-to-pim-agent/artefacts/json/model.pim.created/pimuml-v1.0-v1.0/state
@@ -228,17 +229,17 @@ CI/CD: a GitHub Actions workflow (`deploy-pi.yml`) deploys the stack automatical
 
 The architecture is designed to absorb new CIM languages without touching existing components. The MERODE integration is the concrete proof of that.
 
-| Component | Change when adding MERODE |
-|-----------|--------------------------|
-| `demo-to-pim-agent.ts` | No changes |
-| `bus-client.ts` | No changes |
-| `agent-utils.ts` | No changes |
-| `merode-to-pim-agent.ts` | New file (fully additive) |
-| `merode-schema.json` | New file (fully additive) |
-| `pimuml-schema.json` | Additive extension (new `kind` values, `forEvent` optional) |
-| `types.ts` | New interfaces and small type extensions |
-| `pim-to-mendix-agent.ts` | New B13-B16 rule blocks and `isMerodeFSM()` discriminator |
-| `docker-compose.yml` | One new service block |
+| Component                | Change when adding MERODE                                   |
+| ------------------------ | ----------------------------------------------------------- |
+| `demo-to-pim-agent.ts`   | No changes                                                  |
+| `bus-client.ts`          | No changes                                                  |
+| `agent-utils.ts`         | No changes                                                  |
+| `merode-to-pim-agent.ts` | New file (fully additive)                                   |
+| `merode-schema.json`     | New file (fully additive)                                   |
+| `pimuml-schema.json`     | Additive extension (new `kind` values, `forEvent` optional) |
+| `types.ts`               | New interfaces and small type extensions                    |
+| `pim-to-mendix-agent.ts` | New B13-B16 rule blocks and `isMerodeFSM()` discriminator   |
+| `docker-compose.yml`     | One new service block                                       |
 
 A planned third-agent experiment (ER diagram language) predicts zero changes to existing files, because ER concepts map onto existing pimUML constructs (Classes, Associations) that B1-B12 already handle.
 
@@ -279,8 +280,8 @@ The `_trace` array gives full end-to-end traceability: every rule application ge
 
 Right now the prototype uses hand-crafted JSON fixtures as input. Wiring up real model exports from actual DEMO and MERODE tools is planned as a final step, after all rules are validated against the fixtures.
 
-For MERODE the plan is to use Merlin (the reference tool from Snoeck [21]). Merlin exports `.mxp` files; the open question is whether that format can feed directly into `merode-to-pim-agent` or whether an intermediate conversion step is needed first.
+For MERODE the plan is to use Merlin (the reference tool from Snoeck). Merlin exports `.mxp` files; the open question is whether that format can feed directly into `merode-to-pim-agent` or whether an intermediate conversion step is needed first.
 
-For DEMO the situation is less clear. simplified.engineering is a web-based DEMO modelling tool that in principle supports OFD exports. Whether those exports actually carry the full structure the A-rules need (entity types, fact types, event types) hasn't been checked yet. It's on the list but with explicit uncertainty; depending on the export format it might need its own parsing step before the agent can process it.
+For DEMO the situation is less clear. simplified.engineering is a web-based DEMO modelling tool that in principle supports OFD exports. I need to check whether those exports actually carry the full structure of the A-rules (Bzwoski)
 
-Both integrations come last, after the handcrafted fixtures are fully validated.
+I probably need a parser for both.
