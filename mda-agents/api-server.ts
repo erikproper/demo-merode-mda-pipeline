@@ -4,8 +4,8 @@
 // Format-specific validation happens inside each CIM agent.
 //
 // Endpoints:
-//   POST /api/model  — submit a CIM model
-//   GET  /health     — liveness check
+//   POST /api/model  - submit a CIM model
+//   GET  /health     - liveness check
 //
 // Required headers:
 //   X-Input-Format        format of the input model: "demo" | "merode"

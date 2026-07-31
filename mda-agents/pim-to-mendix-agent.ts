@@ -67,7 +67,7 @@ async function applyPimToMendix(
   model.allPages().filter(p => (p.qualifiedName ?? "").startsWith(prefix) && (p.name ?? "").endsWith("_Overview")).forEach(p => p.delete());
   console.log("[pim-to-mendix] cleared previous model");
 
-  // enumerations → Mendix enumerations (A1)
+  // enumerations -> Mendix enumerations (A1)
   const enumMap = new Map<string, enumerations.Enumeration>();
   for (const enumDef of pimModel.enumerations ?? []) {
     const mxEnum = enumerations.Enumeration.createIn(mxModule);
@@ -80,12 +80,12 @@ async function applyPimToMendix(
     console.log(`  + enumeration "${enumDef.name}" [${enumDef.literals.join(", ")}]`);
   }
 
-  // classes → Mendix entities with attributes
+  // classes -> Mendix entities with attributes
   const entityMap    = new Map<string, domainmodels.Entity>();
   const attributeMap = new Map<string, domainmodels.Attribute>(); // key: "EntityName.attrName"
   let x = 0;
 
-  // non-categorical data types → Entity in Mendix (B4)
+  // non-categorical data types -> Entity in Mendix (B4)
   for (const dt of pimModel.dataTypes ?? []) {
     const entity    = domainmodels.Entity.createIn(domainModel);
     entity.name     = dt.name;
@@ -101,12 +101,12 @@ async function applyPimToMendix(
     x += 220;
     entityMap.set(cls.name, entity);
 
-    if (cls.isAbstract) console.log(`  (abstract) "${cls.name}" — Mendix has no abstract entities; marked in pimUML only`);
-    if (cls.isDerived)  console.log(`  (derived)  "${cls.name}" — created as regular entity; rule: ${cls.derivationExpression ?? "none"}`);
+    if (cls.isAbstract) console.log(`  (abstract) "${cls.name}" - Mendix has no abstract entities; marked in pimUML only`);
+    if (cls.isDerived)  console.log(`  (derived)  "${cls.name}" - created as regular entity; rule: ${cls.derivationExpression ?? "none"}`);
 
     for (const prop of cls.ownedAttributes ?? []) {
       if (prop.isDerived) {
-        console.log(`  ~ derived attribute "${cls.name}.${prop.name}" not mapped — Mendix has no OCL; rule: ${prop.derivationRule}`);
+        console.log(`  ~ derived attribute "${cls.name}.${prop.name}" not mapped - Mendix has no OCL; rule: ${prop.derivationRule}`);
         continue;
       }
       const attr = domainmodels.Attribute.createIn(entity);
@@ -123,7 +123,7 @@ async function applyPimToMendix(
     console.log(`  + entity "${cls.name}"`);
   }
 
-  // association classes → approximated as Entity + two Associations (A8)
+  // association classes -> approximated as Entity + two Associations (A8)
   for (const ac of pimModel.associationClasses ?? []) {
     const acEntity    = domainmodels.Entity.createIn(domainModel);
     acEntity.name     = ac.name;
@@ -139,7 +139,7 @@ async function applyPimToMendix(
 
     for (const end of ac.memberEnds) {
       const related = entityMap.get(end.type);
-      if (!related) { console.warn(`  skipping association class end "${end.type}" — entity not found`); continue; }
+      if (!related) { console.warn(`  skipping association class end "${end.type}" - entity not found`); continue; }
       const mxAssoc  = domainmodels.Association.createIn(domainModel);
       mxAssoc.name   = `${ac.name}_${end.type}`;
       mxAssoc.parent = related;
@@ -149,12 +149,12 @@ async function applyPimToMendix(
     console.log(`  + association class "${ac.name}" [trigger: ${ac.triggerEvent}] approximated as entity + associations (Mendix has no association class concept)`);
   }
 
-  // generalizations → Mendix entity inheritance (A10)
+  // generalizations -> Mendix entity inheritance (A10)
   for (const gen of pimModel.generalizations ?? []) {
     const childEntity  = entityMap.get(gen.child);
     const parentEntity = entityMap.get(gen.parent);
     if (!childEntity || !parentEntity) {
-      console.warn(`  skipping generalization "${gen.child} → ${gen.parent}" — entity not found`);
+      console.warn(`  skipping generalization "${gen.child} -> ${gen.parent}" - entity not found`);
       continue;
     }
     const mxGen = domainmodels.Generalization.createIn(childEntity);
@@ -162,7 +162,7 @@ async function applyPimToMendix(
     console.log(`  + generalization "${gen.child}" extends "${gen.parent}"`);
   }
 
-  // associations → Mendix associations
+  // associations -> Mendix associations
   const associationMap = new Map<string, domainmodels.Association>();
   for (const assoc of pimModel.associations ?? []) {
     const end0 = assoc.memberEnds[0];
@@ -175,7 +175,7 @@ async function applyPimToMendix(
     const childEntity  = entityMap.get(childEnd.type);
 
     if (!parentEntity || !childEntity) {
-      console.warn(`  skipping association "${assoc.name}" — entity not found`);
+      console.warn(`  skipping association "${assoc.name}" - entity not found`);
       continue;
     }
 
@@ -189,7 +189,7 @@ async function applyPimToMendix(
     associationMap.set(assoc.name, mxAssoc);
     const kind = assoc.isDerived ? "derived association" : assoc.triggerEvent ? "event-triggered association" : assoc.isAggregation ? "aggregation" : "association";
     const note = assoc.derivationExpression ? ` [rule: ${assoc.derivationExpression}]` : assoc.triggerEvent ? ` [trigger: ${assoc.triggerEvent}] (state machine behavior NotMapped)` : "";
-    console.log(`  + ${kind} "${assoc.name}": ${parentEnd.type} → ${childEnd.type}${note}`);
+    console.log(`  + ${kind} "${assoc.name}": ${parentEnd.type} -> ${childEnd.type}${note}`);
   }
 
   // B13: for each MERODE sequential FSM, generate <Entity>_Status enum + status attribute
@@ -224,7 +224,7 @@ async function applyPimToMendix(
     console.log(`  + ${statusEnumName} [${lcStates.join(", ")}] + status attribute on ${sm.entityType}`);
   }
 
-  // activity microflows — one per state machine activity
+  // activity microflows - one per state machine activity
   const microflowMap = new Map<string, microflows.Microflow>();
   for (const sm of pimModel.stateMachines ?? []) {
     for (const activity of sm.activities ?? []) {
@@ -239,7 +239,7 @@ async function applyPimToMendix(
       start.relativeMiddlePoint = { x: 0,   y: 0 };
       end.relativeMiddlePoint   = { x: 200, y: 0 };
 
-      // B14: MERODE create — entity creates itself, sets initial lifecycle status
+      // B14: MERODE create - entity creates itself, sets initial lifecycle status
       if (activity.kind === "create" && activity.targetType && isMerodeFSM(sm)
           && activity.targetType === sm.entityType) {
         const entityName   = activity.targetType;
@@ -269,7 +269,7 @@ async function applyPimToMendix(
         }
       }
 
-      // B20+B21+B18+B19: DEMO create — child entity created and linked to parent
+      // B20+B21+B18+B19: DEMO create - child entity created and linked to parent
       if (activity.kind === "create" && activity.targetType) {
         const childName    = activity.targetType;
         const parentName   = sm.entityType;
@@ -289,7 +289,7 @@ async function applyPimToMendix(
         const childVar  = childName.charAt(0).toLowerCase() + childName.slice(1);
 
         if (childEntity && parentEntity) {
-          // B16: parameter — parent entity object
+          // B16: parameter - parent entity object
           const mfParam = microflows.MicroflowParameterObject.createIn(objCol);
           mfParam.name  = parentVar;
           mfParam.relativeMiddlePoint = { x: -80, y: 0 };
@@ -297,8 +297,8 @@ async function applyPimToMendix(
           paramType.entity = parentEntity;
           mfParam.variableType = paramType;
 
-          // B20: CreateObjectAction — instantiate child; B18+B19 inlined as MemberChanges
-          // (CreateVariableAction skipped: SDK cannot set variable type → defaults to Boolean.
+          // B20: CreateObjectAction - instantiate child; B18+B19 inlined as MemberChanges
+          // (CreateVariableAction skipped: SDK cannot set variable type -> defaults to Boolean.
           //  Expressions are inlined directly to avoid CE0117.)
           const createAct = microflows.ActionActivity.createIn(objCol);
           createAct.relativeMiddlePoint = { x: 100, y: 0 };
@@ -326,12 +326,12 @@ async function applyPimToMendix(
           const f1 = microflows.SequenceFlow.createIn(mf); f1.origin = start;    f1.destination = createAct;
           const f2 = microflows.SequenceFlow.createIn(mf); f2.origin = createAct; f2.destination = end;
 
-          console.log(`  + microflow "${activity.name}" [create ${childName} from ${parentName}]${!mxAssoc ? " ⚠ no association found" : ""}`);
+          console.log(`  + microflow "${activity.name}" [create ${childName} from ${parentName}]${!mxAssoc ? " [warn] no association found" : ""}`);
           continue;
         }
       }
 
-      // B16/B18: set-kind → MicroflowParameterObject + ChangeObjectAction (sets boolean event attribute)
+      // B16/B18: set-kind -> MicroflowParameterObject + ChangeObjectAction (sets boolean event attribute)
       // CE0049 caveat: logical MicroflowParameter cannot be created via SDK (same limitation as ACR).
       // The MicroflowParameterObject makes the variable visible in Studio Pro; one OK-click fixes CE0049.
       if (activity.kind === "set" && activity.targetType) {
@@ -369,12 +369,12 @@ async function applyPimToMendix(
           flow2.origin      = actionAct;
           flow2.destination = end;
 
-          console.log(`  + microflow "${activity.name}" [set ${setEntityName}.${eventName} = true] ⚠ CE0049: click OK once in Studio Pro`);
+          console.log(`  + microflow "${activity.name}" [set ${setEntityName}.${eventName} = true] [warn] CE0049: click OK once in Studio Pro`);
           continue;
         }
       }
 
-      // B15: MERODE set — change status attribute to the transition's target state
+      // B15: MERODE set - change status attribute to the transition's target state
       if (activity.kind === "set" && activity.targetType && isMerodeFSM(sm)) {
         const entityName  = activity.targetType;
         const eventName   = activity.name.substring(`Set_${entityName}_`.length);
@@ -408,7 +408,7 @@ async function applyPimToMendix(
         }
       }
 
-      // B16: MERODE end — stub microflow with entity parameter (archiving/deletion is domain-specific)
+      // B16: MERODE end - stub microflow with entity parameter (archiving/deletion is domain-specific)
       if (activity.kind === "end" && activity.targetType) {
         const entityName   = activity.targetType;
         const targetEntity = entityMap.get(entityName);
@@ -423,7 +423,7 @@ async function applyPimToMendix(
 
           const flow = microflows.SequenceFlow.createIn(mf);
           flow.origin = start; flow.destination = end;
-          console.log(`  + microflow "${activity.name}" [MERODE: end ${entityName} — stub]`);
+          console.log(`  + microflow "${activity.name}" [MERODE: end ${entityName} - stub]`);
           continue;
         }
       }
@@ -436,7 +436,7 @@ async function applyPimToMendix(
     }
   }
 
-  // B11/B12/B23/B24: per entity type — Workflow + ACR Microflow (DEMO FSMs only)
+  // B11/B12/B23/B24: per entity type - Workflow + ACR Microflow (DEMO FSMs only)
   for (const sm of pimModel.stateMachines ?? []) {
     if (sm.regions.length === 0) continue;
     if (isMerodeFSM(sm)) continue;
@@ -485,8 +485,8 @@ async function applyPimToMendix(
         // KNOWN LIMITATION (CE6685 – "Parameters of the selected microflow have changed"):
         // MicroflowCallParameterMapping.parameter requires a MicroflowParameter object,
         // which cannot be created via the SDK (same root cause as CE0049).
-        // Fix: open each CallMicroflowTask in Studio Pro and click OK once — Studio Pro
-        // then auto-creates the parameter binding (WorkflowContext → rental parameter).
+        // Fix: open each CallMicroflowTask in Studio Pro and click OK once - Studio Pro
+        // then auto-creates the parameter binding (WorkflowContext -> rental parameter).
         const callSetLine        = workflows.FlowLine.createIn(wfMeta);
         callSetLine.origin       = prevAct;
         callSetLine.destination  = callSetTask;
@@ -503,7 +503,7 @@ async function applyPimToMendix(
           callCreateTask.caption  = `Call: ${trueState.entryActivity}`;
           callCreateTask.microflow = createMf;
           workflows.VoidConditionOutcome.createIn(callCreateTask);
-          // KNOWN LIMITATION (CE6685): same as above — open and click OK in Studio Pro.
+          // KNOWN LIMITATION (CE6685): same as above - open and click OK in Studio Pro.
           const callCreateLine       = workflows.FlowLine.createIn(wfMeta);
           callCreateLine.origin      = prevAct;
           callCreateLine.destination = callCreateTask;
@@ -541,7 +541,7 @@ async function applyPimToMendix(
     acrStart.relativeMiddlePoint = { x: 0,   y: 0 };
     acrEnd.relativeMiddlePoint   = { x: 300, y: 0 };
 
-    // MicroflowParameterObject: visual canvas element — populates the Object dropdown
+    // MicroflowParameterObject: visual canvas element - populates the Object dropdown
     // in the WorkflowCallAction dialog so the user can confirm the selection manually.
     const acrParam   = microflows.MicroflowParameterObject.createIn(acrObjCol);
     acrParam.name    = varName;
@@ -565,7 +565,7 @@ async function applyPimToMendix(
     acrFlow2.destination = acrEnd;
 
     microflowMap.set(`ACR_${entityName}`, acrMf);
-    console.log(`  + ACR microflow "ACR_${entityName}" → workflow "WF_${entityName}" [${sm.regions.length} region(s)]`);
+    console.log(`  + ACR microflow "ACR_${entityName}" -> workflow "WF_${entityName}" [${sm.regions.length} region(s)]`);
   }
 
   // ── Pages + Navigation ────────────────────────────────────────────────────────
@@ -579,7 +579,7 @@ async function applyPimToMendix(
   // Deep-search helper: traverses all known Mendix widget container types recursively.
   // Atlas layouts often nest LayoutParameters inside ScrollContainer regions rather
   // than top-level widget lists, so a shallow .widgets check is not enough.
-  // Safely read a property — returns undefined if the SDK throws (deleted property).
+  // Safely read a property - returns undefined if the SDK throws (deleted property).
   const safeGet = (obj: any, key: string): any => {
     try { return obj[key]; } catch { return undefined; }
   };
@@ -588,7 +588,7 @@ async function applyPimToMendix(
     if (!obj || typeof obj !== "object" || depth > 20) return null;
     if (obj.structureTypeName === "Pages$LayoutParameter") return obj as pages.ILayoutParameter;
 
-    // List properties: widgets, rows, columns, tabPages — try-catch only around property read
+    // List properties: widgets, rows, columns, tabPages - try-catch only around property read
     for (const listKey of ["widgets", "rows", "columns", "tabPages", "items"]) {
       const list = safeGet(obj, listKey);
       if (!list) continue;
@@ -597,7 +597,7 @@ async function applyPimToMendix(
         if (found) return found;
       }
     }
-    // ScrollContainer regions — each region's .widgets is then iterated recursively
+    // ScrollContainer regions - each region's .widgets is then iterated recursively
     for (const regionKey of ["center", "top", "bottom", "left", "right",
                               "topRegion", "centerRegion", "bottomRegion",
                               "leftRegion", "rightRegion",
@@ -607,7 +607,7 @@ async function applyPimToMendix(
       const found = findLayoutParam(region, depth + 1);
       if (found) return found;
     }
-    // Single-child references (skip "widget" singular — deleted since Mendix 7.15)
+    // Single-child references (skip "widget" singular - deleted since Mendix 7.15)
     for (const childKey of ["leftWidget", "rightWidget", "headerWidget", "footerWidget", "content"]) {
       const child = safeGet(obj, childKey);
       if (!child || typeof child !== "object") continue;
@@ -619,7 +619,7 @@ async function applyPimToMendix(
 
   // Strategy 1: borrow layout + LayoutParameter from an existing non-module page.
   // In Mendix 11 Atlas UI 3.x the resolved parameter object is often null while
-  // parameterQualifiedName (the raw string) is still set — check both.
+  // parameterQualifiedName (the raw string) is still set - check both.
   for (const pg of model.allPages()) {
     if ((pg.qualifiedName ?? "").startsWith(prefix)) continue;
     const fp  = await pg.load();
@@ -653,7 +653,7 @@ async function applyPimToMendix(
       if (!borrowedParamQN && isNonPopup) {
         borrowedParamQN = pqn;
         console.log(`[pim-to-mendix] will use SDK bypass: paramQN="${pqn}" from "${pg.qualifiedName}"`);
-        break; // layout and paramQN are enough — stop scanning pages
+        break; // layout and paramQN are enough - stop scanning pages
       }
     }
     if (!webLayout && fp.layoutCall?.layout) webLayout = fp.layoutCall.layout;
@@ -705,13 +705,13 @@ async function applyPimToMendix(
     }
 
     if (!contentParam) {
-      console.warn(`[pim-to-mendix] SDK limitation: LayoutParameter "Main" in Atlas_Core is not accessible — pages generated without resolved parameter reference`);
+      console.warn(`[pim-to-mendix] SDK limitation: LayoutParameter "Main" in Atlas_Core is not accessible - pages generated without resolved parameter reference`);
     }
   }
 
 
   if (!webLayout) {
-    console.warn("[pim-to-mendix] no suitable layout found — skipping page generation");
+    console.warn("[pim-to-mendix] no suitable layout found - skipping page generation");
   } else {
     const pageMap = new Map<string, pages.Page>();
 
@@ -730,7 +730,7 @@ async function applyPimToMendix(
         tr.text = `${cls.name} Overview`;
       }
 
-      // Layout — always create a LayoutCallArgument.
+      // Layout - always create a LayoutCallArgument.
       // In Mendix 11 Atlas UI 3.x, the layout parameter reference may be null;
       // the runtime still renders arg.widgets in the default content slot.
       const lc  = page.layoutCall;
@@ -749,7 +749,7 @@ async function applyPimToMendix(
       // The generated ACR_<Entity> microflow and WF_<Entity> workflow remain in the module.
       const hasSM = pimModel.stateMachines?.some(sm => sm.entityType === cls.name && sm.regions.length > 0) ?? false;
       if (hasSM) {
-        console.log(`    ℹ ACR_${cls.name} + WF_${cls.name} generated — add trigger button inside DataView in Studio Pro`);
+        console.log(`    [info] ACR_${cls.name} + WF_${cls.name} generated - add trigger button inside DataView in Studio Pro`);
       }
 
       pageMap.set(cls.name, page);
@@ -816,7 +816,7 @@ async function main() {
     if (meta._trace && meta._trace.length > 0) {
       console.log(`[pim-to-mendix] trace (${meta._trace.length} entries):`);
       for (const entry of meta._trace) {
-        console.log(`  ${entry.sourceType} "${entry.sourceName}" → ${entry.targetType} "${entry.targetName}"`);
+        console.log(`  ${entry.sourceType} "${entry.sourceName}" -> ${entry.targetType} "${entry.targetName}"`);
       }
     }
 
@@ -834,7 +834,7 @@ async function main() {
     };
 
     if (!effectiveConfig.appId) {
-      console.warn("[pim-to-mendix] no appId — skipping");
+      console.warn("[pim-to-mendix] no appId - skipping");
       return;
     }
 

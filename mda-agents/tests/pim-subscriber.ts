@@ -24,7 +24,7 @@ const ARTEFACT_ID = "model.pim.created";
 async function main() {
   const bus = new BusClient(config);
   await bus.connect();
-  console.log(`[pim-subscriber] connected — waiting for PimModel from "${FROM_AGENT}" …`);
+  console.log(`[pim-subscriber] connected - waiting for PimModel from "${FROM_AGENT}" …`);
 
   bus.subscribePimState(FROM_AGENT, ARTEFACT_ID, (model: PimModel, timestamp: string) => {
     console.log(`\nReceived PimModel at ${timestamp}`);
@@ -33,7 +33,7 @@ async function main() {
 
     for (const cls of model.classes ?? []) {
       const attrs = cls.ownedAttributes?.map(a => `${a.name}: ${a.type ?? "String"}`).join(", ") ?? "";
-      console.log(`    • ${cls.name}  { ${attrs} }`);
+      console.log(`    - ${cls.name}  { ${attrs} }`);
     }
 
     const outPath = path.resolve(__dirname, "rent-a-car-pim-from-bus.json");

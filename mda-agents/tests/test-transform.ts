@@ -1,4 +1,4 @@
-// Standalone test: loads rent-a-car-mock.json and runs the DEMO→PIM
+// Standalone test: loads rent-a-car-mock.json and runs the DEMO->PIM
 // transformation without needing an MQTT broker.
 //
 // Run:
@@ -22,13 +22,13 @@ console.log(`  factTypes   : ${demo.factTypes?.length ?? 0}`);
 
 if (!validateDemo(demo)) {
   console.error("INVALID input:");
-  for (const e of validateDemo.errors ?? []) console.error(`  ${(e as any).dataPath} — ${e.message}`);
+  for (const e of validateDemo.errors ?? []) console.error(`  ${(e as any).dataPath} - ${e.message}`);
   process.exit(1);
 }
-console.log("\nStep 1 — input valid ✓");
+console.log("\nStep 1 - input valid");
 
-// A3 + A5: entity types → classes with attributes
-// A12:     fact types   → associations
+// A3 + A5: entity types -> classes with attributes
+// A12:     fact types   -> associations
 const pim = {
   name: `${demo.name} – pimUML`,
   classes: demo.entityTypes.map(et => ({
@@ -44,22 +44,22 @@ const pim = {
   })),
 };
 
-console.log("\nStep 2 — transform");
+console.log("\nStep 2 - transform");
 for (const cls of pim.classes) {
   const attrs = cls.ownedAttributes.map(a => `${a.name}: ${a.type}`).join(", ");
-  console.log(`  • Class       ${cls.name}  { ${attrs} }`);
+  console.log(`  - Class       ${cls.name}  { ${attrs} }`);
 }
 for (const assoc of pim.associations) {
   const [e0, e1] = assoc.memberEnds;
-  console.log(`  • Association ${assoc.name}  (${e0.type} ${e0.lower}..${e0.upper} — ${e1.type} ${e1.lower}..${e1.upper})`);
+  console.log(`  - Association ${assoc.name}  (${e0.type} ${e0.lower}..${e0.upper} - ${e1.type} ${e1.lower}..${e1.upper})`);
 }
 
 if (!validatePim(pim)) {
   console.error("\nINVALID output:");
-  for (const e of validatePim.errors ?? []) console.error(`  ${(e as any).dataPath} — ${e.message}`);
+  for (const e of validatePim.errors ?? []) console.error(`  ${(e as any).dataPath} - ${e.message}`);
   process.exit(1);
 }
-console.log("\nStep 3 — output valid ✓");
+console.log("\nStep 3 - output valid");
 
 const outPath = path.resolve(__dirname, "rent-a-car-pim-from-bus.json");
 fs.writeFileSync(outPath, JSON.stringify(pim, null, 2), "utf-8");

@@ -29,7 +29,7 @@ function transform(merode: MerodeModel): { pim: PimModel; trace: TraceEntry[] } 
   const stateMachines: PimModel["stateMachines"] = [];
 
   for (const ot of merode.objectTypes) {
-    // M1: ObjectType → Class + Integer-ID
+    // M1: ObjectType -> Class + Integer-ID
     trace.push({ sourceType: "ObjectType", sourceName: ot.name, targetType: "Class", targetName: ot.name });
     const ownedAttributes = [
       { name: `${ot.name}ID`, type: "Integer", isID: true },
@@ -56,24 +56,24 @@ function transform(merode: MerodeModel): { pim: PimModel; trace: TraceEntry[] } 
 
       for (const evt of otEvents) {
         if (evt.role === "C") {
-          // M6: creating event — initial pseudostate → first lifecycle state
+          // M6: creating event - initial pseudostate -> first lifecycle state
           smTransitions.push({ from: "__initial", to: lcStates[0], trigger: evt.name });
           smActivities.push({ name: `Create_${ot.name}`, kind: "create", targetType: ot.name });
-          trace.push({ sourceType: "BusinessEventType", sourceName: evt.name, targetType: "Transition", targetName: `__initial→${lcStates[0]}` });
+          trace.push({ sourceType: "BusinessEventType", sourceName: evt.name, targetType: "Transition", targetName: `__initial->${lcStates[0]}` });
         } else if (evt.role === "M") {
-          // M7: modifying event — explicit fromState/toState or sequential fallback
+          // M7: modifying event - explicit fromState/toState or sequential fallback
           const from = evt.fromState ?? lcStates[0];
           const toIdx = lcStates.indexOf(from) + 1;
           const to   = evt.toState ?? (toIdx < lcStates.length ? lcStates[toIdx] : lcStates[lcStates.length - 1]);
           smTransitions.push({ from, to, trigger: evt.name });
           smActivities.push({ name: `Set_${ot.name}_${evt.name}`, kind: "set", targetType: ot.name });
-          trace.push({ sourceType: "BusinessEventType", sourceName: evt.name, targetType: "Transition", targetName: `${from}→${to}` });
+          trace.push({ sourceType: "BusinessEventType", sourceName: evt.name, targetType: "Transition", targetName: `${from}->${to}` });
         } else if (evt.role === "E") {
-          // M8: ending event — last lifecycle state → final pseudostate
+          // M8: ending event - last lifecycle state -> final pseudostate
           const lastState = lcStates[lcStates.length - 1];
           smTransitions.push({ from: lastState, to: "__final", trigger: evt.name });
           smActivities.push({ name: `End_${ot.name}`, kind: "end", targetType: ot.name });
-          trace.push({ sourceType: "BusinessEventType", sourceName: evt.name, targetType: "Transition", targetName: `${lastState}→__final` });
+          trace.push({ sourceType: "BusinessEventType", sourceName: evt.name, targetType: "Transition", targetName: `${lastState}->__final` });
         } else {
           trace.push({ sourceType: "BusinessEventType", sourceName: evt.name, targetType: "NotMapped", targetName: "-" });
         }
@@ -87,14 +87,14 @@ function transform(merode: MerodeModel): { pim: PimModel; trace: TraceEntry[] } 
       });
       trace.push({ sourceType: "ObjectType", sourceName: ot.name, targetType: "StateMachine", targetName: `SM_${ot.name}` });
     } else {
-      // no lifecycleStates — record events as NotMapped
+      // no lifecycleStates - record events as NotMapped
       for (const bet of eventsByOT.get(ot.name) ?? []) {
         trace.push({ sourceType: "BusinessEventType", sourceName: bet.name, targetType: "NotMapped", targetName: "-" });
       }
     }
   }
 
-  // M4: ExistenceDependency → Association
+  // M4: ExistenceDependency -> Association
   const associations = (merode.existenceDependencies ?? []).map(dep => {
     trace.push({ sourceType: "ExistenceDependency", sourceName: dep.name, targetType: "Association", targetName: dep.name });
     return {
@@ -118,7 +118,7 @@ function transform(merode: MerodeModel): { pim: PimModel; trace: TraceEntry[] } 
 }
 
 async function main() {
-  console.log(`[merode-to-pim] starting — listening for "${IN_ARTEFACT}" from "${SOURCE_AGENT_ID}"`);
+  console.log(`[merode-to-pim] starting - listening for "${IN_ARTEFACT}" from "${SOURCE_AGENT_ID}"`);
 
   const bus = new BusClient(config);
   await bus.connect();

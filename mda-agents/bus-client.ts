@@ -179,7 +179,7 @@ export class BusClient {
   }
 
   // Subscribe to artefact state postings from another agent.
-  // Go agents post RepositoryEvents (FTP links) which TypeScript cannot fetch —
+  // Go agents post RepositoryEvents (FTP links) which TypeScript cannot fetch -
   // those are logged and skipped. Mirrors ListenForJSONArtefactStatePostings.
   subscribeArtefactState<T>(
     fromAgentID: string,
@@ -189,7 +189,7 @@ export class BusClient {
   ) {
     this.subscribeRaw(fromAgentID, this.statePath(artefactID, jsonVersion), (payload, ts, isRepo) => {
       if (isRepo) {
-        console.warn(`[bus] subscribeArtefactState(${artefactID}): FTP event from "${fromAgentID}" — skipped (not supported in TypeScript)`);
+        console.warn(`[bus] subscribeArtefactState(${artefactID}): FTP event from "${fromAgentID}" - skipped (not supported in TypeScript)`);
         return;
       }
       handler(payload as T, ts);
@@ -203,7 +203,7 @@ export class BusClient {
     handler: (model: T, timestamp: string) => void,
   ) {
     this.subscribeRaw(fromAgentID, this.updatePath(artefactID, jsonVersion), (payload, ts, isRepo) => {
-      if (isRepo) { console.warn(`[bus] subscribeArtefactUpdate(${artefactID}): FTP event — skipped`); return; }
+      if (isRepo) { console.warn(`[bus] subscribeArtefactUpdate(${artefactID}): FTP event - skipped`); return; }
       handler(payload as T, ts);
     });
   }
@@ -215,7 +215,7 @@ export class BusClient {
     handler: (model: T, timestamp: string) => void,
   ) {
     this.subscribeRaw(fromAgentID, this.consideringPath(artefactID, jsonVersion), (payload, ts, isRepo) => {
-      if (isRepo) { console.warn(`[bus] subscribeArtefactConsidering(${artefactID}): FTP event — skipped`); return; }
+      if (isRepo) { console.warn(`[bus] subscribeArtefactConsidering(${artefactID}): FTP event - skipped`); return; }
       handler(payload as T, ts);
     });
   }
@@ -230,7 +230,7 @@ export class BusClient {
     this.subscribeRaw(this.cfg.agentID, this.coordPath(coordinationID), (payload, ts) => handler(payload, ts));
   }
 
-  // Generic CIM input — all input formats share one topic; agents filter by _source.format.
+  // Generic CIM input - all input formats share one topic; agents filter by _source.format.
   publishCimState(artefactID: string, model: object) { this.publishArtefactState(artefactID, CIM_JSON_VERSION, model); }
   subscribeCimState<T>(fromAgentID: string, artefactID: string, handler: (model: T, ts: string) => void) {
     this.subscribeArtefactState<T>(fromAgentID, artefactID, CIM_JSON_VERSION, handler);

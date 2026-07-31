@@ -17,7 +17,7 @@ const validatePim  = makeValidator("pimuml-schema.json");
 function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
   const trace: TraceEntry[] = [];
 
-  // categorical value types → enumerations (A1)
+  // categorical value types -> enumerations (A1)
   const enumerations = (demo.valueTypes ?? [])
     .filter(vt => vt.kind === "categorical")
     .map(vt => {
@@ -25,7 +25,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
       return { name: vt.name, literals: vt.literals! };
     });
 
-  // non-categorical value types with event + entity relation → association classes (A8)
+  // non-categorical value types with event + entity relation -> association classes (A8)
   const associationClasses = (demo.valueTypes ?? [])
     .filter(vt => vt.kind === "nonCategorical" && vt.triggerEventType && vt.relatesEntityTypes)
     .map(vt => {
@@ -46,7 +46,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
       };
     });
 
-  // non-categorical value types → user-defined data types (A2)
+  // non-categorical value types -> user-defined data types (A2)
   const dataTypes = (demo.valueTypes ?? [])
     .filter(vt => vt.kind === "nonCategorical" && !vt.triggerEventType)
     .map(vt => {
@@ -55,7 +55,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     });
 
   // each entity type becomes a class, its attributes become properties (A3, A5)
-  // A3 note: derived EntityTypes do NOT get their ID here — assigned at A9 per thesis def. iii
+  // A3 note: derived EntityTypes do NOT get their ID here - assigned at A9 per thesis def. iii
   const classes = demo.entityTypes.map(et => {
     trace.push({ sourceType: et.isDerived ? "DerivedEntityType" : "EntityType", sourceName: et.name, targetType: "Class", targetName: et.name });
     const ownedAttributes: Property[] = [];
@@ -77,18 +77,18 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     return { name: et.name, isAbstract: et.isAbstract ?? false, isDerived: et.isDerived ?? false, derivationExpression: et.derivationExpression, ownedAttributes };
   });
 
-  // generalizations → parent-child relationships between classes (A10)
+  // generalizations -> parent-child relationships between classes (A10)
   // only non-derived, non-event-triggered specializations
   const generalizations = demo.entityTypes
     .filter(et => et.parent !== undefined && !et.isDerived && !et.triggerEventType)
     .map(et => {
-      trace.push({ sourceType: "EntityType", sourceName: et.name, targetType: "Generalization", targetName: `${et.parent} → ${et.name}` });
+      trace.push({ sourceType: "EntityType", sourceName: et.name, targetType: "Generalization", targetName: `${et.parent} -> ${et.name}` });
       const parentClass = classes.find(c => c.name === et.parent);
       if (parentClass) parentClass.isAbstract = true;
       return { child: et.name, parent: et.parent! };
     });
 
-  // event types → Boolean attributes on the owning class (A6)
+  // event types -> Boolean attributes on the owning class (A6)
   for (const et of demo.eventTypes ?? []) {
     const cls = classes.find(c => c.name === et.entityType);
     if (!cls) { console.warn(`[demo-to-pim] eventType "${et.name}" references unknown entityType "${et.entityType}"`); continue; }
@@ -97,7 +97,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     cls.ownedAttributes.push({ name: et.name, type: "Boolean", defaultValue: "false" });
   }
 
-  // event-triggered specializations → directed association + trigger reference (A7)
+  // event-triggered specializations -> directed association + trigger reference (A7)
   // state machine behavior (entry activity, Create<child>) is NotMapped in Mendix
   const eventTriggeredAssociations = demo.entityTypes
     .filter(et => et.parent !== undefined && et.triggerEventType)
@@ -114,7 +114,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
       };
     });
 
-  // derived specializations → directed associations with OCL expression (A9)
+  // derived specializations -> directed associations with OCL expression (A9)
   // A9 also assigns the Integer ID to the derived EntityType class (thesis def. iii, p.99)
   const derivedAssociations = demo.entityTypes
     .filter(et => et.isDerived && et.parent !== undefined)
@@ -171,11 +171,11 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     ...eventTriggeredAssociations,
   ];
 
-  // state machines — one per entity type, one orthogonal region per event type (A3, A4, A6, A7, A9)
+  // state machines - one per entity type, one orthogonal region per event type (A3, A4, A6, A7, A9)
   const stateMachines: PimStateMachine[] = demo.entityTypes.map(et => {
     const ownEvents = (demo.eventTypes ?? []).filter(ev => ev.entityType === et.name);
 
-    // event-triggered specializations whose parent is this entity type → entry activities in true state
+    // event-triggered specializations whose parent is this entity type -> entry activities in true state
     const triggeredChildren = demo.entityTypes.filter(child => child.parent === et.name && child.triggerEventType);
 
     const regions: PimRegion[] = ownEvents.map(ev => {
@@ -224,7 +224,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
 }
 
 async function main() {
-  console.log(`[demo-to-pim] starting — listening for "${IN_ARTEFACT}" from "${SOURCE_AGENT_ID}"`);
+  console.log(`[demo-to-pim] starting - listening for "${IN_ARTEFACT}" from "${SOURCE_AGENT_ID}"`);
 
   const bus = new BusClient(config);
   await bus.connect();
