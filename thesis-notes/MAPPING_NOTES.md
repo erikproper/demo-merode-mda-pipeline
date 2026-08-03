@@ -270,7 +270,7 @@ Hinweis zur Nummerierung: Bzowskis Tabelle geht bis B24. Der Prototyp implementi
 | B13 | MERODE StateMachine (Lebenszykluszustände) | `<Entity>_Status`-Enumeration | implementiert |
 | B14 | MERODE Create-Aktivität | `Create_<Entity>`-Microflow: CreateObject + Status auf ersten Zustand | implementiert |
 | B15 | MERODE Set-Aktivität | `Set_<Entity>_<Ereignis>`-Microflow: ChangeObject Status auf toState | implementiert |
-| B16 | MERODE End-Aktivität | `End_<Entity>`-Microflow (Stub, nur Parameter) | Stub |
+| B16 | MERODE End-Aktivität | `End_<Entity>`-Microflow: DeleteAction (Objekt wird aus der DB entfernt) | implementiert |
 | | Übersichts- und Detailseiten je Entity | Mendix Pages | implementiert |
 
 ### B13 - MERODE-Lebenszykluszustände nach Mendix-Status-Enumeration
@@ -287,9 +287,9 @@ Der `Create_<Entity>`-Microflow erzeugt ein neues Entity-Objekt mit `CreateObjec
 
 Der `Set_<Entity>_<Ereignisname>`-Microflow ändert das `status`-Attribut auf den `toState` des Übergangs. Er nimmt die Entity als Parameter und setzt den Status auf den Zielzustand.
 
-### B16 - MERODE End-Aktivität nach End-Microflow (Stub)
+### B16 - MERODE End-Aktivität nach Delete-Microflow
 
-Der `End_<Entity>`-Microflow ist aktuell ein Stub: er erstellt einen Microflow mit einem Parameter für die Entity, implementiert aber kein tatsächliches Beendigungsverhalten. Möglichkeiten wären das Archivieren des Objekts, das Setzen eines `deleted`-Flags oder Soft-Delete über eine `status = end`-Zuweisung. Was am sinnvollsten ist, hängt von den Mendix-Anwendungsanforderungen ab. Der Stub stellt sicher, dass das Mendix-Modell keine undefinierten Referenzen für die End-Aktivität hat, schreibt aber keine Löschstrategie vor.
+Der `End_<Entity>`-Microflow nimmt die Entity als Parameter und führt eine `DeleteAction` aus. Das entspricht direkt M8: das Objekt „hört auf zu existieren" in der Geschäftsdomäne (Snoeck, S. 53). In Mendix ist das eine permanente Entfernung aus der Datenbank. Alternativ wäre Soft-Delete möglich (Status-Attribut auf einen „ended"-Wert setzen), was aber einen zusätzlichen Enum-Wert im _Status-Enum erfordert. Hard-Delete ist der einfachere, semantisch korrekte Standardfall für die Thesis-Demonstration.
 
 ---
 

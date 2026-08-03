@@ -408,12 +408,13 @@ async function applyPimToMendix(
         }
       }
 
-      // B16: MERODE end - stub microflow with entity parameter (archiving/deletion is domain-specific)
+      // B16: MERODE end - delete the entity object (M8: object ceases to exist in the business domain)
       if (activity.kind === "end" && activity.targetType) {
         const entityName   = activity.targetType;
         const targetEntity = entityMap.get(entityName);
         if (targetEntity) {
           const varName    = entityName.charAt(0).toLowerCase() + entityName.slice(1);
+
           const endParam   = microflows.MicroflowParameterObject.createIn(objCol);
           endParam.name    = varName;
           endParam.relativeMiddlePoint = { x: -80, y: 0 };
@@ -421,9 +422,15 @@ async function applyPimToMendix(
           endObjType.entity = targetEntity;
           endParam.variableType = endObjType;
 
-          const flow = microflows.SequenceFlow.createIn(mf);
-          flow.origin = start; flow.destination = end;
-          console.log(`  + microflow "${activity.name}" [MERODE: end ${entityName} - stub]`);
+          const deleteAct  = microflows.ActionActivity.createIn(objCol);
+          deleteAct.relativeMiddlePoint = { x: 100, y: 0 };
+          const deleteObj  = microflows.DeleteAction.createIn(deleteAct);
+          deleteObj.deleteVariableName = varName;
+
+          end.relativeMiddlePoint = { x: 280, y: 0 };
+          const f1 = microflows.SequenceFlow.createIn(mf); f1.origin = start;     f1.destination = deleteAct;
+          const f2 = microflows.SequenceFlow.createIn(mf); f2.origin = deleteAct; f2.destination = end;
+          console.log(`  + microflow "${activity.name}" [MERODE: delete ${entityName}]`);
           continue;
         }
       }
