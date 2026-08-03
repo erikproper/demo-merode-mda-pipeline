@@ -86,7 +86,19 @@ Snoeck diskutiert Attributdomänen in Kapitel 7 (S. 149-168). Wenn ein Attribut 
 
 Das spiegelt die A1/A2-Unterscheidung von Bzowski wider, angewendet auf Attributdomänen statt auf eigenständige Konzepte. Der Unterschied: in DEMO sind Value Types Top-Level-Konzepte im Fact Model. In MERODE lebt die Domänenbeschränkung am Attribut selbst.
 
-Implementierungsstatus: nicht implementiert. Das aktuelle `merode-schema.json` definiert den Attributtyp als einfachen String. Es findet keine Enumerations-Konstruktion im Agenten statt. Das ist eine bekannte Lücke, dokumentiert in LIMITATIONS.md. Für die Umsetzung würde `merode-schema.json` eine reichhaltigere Attributdomänen-Spezifikation benötigen (z.B. `domain: { kind: "categorical", values: [...] }` oder eine Referenz auf eine Top-Level-Typdefinition).
+Implementierung: `merode-schema.json` hat eine Top-Level-`domainTypes`-Liste. Jeder Eintrag hat `name`, `kind` (`"categorical"` oder `"nonCategorical"`) und optional `literals`. Ein Attribut referenziert eine Domäne über seinen `type`-String. Der Agent verarbeitet `domainTypes` vor der ObjectType-Schleife und erzeugt pimUML Enumerations bzw. DataTypes. Die `FuelType`-Domäne im Rent-A-Car-Fixture demonstriert einen kategorischen Fall.
+
+```typescript
+for (const dt of merode.domainTypes ?? []) {
+  if (dt.kind === "categorical") {
+    enumerations.push({ name: dt.name, literals: dt.literals ?? [] });
+  } else {
+    dataTypes.push({ name: dt.name });
+  }
+}
+```
+
+Implementiert in `merode-to-pim-agent.ts`, Schema in `merode-schema.json`, Interface `MerodeDomainType` in `schemas/types.ts`.
 
 ### M4 - ExistenceDependency nach Association
 
@@ -197,7 +209,7 @@ smActivities.push({ name: `End_${ot.name}`, kind: "end", targetType: ot.name })
 
 Bezug zu DEMO: Kein Gegenstück. Das ist eine der beiden genuinen neuen Regeln (die andere ist M9). DEMO-Ereignisse sind monotone boolesche Flags, einmal eingetreten, dauerhaft aufgezeichnet. Ein Konzept des "Beendens" eines Objektlebens gibt es in DEMO nicht, weil DEMO-Entitätstypen in diesem Sinne keine Lebenszyklen haben. Diese Regel ist einzigartig für MERODE und motiviert die `end`-Aktivitätskind-Erweiterung in pimUML.
 
-### M9 - Gemeinsame Ereignisbeteiligung und Propagierungsregel (Future Work)
+### M9 - Gemeinsame Ereignisbeteiligung und Propagierungsregel
 
 Quellkonzept: OET-Einträge, bei denen mehrere Objekttypen am selben Ereignis beteiligt sind, einschließlich der `A/M`-Einträge, die über die Propagierungsregel abgeleitet werden. Ziel: synchronisierte Übergangstrigger über mehrere FSMs hinweg (eine pro beteiligtem Objekttyp).
 
@@ -207,9 +219,21 @@ Die Propagierungsregel besagt: wenn Objekttyp B existenzabhängig von A ist (B h
 
 Für die Implementierung würde M9 erfordern: alle Existenzabhängigkeiten zu parsen, um die Propagierungshülle aufzubauen; für jeden BusinessEventType die zusätzlichen Objekttypen, die über transitive Propagierung beteiligt sind, abzuleiten; und M-Rollen-Übergänge in den FSMs der betroffenen Hauptobjekttypen zu generieren.
 
-M9 ist komplex und das Testfixture modelliert propagierte Ereignisse nicht explizit. Das Hinzufügen würde eine nicht-triviale Änderung des Transformationsalgorithmus und ein umfangreicheres Testfixture erfordern. Die formale Regel ist hier und in MerodeMappingRules.md spezifiziert, damit das Thesis-Kapitel sie vollständig präsentieren kann, auch wenn die Implementierung unvollständig ist.
+Implementierung: Ein M9-Vorpass baut eine `propagatedToMaster`-Map (Master-OT-Name -> Liste der Ereignisnamen) aus den ExistenceDependencies und BusinessEventTypes, bevor die OT-Schleife startet. In der SM-Konstruktion jedes Master-OT werden dann Self-Transitionen hinzugefügt: `{ from: state, to: state, trigger: evtName }` fur jeden Lebenszykluszustand und jedes propagierte Ereignis. Eine `Set_<Master>_<Ereignis>`-Aktivität (kind: "set") wird mitgeneriert, identisch zur M7-Konvention.
 
-Evaluationshinweis: Das Proposal listet "Geschäftsereignistypen" als Quellfakten für MERODE (Abschnitt 3.3). Ohne M9 erscheinen die OET-Einträge für Hauptobjekte in der Evaluation als Missing. Das muss im Evaluationskapitel ehrlich angesprochen werden.
+```typescript
+const propagated = propagatedToMaster.get(ot.name) ?? [];
+for (const evtName of propagated) {
+  for (const state of lcStates) {
+    smTransitions.push({ from: state, to: state, trigger: evtName });
+  }
+  smActivities.push({ name: `Set_${ot.name}_${evtName}`, kind: "set", targetType: ot.name });
+}
+```
+
+Fur das Rent-A-Car-Fixture bedeutet das: Car und Person erhalten je zwei propagierte Self-Transitionen (`startRental`, `completeRental`) und zwei `Set_*`-Aktivitaten. B15 im Mendix-Agenten erzeugt daraus Change-Microflows, die den Status des Masters auf den aktuellen Zustand setzen (semantisch ein Participated-Marker).
+
+Implementiert in `merode-to-pim-agent.ts`. Formale Spezifikation: `MerodeMappingRules.md`.
 
 ---
 

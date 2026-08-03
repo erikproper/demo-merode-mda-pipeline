@@ -7,6 +7,11 @@
   "additionalProperties": false,
   "properties": {
     "name": { "type": "string" },
+    "domainTypes": {
+      "description": "M3: top-level domain type definitions referenced by attribute types.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/DomainType" }
+    },
     "objectTypes": {
       "type": "array",
       "items": { "$ref": "#/$defs/ObjectType" }
@@ -21,6 +26,25 @@
     }
   },
   "$defs": {
+    "DomainType": {
+      "type": "object",
+      "required": ["name", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "kind": {
+          "description": "categorical -> Enumeration, nonCategorical -> DataType.",
+          "type": "string",
+          "enum": ["categorical", "nonCategorical"]
+        },
+        "literals": {
+          "description": "Required when kind is categorical.",
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      }
+    },
     "ObjectType": {
       "type": "object",
       "required": ["name"],

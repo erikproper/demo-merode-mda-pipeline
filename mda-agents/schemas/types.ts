@@ -53,6 +53,12 @@ export interface DemoModel {
 
 // MERODE types
 
+export interface MerodeDomainType {
+  name: string;
+  kind: "categorical" | "nonCategorical";
+  literals?: string[];
+}
+
 export interface MerodeAttribute {
   name: string;
   type?: string;
@@ -82,6 +88,7 @@ export interface MerodeBusinessEventType {
 
 export interface MerodeModel {
   name: string;
+  domainTypes?: MerodeDomainType[];
   objectTypes: MerodeObjectType[];
   existenceDependencies?: MerodeExistenceDependency[];
   businessEventTypes?: MerodeBusinessEventType[];

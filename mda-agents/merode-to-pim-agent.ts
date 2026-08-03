@@ -17,12 +17,41 @@ const validatePim    = makeValidator("pimuml-schema.json");
 function transform(merode: MerodeModel): { pim: PimModel; trace: TraceEntry[] } {
   const trace: TraceEntry[] = [];
 
-  // index events by owning ObjectType for FSM construction
+  // M3: domain types -> enumerations (categorical) or dataTypes (non-categorical)
+  const enumerations: PimModel["enumerations"] = [];
+  const dataTypes:    PimModel["dataTypes"]    = [];
+  for (const dt of merode.domainTypes ?? []) {
+    if (dt.kind === "categorical") {
+      enumerations.push({ name: dt.name, literals: dt.literals ?? [] });
+      trace.push({ sourceType: "DomainType", sourceName: dt.name, targetType: "Enumeration", targetName: dt.name });
+    } else {
+      dataTypes.push({ name: dt.name });
+      trace.push({ sourceType: "DomainType", sourceName: dt.name, targetType: "DataType", targetName: dt.name });
+    }
+  }
+
+  // index events by owning ObjectType for FSM construction (M6-M8)
   const eventsByOT = new Map<string, typeof merode.businessEventTypes & {}>();
   for (const bet of merode.businessEventTypes ?? []) {
     const list = eventsByOT.get(bet.objectType) ?? [];
     list.push(bet);
     eventsByOT.set(bet.objectType, list);
+  }
+
+  // M9 pre-pass: collect which events of dependent objectTypes propagate to each master.
+  // Propagation rule (Snoeck ch. 5.3.1): if B depends on A, every event of B also
+  // involves A with role M (modifying). We build the map before the OT loop so that
+  // each master's SM can include propagated self-transitions in a single pass.
+  const propagatedToMaster = new Map<string, string[]>(); // master OT name -> event names
+  for (const dep of merode.existenceDependencies ?? []) {
+    const depEventNames = (merode.businessEventTypes ?? [])
+      .filter(bet => bet.objectType === dep.dependent)
+      .map(bet => bet.name);
+    const existing = propagatedToMaster.get(dep.master) ?? [];
+    for (const evtName of depEventNames) {
+      if (!existing.includes(evtName)) existing.push(evtName);
+    }
+    propagatedToMaster.set(dep.master, existing);
   }
 
   const classes: PimModel["classes"] = [];
@@ -34,13 +63,14 @@ function transform(merode: MerodeModel): { pim: PimModel; trace: TraceEntry[] } 
     const ownedAttributes = [
       { name: `${ot.name}ID`, type: "Integer", isID: true },
       ...(ot.attributes ?? []).map(a => {
+        // M2: attribute -> Property (type is a string reference, may point to a DomainType)
         trace.push({ sourceType: "Attribute", sourceName: `${ot.name}.${a.name}`, targetType: "Property", targetName: `${ot.name}.${a.name}` });
         return { name: a.name, type: a.type ?? "String" };
       }),
     ];
     classes.push({ name: ot.name, ownedAttributes });
 
-    // M5–M8: sequential StateMachine if lifecycleStates are defined
+    // M5-M9: sequential StateMachine if lifecycleStates are defined
     const lcStates = ot.lifecycleStates;
     if (lcStates && lcStates.length > 0) {
       const otEvents = eventsByOT.get(ot.name) ?? [];
@@ -79,6 +109,18 @@ function transform(merode: MerodeModel): { pim: PimModel; trace: TraceEntry[] } 
         }
       }
 
+      // M9: add self-transitions for events that propagate from dependent objectTypes.
+      // Each propagated event becomes a self-transition on every active lifecycle state
+      // (the master stays in its current state but participates as M in the event).
+      const propagated = propagatedToMaster.get(ot.name) ?? [];
+      for (const evtName of propagated) {
+        for (const state of lcStates) {
+          smTransitions.push({ from: state, to: state, trigger: evtName });
+        }
+        smActivities.push({ name: `Set_${ot.name}_${evtName}`, kind: "set", targetType: ot.name });
+        trace.push({ sourceType: "BusinessEventType", sourceName: evtName, targetType: "Transition", targetName: `${ot.name}.${evtName} (M9 propagated)` });
+      }
+
       stateMachines.push({
         name: `SM_${ot.name}`,
         entityType: ot.name,
@@ -108,7 +150,9 @@ function transform(merode: MerodeModel): { pim: PimModel; trace: TraceEntry[] } 
 
   return {
     pim: {
-      name: `${merode.name} – pimUML`,
+      name: `${merode.name} - pimUML`,
+      enumerations: enumerations.length > 0 ? enumerations : undefined,
+      dataTypes:    dataTypes.length   > 0 ? dataTypes    : undefined,
       classes,
       associations,
       stateMachines: stateMachines.length > 0 ? stateMachines : undefined,
