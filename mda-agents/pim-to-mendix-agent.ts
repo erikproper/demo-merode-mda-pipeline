@@ -41,6 +41,27 @@ function makeAttributeType(
   }
 }
 
+function makeParameterType(
+  typeName: string | undefined,
+  model: IModel,
+  enumMap: Map<string, enumerations.Enumeration>,
+): datatypes.DataType {
+  const name = typeName ?? "";
+  if (enumMap.has(name)) {
+    const t = datatypes.EnumerationType.create(model);
+    t.enumeration = enumMap.get(name)!;
+    return t;
+  }
+  switch (name.toLowerCase()) {
+    case "integer":          return datatypes.IntegerType.create(model);
+    case "boolean":          return datatypes.BooleanType.create(model);
+    case "datetime":         return datatypes.DateTimeType.create(model);
+    case "real":
+    case "decimal":          return datatypes.DecimalType.create(model);
+    default:                 return datatypes.StringType.create(model);
+  }
+}
+
 function isMerodeFSM(sm: PimModel["stateMachines"] extends Array<infer S> ? S : never): boolean {
   return sm.regions.length > 0 && sm.regions.every(r => !r.forEvent);
 }
@@ -374,16 +395,19 @@ async function applyPimToMendix(
         }
       }
 
-      // B15: MERODE set - change status attribute to the transition's target state
+      // B15: MERODE set - change status to transition target + set any explicitly declared effects
       if (activity.kind === "set" && activity.targetType && isMerodeFSM(sm)) {
-        const entityName  = activity.targetType;
-        const eventName   = activity.name.substring(`Set_${entityName}_`.length);
+        const entityName   = activity.targetType;
+        const eventName    = activity.name.substring(`Set_${entityName}_`.length);
         const targetEntity = entityMap.get(entityName);
-        const transition  = sm.regions[0]?.transitions.find(t => t.trigger === eventName);
-        const toState     = transition?.to;
-        const statusAttr  = attributeMap.get(`${entityName}.status`);
+        const transition   = sm.regions[0]?.transitions.find(t => t.trigger === eventName);
+        const toState      = transition?.to;
+        const statusAttr   = attributeMap.get(`${entityName}.status`);
         if (targetEntity && toState && statusAttr) {
-          const varName    = entityName.charAt(0).toLowerCase() + entityName.slice(1);
+          const varName  = entityName.charAt(0).toLowerCase() + entityName.slice(1);
+          const effects  = activity.effects ?? [];
+
+          // entity parameter
           const setParam   = microflows.MicroflowParameterObject.createIn(objCol);
           setParam.name    = varName;
           setParam.relativeMiddlePoint = { x: -80, y: 0 };
@@ -391,19 +415,41 @@ async function applyPimToMendix(
           setObjType.entity = targetEntity;
           setParam.variableType = setObjType;
 
+          // one parameter per effect attribute (stacked vertically)
+          effects.forEach((ef, idx) => {
+            const paramName = `new${ef.attribute.charAt(0).toUpperCase()}${ef.attribute.slice(1)}`;
+            const efParam   = microflows.MicroflowParameterObject.createIn(objCol);
+            efParam.name    = paramName;
+            efParam.relativeMiddlePoint = { x: -80, y: 50 * (idx + 1) };
+            efParam.variableType = makeParameterType(ef.type, model, enumMap);
+          });
+
           const actionAct  = microflows.ActionActivity.createIn(objCol);
           actionAct.relativeMiddlePoint = { x: 100, y: 0 };
           end.relativeMiddlePoint = { x: 260, y: 0 };
           const changeAct  = microflows.ChangeObjectAction.createIn(actionAct);
           changeAct.changeVariableName = varName;
           changeAct.commit = microflows.CommitEnum.Yes;
-          const mc         = microflows.MemberChange.createIn(changeAct);
-          mc.attribute     = statusAttr;
-          mc.value         = `${moduleName}.${entityName}_Status.${toState}`;
+
+          // status change (always present)
+          const mcStatus   = microflows.MemberChange.createIn(changeAct);
+          mcStatus.attribute = statusAttr;
+          mcStatus.value   = `${moduleName}.${entityName}_Status.${toState}`;
+
+          // attribute changes from explicit effects
+          effects.forEach(ef => {
+            const efAttr = attributeMap.get(`${entityName}.${ef.attribute}`);
+            if (!efAttr) { console.warn(`  [B15] effect attribute "${entityName}.${ef.attribute}" not found in attributeMap`); return; }
+            const paramName = `new${ef.attribute.charAt(0).toUpperCase()}${ef.attribute.slice(1)}`;
+            const mcEf      = microflows.MemberChange.createIn(changeAct);
+            mcEf.attribute  = efAttr;
+            mcEf.value      = `$${paramName}`;
+          });
 
           const f1 = microflows.SequenceFlow.createIn(mf); f1.origin = start;     f1.destination = actionAct;
           const f2 = microflows.SequenceFlow.createIn(mf); f2.origin = actionAct; f2.destination = end;
-          console.log(`  + microflow "${activity.name}" [MERODE: set ${entityName}.status = ${toState}]`);
+          const effectsLog = effects.length > 0 ? ` + [${effects.map(e => e.attribute).join(", ")}]` : "";
+          console.log(`  + microflow "${activity.name}" [MERODE: set ${entityName}.status = ${toState}${effectsLog}]`);
           continue;
         }
       }

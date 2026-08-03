@@ -78,12 +78,17 @@ export interface MerodeExistenceDependency {
   upper?: number | "*";
 }
 
+export interface MerodeEventEffect {
+  attribute: string;
+}
+
 export interface MerodeBusinessEventType {
   name: string;
   objectType: string;
   role?: "C" | "M" | "E";
   fromState?: string;
   toState?: string;
+  effects?: MerodeEventEffect[];
 }
 
 export interface MerodeModel {
@@ -170,10 +175,16 @@ export interface PimRegion {
   transitions: PimTransition[];
 }
 
+export interface PimActivityEffect {
+  attribute: string;
+  type: string;
+}
+
 export interface PimActivity {
   name: string;
   kind: "set" | "create" | "end";
   targetType?: string;
+  effects?: PimActivityEffect[];
 }
 
 export interface PimStateMachine {

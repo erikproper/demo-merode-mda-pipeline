@@ -187,10 +187,18 @@ const from  = evt.fromState ?? lcStates[0]
 const toIdx = lcStates.indexOf(from) + 1
 const to    = evt.toState ?? (toIdx < lcStates.length ? lcStates[toIdx] : lcStates[lcStates.length - 1])
 smTransitions.push({ from, to, trigger: evt.name })
-smActivities.push({ name: `Set_${ot.name}_${evt.name}`, kind: "set", targetType: ot.name })
+// resolve attribute types from OT definition for PSM generation
+const effects = (evt.effects ?? []).map(ef => ({
+  attribute: ef.attribute,
+  type: ot.attributes?.find(a => a.name === ef.attribute)?.type ?? "String"
+}))
+smActivities.push({ name: `Set_${ot.name}_${evt.name}`, kind: "set", targetType: ot.name,
+  ...(effects.length > 0 ? { effects } : {}) })
 ```
 
-Bezug zu DEMO: Analog zu den Set-Aktivitäten von A6. Der Hauptunterschied: in DEMO bewegt der Übergang eine boolesche Region von `false` nach `true` (monoton). In MERODE bewegt er sich zwischen zwei benannten, sich gegenseitig ausschließenden Lebenszykluszuständen.
+Das optionale `effects`-Array in `BusinessEventType` (MERODE-Schema) listet die Attribute, die ein M-Event ändert. Der Attributtyp wird zur Transformationszeit aus der OT-Attributliste aufgelöst und in der pimUML-Activity mitgegeben, damit die nachgelagerte B15-Regel korrekt typisierte Microflow-Parameter generieren kann — ohne Rückgriff auf das MERODE-Modell.
+
+Bezug zu DEMO: Analog zu den Set-Aktivitäten von A6. Der Hauptunterschied: in DEMO bewegt der Übergang eine boolesche Region von `false` nach `true` (monoton). In MERODE bewegt er sich zwischen zwei benannten, sich gegenseitig ausschließenden Lebenszykluszuständen, und ändert dabei konkrete Attribute.
 
 ### M8 - Beendendes Ereignis (E) nach Übergang zum finalen Zustand + End-Aktivität
 
@@ -285,7 +293,7 @@ Der `Create_<Entity>`-Microflow erzeugt ein neues Entity-Objekt mit `CreateObjec
 
 ### B15 - MERODE Set-Aktivität nach Change-Microflow
 
-Der `Set_<Entity>_<Ereignisname>`-Microflow ändert das `status`-Attribut auf den `toState` des Übergangs. Er nimmt die Entity als Parameter und setzt den Status auf den Zielzustand.
+Der `Set_<Entity>_<Ereignisname>`-Microflow nimmt die Entity als Pflichtparameter und führt eine `ChangeObjectAction` aus. Diese setzt immer das `status`-Attribut auf den `toState` des Übergangs. Enthält die pimUML-Activity zusätzlich `effects`, wird für jedes Effect-Attribut ein weiterer Microflow-Parameter (mit korrektem Typ) und ein zusätzlicher `MemberChange` generiert. Für `Set_Car_updateCarMileage` entsteht damit: Parameter `car: Car`, Parameter `newMileage: Integer`, ChangeObject setzt `car.status = registered` und `car.mileage = $newMileage`.
 
 ### B16 - MERODE End-Aktivität nach Delete-Microflow
 

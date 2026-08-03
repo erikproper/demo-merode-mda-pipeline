@@ -120,7 +120,18 @@ function transform(merode: MerodeModel): { pim: PimModel; trace: TraceEntry[] } 
           const toIdx = lcStates.indexOf(from) + 1;
           const to   = evt.toState ?? (toIdx < lcStates.length ? lcStates[toIdx] : lcStates[lcStates.length - 1]);
           smTransitions.push({ from, to, trigger: evt.name });
-          smActivities.push({ name: `Set_${ot.name}_${evt.name}`, kind: "set", targetType: ot.name });
+          // resolve effect attribute types from the OT's attribute list so pim-to-mendix
+          // can generate correctly typed parameters without looking back at the MERODE model
+          const effects = (evt.effects ?? []).map(ef => {
+            const attr = (ot.attributes ?? []).find(a => a.name === ef.attribute);
+            return { attribute: ef.attribute, type: attr?.type ?? "String" };
+          });
+          smActivities.push({
+            name: `Set_${ot.name}_${evt.name}`,
+            kind: "set",
+            targetType: ot.name,
+            ...(effects.length > 0 ? { effects } : {}),
+          });
           trace.push({ sourceType: "BusinessEventType", sourceName: evt.name, targetType: "Transition", targetName: `${from}->${to}` });
         } else if (evt.role === "E") {
           // M8: ending event - last lifecycle state -> final pseudostate

@@ -49,14 +49,14 @@
   ],
   "businessEventTypes": [
     { "name": "registerCar",      "objectType": "Car",        "role": "C" },
-    { "name": "updateCarMileage", "objectType": "Car",        "role": "M" },
+    { "name": "updateCarMileage", "objectType": "Car",        "role": "M", "effects": [{ "attribute": "mileage" }] },
     { "name": "deregisterCar",    "objectType": "Car",        "role": "E" },
     { "name": "registerPerson",   "objectType": "Person",     "role": "C" },
     { "name": "deregisterPerson", "objectType": "Person",     "role": "E" },
     { "name": "startRental",      "objectType": "Rental",     "role": "C" },
     { "name": "completeRental",   "objectType": "Rental",     "role": "E" },
     { "name": "addRentalLine",    "objectType": "RentalLine", "role": "C" },
-    { "name": "updateRentalLine", "objectType": "RentalLine", "role": "M" },
+    { "name": "updateRentalLine", "objectType": "RentalLine", "role": "M", "effects": [{ "attribute": "quantity" }, { "attribute": "description" }] },
     { "name": "removeRentalLine", "objectType": "RentalLine", "role": "E" }
   ]
 }

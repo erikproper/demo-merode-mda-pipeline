@@ -108,7 +108,20 @@
         "toState": {
           "description": "For M-events: target lifecycle state of the transition.",
           "type": "string"
+        },
+        "effects": {
+          "description": "For M-events: attributes modified by this event (used to generate setter parameters in the PSM).",
+          "type": "array",
+          "items": { "$ref": "#/$defs/EventEffect" }
         }
+      }
+    },
+    "EventEffect": {
+      "type": "object",
+      "required": ["attribute"],
+      "additionalProperties": false,
+      "properties": {
+        "attribute": { "type": "string" }
       }
     }
   }

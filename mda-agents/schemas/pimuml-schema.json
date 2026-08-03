@@ -191,7 +191,21 @@
       "properties": {
         "name":       { "type": "string" },
         "kind":       { "type": "string", "enum": ["set", "create", "end"] },
-        "targetType": { "type": "string" }
+        "targetType": { "type": "string" },
+        "effects": {
+          "description": "For set-kind activities: attributes modified, with resolved type for PSM generation.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ActivityEffect" }
+        }
+      }
+    },
+    "ActivityEffect": {
+      "type": "object",
+      "required": ["attribute", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "attribute": { "type": "string" },
+        "type":      { "type": "string" }
       }
     }
   }
