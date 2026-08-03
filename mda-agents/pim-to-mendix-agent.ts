@@ -106,6 +106,10 @@ async function applyPimToMendix(
   const attributeMap = new Map<string, domainmodels.Attribute>(); // key: "EntityName.attrName"
   let x = 0;
 
+  // DataType names (non-categorical domain types) — their attributes become Associations (B4+B9)
+  const dataTypeNames = new Set((pimModel.dataTypes ?? []).map(dt => dt.name));
+  const deferredDTAssocs: { clsName: string; propName: string; dtName: string }[] = [];
+
   // non-categorical data types -> Entity in Mendix (B4)
   for (const dt of pimModel.dataTypes ?? []) {
     const entity    = domainmodels.Entity.createIn(domainModel);
@@ -130,6 +134,12 @@ async function applyPimToMendix(
         console.log(`  ~ derived attribute "${cls.name}.${prop.name}" not mapped - Mendix has no OCL; rule: ${prop.derivationRule}`);
         continue;
       }
+      // Non-categorical DataType as attribute type → deferred Association (B4+B9)
+      if (prop.type && dataTypeNames.has(prop.type)) {
+        deferredDTAssocs.push({ clsName: cls.name, propName: prop.name, dtName: prop.type });
+        console.log(`  ~ "${cls.name}.${prop.name}: ${prop.type}" deferred as DataType association (B4+B9)`);
+        continue;
+      }
       const attr = domainmodels.Attribute.createIn(entity);
       attr.name  = prop.name;
       attr.type  = makeAttributeType(prop.type, model, enumMap);
@@ -142,6 +152,22 @@ async function applyPimToMendix(
     }
 
     console.log(`  + entity "${cls.name}"`);
+  }
+
+  // B4+B9: create Associations for DataType-typed attributes (all entities now exist in entityMap)
+  for (const dt of deferredDTAssocs) {
+    const clsEntity = entityMap.get(dt.clsName);
+    const dtEntity  = entityMap.get(dt.dtName);
+    if (!clsEntity || !dtEntity) {
+      console.warn(`  skipping DataType association "${dt.clsName}.${dt.propName}" - entity not found`);
+      continue;
+    }
+    const mxAssoc  = domainmodels.Association.createIn(domainModel);
+    mxAssoc.name   = `${dt.clsName}_${dt.propName}`;
+    mxAssoc.parent = dtEntity;   // DataType entity is the "one" side
+    mxAssoc.child  = clsEntity;  // Class entity is the "many" side
+    mxAssoc.owner  = domainmodels.AssociationOwner.Both;
+    console.log(`  + DataType association "${dt.clsName}_${dt.propName}": ${dt.clsName} -> ${dt.dtName}`);
   }
 
   // association classes -> approximated as Entity + two Associations (A8)
