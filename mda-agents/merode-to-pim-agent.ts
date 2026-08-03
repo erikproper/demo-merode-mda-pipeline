@@ -112,7 +112,10 @@ function transform(merode: MerodeModel): { pim: PimModel; trace: TraceEntry[] } 
         if (evt.role === "C") {
           // M6: creating event - initial pseudostate -> first lifecycle state
           smTransitions.push({ from: "__initial", to: lcStates[0], trigger: evt.name });
-          smActivities.push({ name: `Create_${ot.name}`, kind: "create", targetType: ot.name });
+          // guard: only one Create activity per OT even if multiple C-events exist
+          if (!smActivities.some(a => a.name === `Create_${ot.name}`)) {
+            smActivities.push({ name: `Create_${ot.name}`, kind: "create", targetType: ot.name });
+          }
           trace.push({ sourceType: "BusinessEventType", sourceName: evt.name, targetType: "Transition", targetName: `__initial->${lcStates[0]}` });
         } else if (evt.role === "M") {
           // M7: modifying event - explicit fromState/toState or sequential fallback
@@ -137,7 +140,10 @@ function transform(merode: MerodeModel): { pim: PimModel; trace: TraceEntry[] } 
           // M8: ending event - last lifecycle state -> final pseudostate
           const lastState = lcStates[lcStates.length - 1];
           smTransitions.push({ from: lastState, to: "__final", trigger: evt.name });
-          smActivities.push({ name: `End_${ot.name}`, kind: "end", targetType: ot.name });
+          // guard: only one End activity per OT even if multiple E-events exist
+          if (!smActivities.some(a => a.name === `End_${ot.name}`)) {
+            smActivities.push({ name: `End_${ot.name}`, kind: "end", targetType: ot.name });
+          }
           trace.push({ sourceType: "BusinessEventType", sourceName: evt.name, targetType: "Transition", targetName: `${lastState}->__final` });
         } else {
           trace.push({ sourceType: "BusinessEventType", sourceName: evt.name, targetType: "NotMapped", targetName: "-" });
