@@ -219,19 +219,29 @@ Die Propagierungsregel besagt: wenn Objekttyp B existenzabhängig von A ist (B h
 
 Für die Implementierung würde M9 erfordern: alle Existenzabhängigkeiten zu parsen, um die Propagierungshülle aufzubauen; für jeden BusinessEventType die zusätzlichen Objekttypen, die über transitive Propagierung beteiligt sind, abzuleiten; und M-Rollen-Übergänge in den FSMs der betroffenen Hauptobjekttypen zu generieren.
 
-Implementierung: Ein M9-Vorpass baut eine `propagatedToMaster`-Map (Master-OT-Name -> Liste der Ereignisnamen) aus den ExistenceDependencies und BusinessEventTypes, bevor die OT-Schleife startet. In der SM-Konstruktion jedes Master-OT werden dann Self-Transitionen hinzugefügt: `{ from: state, to: state, trigger: evtName }` fur jeden Lebenszykluszustand und jedes propagierte Ereignis. Eine `Set_<Master>_<Ereignis>`-Aktivität (kind: "set") wird mitgeneriert, identisch zur M7-Konvention.
+Implementierung: Ein M9-Vorpass berechnet zuerst den **transitiven Abschluss** des EDG (nicht nur direkte Abhängigkeiten). Für jeden Master-OT werden alle transitiv abhängigen OTs gesammelt; deren Events bilden die propagierte Menge. In der SM-Konstruktion jedes Master-OT werden dann Self-Transitionen hinzugefügt: `{ from: state, to: state, trigger: evtName }` für jeden Lebenszykluszustand und jedes propagierte Ereignis. Eine `Set_<Master>_<Ereignis>`-Aktivität (kind: "set") wird mitgeneriert, identisch zur M7-Konvention.
 
 ```typescript
-const propagated = propagatedToMaster.get(ot.name) ?? [];
-for (const evtName of propagated) {
-  for (const state of lcStates) {
-    smTransitions.push({ from: state, to: state, trigger: evtName });
-  }
-  smActivities.push({ name: `Set_${ot.name}_${evtName}`, kind: "set", targetType: ot.name });
+// transitive closure
+const directDeps = new Map<string, string[]>();
+for (const dep of merode.existenceDependencies ?? []) { ... }
+
+function allTransitiveDependents(master, visited = new Set()): string[] { ... }
+
+const propagatedToMaster = new Map<string, string[]>();
+for (const ot of merode.objectTypes) {
+  const allDeps = allTransitiveDependents(ot.name);
+  // collect all events from allDeps
+  propagatedToMaster.set(ot.name, eventNames);
 }
 ```
 
-Fur das Rent-A-Car-Fixture bedeutet das: Car und Person erhalten je zwei propagierte Self-Transitionen (`startRental`, `completeRental`) und zwei `Set_*`-Aktivitaten. B15 im Mendix-Agenten erzeugt daraus Change-Microflows, die den Status des Masters auf den aktuellen Zustand setzen (semantisch ein Participated-Marker).
+Für das Rent-A-Car-Fixture (4 OTs) bedeutet das:
+- Car und Person erhalten **5** propagierte Self-Transitionen: `startRental`, `completeRental` (von Rental, 1-hop) und `addRentalLine`, `updateRentalLine`, `removeRentalLine` (von RentalLine via Rental, 2-hop).
+- Rental erhält **3** propagierte Self-Transitionen: `addRentalLine`, `updateRentalLine`, `removeRentalLine` (von RentalLine, 1-hop).
+- RentalLine hat keine Master-Rolle, erhält keine propagierten Transitionen.
+
+B15 im Mendix-Agenten erzeugt daraus Change-Microflows, die den Status des Masters auf den aktuellen Zustand setzen (semantisch ein Participated-Marker).
 
 Implementiert in `merode-to-pim-agent.ts`. Formale Spezifikation: `MerodeMappingRules.md`.
 

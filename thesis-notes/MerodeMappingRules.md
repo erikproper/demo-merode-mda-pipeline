@@ -76,35 +76,42 @@ Die Punkte 1 und 2 sind klein und gehören in die Thesis, weil sie Teil des Beit
 
 ## 5. Rent-A-Car-Validierung
 
-Quellmodell (MERODE):
+Quellmodell (MERODE): `mda-agents/tests/rent-a-car-merode.json`
 
-ObjectTypes: `Person`, `Car`, `Rental`. Attribute (beispielhaft): `Person{name}`, `Car{licensePlate}`, `Rental{startDate}`. ExistenceDependencies: `Rental` ist existenzabhängig von `Person` (Hauptobjekt) und `Car` (Hauptobjekt).
+ObjectTypes: `Car`, `Person`, `Rental`, `RentalLine`. DomainTypes: `FuelType` (kategorisch), `PaymentMethod` (kategorisch), `MoneyAmount` (nicht-kategorisch). ExistenceDependencies: Rental→Car, Rental→Person, RentalLine→Rental.
 
-Object-Event Table:
+**Object-Event Table (vollständig, inkl. M9 transitive):**
 
-| Ereignis | Rental | Person | Car |
-|---------|--------|--------|-----|
-| registerPerson | | C | |
-| registerCar | | | C |
-| startRental | C | M (propagiert) | M (propagiert) |
-| completeRental | E | M (propagiert) | M (propagiert) |
+| Ereignis | Car | Person | Rental | RentalLine |
+|---------|-----|--------|--------|------------|
+| registerCar | O/C | | | |
+| updateCarMileage | O/M | | | |
+| deregisterCar | O/E | | | |
+| registerPerson | | O/C | | |
+| deregisterPerson | | O/E | | |
+| startRental | A/M | A/M | O/C | |
+| completeRental | A/M | A/M | O/E | |
+| addRentalLine | A/M | A/M | A/M | O/C |
+| updateRentalLine | A/M | A/M | A/M | O/M |
+| removeRentalLine | A/M | A/M | A/M | O/E |
 
-Resultierendes pimUML, Klassendiagramm (M1-M4):
+Die A/M-Einträge für Car und Person bei `addRentalLine/updateRentalLine/removeRentalLine` resultieren aus der **transitiven Propagierung**: RentalLine→Rental→Car/Person (2-hop). Die Implementierung berechnet den transitiven Abschluss des EDG.
 
-- `Person`: Class, `personID: Integer`, `name: String`
-- `Car`: Class, `carID: Integer`, `licensePlate: String`
-- `Rental`: Class, `rentalID: Integer`, `startDate: DateTime`
-- Association `Rental` zu `Person`: `[Rental 0..*], [Person 1..1]` (Existenzabhängigkeit, Hauptobjekt verpflichtend)
-- Association `Rental` zu `Car`: `[Rental 0..*], [Car 1..1]`
+**Resultierendes pimUML, Klassendiagramm (M1-M4):**
 
-Resultierendes pimUML, Zustandsmaschinendiagramm (M5-M9):
+- `Car`: Class, `CarID: Integer (isID)`, `licensePlate: String`, `fuelType: FuelType`, `mileage: Integer`
+- `Person`: Class, `PersonID: Integer (isID)`, `fullName: String`, `email: String`, `preferredPayment: PaymentMethod`
+- `Rental`: Class, `RentalID: Integer (isID)`, `startingDay: String`, `endingDay: String`, `totalAmount: MoneyAmount`
+- `RentalLine`: Class, `RentalLineID: Integer (isID)`, `quantity: Integer`, `description: String`
+- Enumerations: `FuelType` [petrol, diesel, electric], `PaymentMethod` [cash, creditCard, bankTransfer]
+- DataType: `MoneyAmount`
+- Associations: `RentalDependsOnCar` (Rental 0..* → Car 1..1), `RentalDependsOnPerson` (Rental 0..* → Person 1..1), `RentalLineDependsOnRental` (RentalLine 0..* → Rental 1..1)
 
-- `Rental`-SM (eine Region): `initial -> (startRental / CreateRental) -> [Ongoing] -> (completeRental / EndRental) -> [Completed, final]`, wendet M5, M6, M8 an
-- `Person`-SM: `initial -> (registerPerson / CreatePerson) -> [Registered]`; Selbstübergänge auf `startRental` und `completeRental` als modifizierend (propagiert), wendet M6, M9 an
-- `Car`-SM: `initial -> (registerCar / CreateCar) -> [Registered]`; Selbstübergänge auf `startRental`, `completeRental` als modifizierend (propagiert), wendet M9 an
+**Resultierendes pimUML, Zustandsmaschinen (M5-M9):**
 
-Aktivitäten: `CreatePerson` (create), `CreateCar` (create), `CreateRental` (create), `EndRental` (terminate), plus Modify-Aktivitäten für die propagierten Beteiligungen.
+- `SM_Car`: `__initial -[registerCar]→ registered -[updateCarMileage]→ registered (self) -[deregisterCar]→ __final`; Self-Transitionen für startRental, completeRental, addRentalLine, updateRentalLine, removeRentalLine (M9, transitive)
+- `SM_Person`: `__initial -[registerPerson]→ registered -[deregisterPerson]→ __final`; Self-Transitionen für startRental, completeRental, addRentalLine, updateRentalLine, removeRentalLine (M9, transitive)
+- `SM_Rental`: `__initial -[startRental]→ active -[completeRental]→ __final`; Self-Transitionen für addRentalLine, updateRentalLine, removeRentalLine (M9, 1-hop)
+- `SM_RentalLine`: `__initial -[addRentalLine]→ active -[updateRentalLine]→ active (self) -[removeRentalLine]→ __final`; keine propagierten Events (RentalLine ist immer Dependent)
 
-Modellierungshinweis: Ein vollständiges MERODE-Modell würde auch beendende Ereignisse für `Person` und `Car` erfordern (jeder Objekttyp benötigt ein erzeugendes und ein beendendes Ereignis [21]); sie sind hier ausgelassen, um bei den vier genannten Ereignissen zu bleiben.
-
-Validierungsbeobachtung: M1-M4 reproduzieren exakt das strukturelle Muster, das Bzowski für DEMO ableitet (Class + ID + Association), was strukturelle Interoperabilität ohne Schema-Änderung bestätigt. Der `Rental`-Lebenszyklus hingegen ist ein echter sequenzieller Automat (`Ongoing` zu `Completed`), der sich mit dem `false`/`true`-Paar von DEMOs orthogonalen Regionen nicht ausdrücken lässt. Das demonstriert konkret die Notwendigkeit der M5-Erweiterung und validiert den Heterogenitätsanspruch auf verhaltensebene.
+Validierungsbeobachtung: M1-M4 reproduzieren exakt das strukturelle Muster, das Bzowski für DEMO ableitet (Class + ID + Association), was strukturelle Interoperabilität ohne Schema-Änderung bestätigt. M5-M9 demonstrieren die genuinen neuen MERODE-Konzepte: sequenzielle FSMs, Terminierung, und transitive Ereignispropagierung.

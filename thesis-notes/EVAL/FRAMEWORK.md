@@ -67,18 +67,25 @@ Quellmodell: `mda-agents/tests/rent-a-car-merode.json`
 | Lebenszyklus: Car hat Zustand "registered" | SM_Car: State {name:"registered", kind:"simple"} | noch zu prüfen |
 | Lebenszyklus: Person hat Zustand "registered" | SM_Person: State {name:"registered", kind:"simple"} | noch zu prüfen |
 
-### Propagierte Ereignisse (M9, nicht implementiert)
+### Propagierte Ereignisse (M9, transitive Propagierung implementiert)
 
-Diese werden in der aktuellen Implementierung als Missing erscheinen:
+M9 ist implementiert mit vollständigem transitivem Abschluss des EDG. Alle A/M-Einträge werden korrekt abgeleitet:
 
 | Aussage | Erwartete PIM-Ausgabe | Erwartete Klassifikation |
 |---------|----------------------|--------------------------|
-| BET: startRental, A/M für Car (propagiert) | M-Übergang in SM_Car ausgelöst durch startRental | Missing |
-| BET: startRental, A/M für Person (propagiert) | M-Übergang in SM_Person ausgelöst durch startRental | Missing |
-| BET: completeRental, A/M für Car (propagiert) | M-Übergang in SM_Car ausgelöst durch completeRental | Missing |
-| BET: completeRental, A/M für Person (propagiert) | M-Übergang in SM_Person ausgelöst durch completeRental | Missing |
-
-Diese vier fehlenden Elemente senken die semantische Vollständigkeit. In der Thesis sollte das explizit angesprochen und mit der M9-Einschränkung verbunden werden.
+| BET: startRental, A/M für Car (1-hop) | Self-Transition in SM_Car, trigger=startRental | Correct |
+| BET: startRental, A/M für Person (1-hop) | Self-Transition in SM_Person, trigger=startRental | Correct |
+| BET: completeRental, A/M für Car (1-hop) | Self-Transition in SM_Car, trigger=completeRental | Correct |
+| BET: completeRental, A/M für Person (1-hop) | Self-Transition in SM_Person, trigger=completeRental | Correct |
+| BET: addRentalLine, A/M für Rental (1-hop) | Self-Transition in SM_Rental, trigger=addRentalLine | Correct |
+| BET: updateRentalLine, A/M für Rental (1-hop) | Self-Transition in SM_Rental, trigger=updateRentalLine | Correct |
+| BET: removeRentalLine, A/M für Rental (1-hop) | Self-Transition in SM_Rental, trigger=removeRentalLine | Correct |
+| BET: addRentalLine, A/M für Car (2-hop via Rental) | Self-Transition in SM_Car, trigger=addRentalLine | Correct |
+| BET: updateRentalLine, A/M für Car (2-hop via Rental) | Self-Transition in SM_Car, trigger=updateRentalLine | Correct |
+| BET: removeRentalLine, A/M für Car (2-hop via Rental) | Self-Transition in SM_Car, trigger=removeRentalLine | Correct |
+| BET: addRentalLine, A/M für Person (2-hop via Rental) | Self-Transition in SM_Person, trigger=addRentalLine | Correct |
+| BET: updateRentalLine, A/M für Person (2-hop via Rental) | Self-Transition in SM_Person, trigger=updateRentalLine | Correct |
+| BET: removeRentalLine, A/M für Person (2-hop via Rental) | Self-Transition in SM_Person, trigger=removeRentalLine | Correct |
 
 ### Hilfsstrukturen (Added_justified)
 
@@ -118,7 +125,7 @@ Nach dem Beheben von CE7247, CE0117 und CW0263 sollte das Modell ohne Fehler öf
 
 Das `_trace`-Array in jeder veröffentlichten PIM-Nachricht enthält Trace-Einträge als `{ sourceType, sourceName, targetType, targetName }`. Zur Berechnung der Traceability Coverage: das `_trace`-Array aus der MERODE-PIM-Nachricht extrahieren (aus der MQTT-Retained-Message oder den Konsolenausgaben), Einträge mit `targetType != "NotMapped"` zählen (nachverfolgte Elemente), Einträge mit `targetType == "NotMapped"` zählen (explizit nicht nachverfolgbar, akzeptabel für M9), und Coverage = verfolgt / (verfolgt + nicht verfolgt) berechnen.
 
-Im aktuellen Rent-A-Car-Fixture werden alle M9-Ereignisse `targetType: "NotMapped"` haben, weil M9 nicht implementiert ist. Diese sollten in der Thesis explizit begründet, nicht stillschweigend aus der Berechnung herausgenommen werden.
+M9 ist implementiert (transitive Propagierung). Alle propagierten Ereignisse erhalten einen Trace-Eintrag (`targetType: "Transition"`, `targetName: "<OT>.<evt> (M9 propagated)"`). Es gibt keine NotMapped-Einträge mehr für propagierte Ereignisse. NotMapped-Einträge entstehen nur noch bei BusinessEventTypes ohne Role-Angabe (kein C/M/E).
 
 ---
 
@@ -134,7 +141,7 @@ Vor der formalen Evaluation eine grobe Einschätzung auf Basis des aktuellen Imp
 
 Für DEMO sollten alle vier Metriken nah an Bzowskis Ergebnissen liegen. Jede Abweichung würde als Regression im DEMO-Pfad sichtbar.
 
-Für MERODE wird die semantische Vollständigkeit durch die fehlenden M9-Propagierungen unter 100% liegen. Grobe Schätzung: 15 Quellaussagen, 4 Missing (die M9-Propagierungen) ergibt etwa 73% Vollständigkeit. Das ist ein ehrliches Ergebnis: das System implementiert M1-M8 korrekt, aber nicht M9.
+Für MERODE sollte die semantische Vollständigkeit nun nahe 100% liegen, da M9 mit transitivem Abschluss implementiert ist. Die ground-truth-Aussagen umfassen alle OT-Attribute, ExistenzAbhängigkeiten, BETs (O/C, O/M, O/E) und die abgeleiteten A/M-Einträge — alle sind im PIM-Ausgang abgedeckt. Bekannte verbleibende Einschränkung: M7-modifizierte Attribute (z.B. mileage bei updateCarMileage) werden nicht in Mendix gesetzt — nur der Lifecycle-Status. Das ist eine dokumentierte Einschränkung des B15-Microflows.
 
 Die semantische Validität dürfte hoch sein, möglicherweise 100%, wenn keine falsch transformierten Elemente gefunden werden. Die bekannten Fehler CE7247, CE0117 und CW0263 sind behoben.
 

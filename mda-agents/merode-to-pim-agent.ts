@@ -38,20 +38,44 @@ function transform(merode: MerodeModel): { pim: PimModel; trace: TraceEntry[] } 
     eventsByOT.set(bet.objectType, list);
   }
 
-  // M9 pre-pass: collect which events of dependent objectTypes propagate to each master.
-  // Propagation rule (Snoeck ch. 5.3.1): if B depends on A, every event of B also
-  // involves A with role M (modifying). We build the map before the OT loop so that
-  // each master's SM can include propagated self-transitions in a single pass.
-  const propagatedToMaster = new Map<string, string[]>(); // master OT name -> event names
+  // M9 pre-pass: transitive propagation through the full EDG (Snoeck ch. 5.3.1).
+  // The Propagation Rule is transitive: if C depends on B and B depends on A,
+  // every event of C also involves A with role A/M — not just B.
+  // We compute the transitive closure of the dependency graph, then collect events.
+  const directDeps = new Map<string, string[]>(); // master -> [direct dependents]
   for (const dep of merode.existenceDependencies ?? []) {
-    const depEventNames = (merode.businessEventTypes ?? [])
-      .filter(bet => bet.objectType === dep.dependent)
-      .map(bet => bet.name);
-    const existing = propagatedToMaster.get(dep.master) ?? [];
-    for (const evtName of depEventNames) {
-      if (!existing.includes(evtName)) existing.push(evtName);
+    const list = directDeps.get(dep.master) ?? [];
+    if (!list.includes(dep.dependent)) list.push(dep.dependent);
+    directDeps.set(dep.master, list);
+  }
+
+  function allTransitiveDependents(master: string, visited = new Set<string>()): string[] {
+    if (visited.has(master)) return [];
+    visited.add(master);
+    const directs = directDeps.get(master) ?? [];
+    const result: string[] = [];
+    for (const dep of directs) {
+      if (!result.includes(dep)) result.push(dep);
+      for (const td of allTransitiveDependents(dep, new Set(visited))) {
+        if (!result.includes(td)) result.push(td);
+      }
     }
-    propagatedToMaster.set(dep.master, existing);
+    return result;
+  }
+
+  const propagatedToMaster = new Map<string, string[]>();
+  for (const ot of merode.objectTypes) {
+    const allDeps = allTransitiveDependents(ot.name);
+    if (allDeps.length === 0) continue;
+    const eventNames: string[] = [];
+    for (const depName of allDeps) {
+      for (const bet of merode.businessEventTypes ?? []) {
+        if (bet.objectType === depName && !eventNames.includes(bet.name)) {
+          eventNames.push(bet.name);
+        }
+      }
+    }
+    if (eventNames.length > 0) propagatedToMaster.set(ot.name, eventNames);
   }
 
   const classes: PimModel["classes"] = [];

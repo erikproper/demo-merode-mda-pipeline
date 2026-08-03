@@ -34,14 +34,39 @@ for (const bet of merode.businessEventTypes ?? []) {
   eventsByOT.set(bet.objectType, list);
 }
 
-const propagatedToMaster = new Map<string, string[]>();
+// M9: transitive closure of the EDG (mirrors merode-to-pim-agent)
+const directDeps = new Map<string, string[]>();
 for (const dep of merode.existenceDependencies ?? []) {
-  const names = (merode.businessEventTypes ?? [])
-    .filter((b: any) => b.objectType === dep.dependent)
-    .map((b: any) => b.name);
-  const ex = propagatedToMaster.get(dep.master) ?? [];
-  for (const n of names) if (!ex.includes(n)) ex.push(n);
-  propagatedToMaster.set(dep.master, ex);
+  const list = directDeps.get(dep.master) ?? [];
+  if (!list.includes(dep.dependent)) list.push(dep.dependent);
+  directDeps.set(dep.master, list);
+}
+function allTransitiveDependents(master: string, visited = new Set<string>()): string[] {
+  if (visited.has(master)) return [];
+  visited.add(master);
+  const directs = directDeps.get(master) ?? [];
+  const result: string[] = [];
+  for (const dep of directs) {
+    if (!result.includes(dep)) result.push(dep);
+    for (const td of allTransitiveDependents(dep, new Set(visited))) {
+      if (!result.includes(td)) result.push(td);
+    }
+  }
+  return result;
+}
+const propagatedToMaster = new Map<string, string[]>();
+for (const ot of merode.objectTypes) {
+  const allDeps = allTransitiveDependents(ot.name);
+  if (allDeps.length === 0) continue;
+  const eventNames: string[] = [];
+  for (const depName of allDeps) {
+    for (const b of merode.businessEventTypes ?? []) {
+      if ((b as any).objectType === depName && !eventNames.includes((b as any).name)) {
+        eventNames.push((b as any).name);
+      }
+    }
+  }
+  if (eventNames.length > 0) propagatedToMaster.set(ot.name, eventNames);
 }
 
 const classes: any[]       = [];
