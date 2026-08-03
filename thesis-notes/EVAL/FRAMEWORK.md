@@ -96,7 +96,7 @@ Diese zählen als Added_justified und werden nicht als Validitätsfehler gewerte
 
 ## 3. Ground Truth: Rent-A-Car DEMO
 
-Quellmodell: `mda-agents/tests/rent-a-car-mock.json`
+Quellmodell: `mda-agents/tests/rent-a-car-demo.json`
 
 Dieser Abschnitt wird beim Durchführen der Regressionsevaluation ausgefüllt. Die DEMO-Evaluation folgt derselben Struktur wie Bzowskis Tabelle 10.1.
 

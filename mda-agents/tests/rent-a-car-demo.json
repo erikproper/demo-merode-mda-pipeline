@@ -1,5 +1,5 @@
 {
-  "name": "Rent-A-Car",
+  "name": "Rent-A-Car (DEMO)",
   "valueTypes": [
     { "name": "CarGroup",    "kind": "categorical",    "literals": ["economy", "compact", "luxury"] },
     { "name": "MoneyAmount", "kind": "nonCategorical" },

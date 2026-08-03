@@ -23,7 +23,7 @@ Alle Agenten kommunizieren über den **BIG Modelling Bus** (MQTT, Eclipse Mosqui
 ```
 mda-agents/
 ├── bus-client.ts          # MQTT-Client (Layer 1–3, spiegelt Go-Bus-Architektur)
-├── demo-publisher.ts      # Liest rent-a-car-mock.json → publiziert auf Bus
+├── demo-publisher.ts      # Liest rent-a-car-demo.json → publiziert auf Bus
 ├── demo-to-pim-agent.ts   # Abonniert DEMO-Modell → transformiert → publiziert PIM
 │
 ├── schemas/
@@ -32,7 +32,7 @@ mda-agents/
 │   └── types.ts           # TypeScript-Interfaces, generiert aus den Schemas
 │
 ├── tests/
-│   ├── rent-a-car-mock.json   # Valides DEMO-Modell (Rent-A-Car Use Case)
+│   ├── rent-a-car-demo.json   # Valides DEMO-Modell (Rent-A-Car Use Case)
 │   ├── test-transform.ts      # Offline-Test: Transformation ohne MQTT-Broker
 │   └── pim-subscriber.ts      # Bus-Subscriber: zeigt empfangenes PIM-Modell an
 │
@@ -71,7 +71,7 @@ npm run test:transform
 ```
 
 Ablauf:
-1. Lädt `tests/rent-a-car-mock.json`
+1. Lädt `tests/rent-a-car-demo.json`
 2. Validiert gegen `schemas/demo-schema.json`
 3. Führt Mapping-Regeln A1–A12 aus
 4. Validiert Ergebnis gegen `schemas/pimuml-schema.json`
@@ -112,7 +112,7 @@ npm run demo-publisher
 
 ```
 Terminal 4 (Publisher)
-  → Liest tests/rent-a-car-mock.json
+  → Liest tests/rent-a-car-demo.json
   → Publiziert auf Topic:
     big/bus-version-1.0/dev/demo-publisher/artefacts/json/model.demo.raw/demo-v1.0-v1.0/state
 

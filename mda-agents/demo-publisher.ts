@@ -1,4 +1,4 @@
-// Reads rent-a-car-mock.json and publishes it as a DemoModel on the bus.
+// Reads rent-a-car-demo.json and publishes it as a DemoModel on the bus.
 // Used for local testing without an HTTP request.
 //
 // Run:  npx ts-node demo-publisher.ts
@@ -13,7 +13,7 @@ const config      = getBusConfig("demo-publisher");
 const ARTEFACT_ID = "model.cim.raw";
 
 async function main() {
-  const mockPath = path.resolve(__dirname, "tests", "rent-a-car-mock.json");
+  const mockPath = path.resolve(__dirname, "tests", "rent-a-car-demo.json");
 
   if (!fs.existsSync(mockPath)) {
     console.error(`[demo-publisher] file not found: ${mockPath}`);

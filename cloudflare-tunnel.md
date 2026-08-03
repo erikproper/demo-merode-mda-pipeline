@@ -61,6 +61,6 @@ curl https://mda.tlolab.com/health
 
 curl -X POST https://mda.tlolab.com/api/model \
      -H "Content-Type: application/json" \
-     -d @mda-agents/tests/rent-a-car-mock.json
+     -d @mda-agents/tests/rent-a-car-demo.json
 # → {"ok":true,"artefactID":"model.demo.raw","timestamp":"..."}
 ```

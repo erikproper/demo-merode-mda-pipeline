@@ -6,7 +6,7 @@ Testdaten und Skripte für die DEMO→pimUML-Transformationspipeline.
 
 | Datei | Beschreibung |
 |-------|-------------|
-| `rent-a-car-mock.json` | **Eingabe** — valides DEMO Fact Model (Rent-A-Car, Thesis Abschnitt 6.4 + Appendix G) |
+| `rent-a-car-demo.json` | **Eingabe** — valides DEMO Fact Model (Rent-A-Car, Thesis Abschnitt 6.4 + Appendix G) |
 | `test-transform.ts` | **Offline-Test** — Transformation ohne MQTT-Broker, schreibt `rent-a-car-pim.json` |
 | `pim-subscriber.ts` | **Bus-Utility** — abonniert `model.pim.created`, schreibt `rent-a-car-pim-from-bus.json` |
 | `rent-a-car-pim.json` | *Generiert* durch `test:transform` — nicht versioniert (.gitignore) |
@@ -14,7 +14,7 @@ Testdaten und Skripte für die DEMO→pimUML-Transformationspipeline.
 
 ---
 
-## rent-a-car-mock.json — Abdeckung
+## rent-a-car-demo.json — Abdeckung
 
 | Element | Anzahl | Quelle |
 |---------|--------|--------|

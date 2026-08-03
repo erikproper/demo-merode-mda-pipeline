@@ -1,49 +1,62 @@
 {
-  "name": "Rent-A-Car",
+  "name": "Rent-A-Car (MERODE)",
+  "domainTypes": [
+    { "name": "FuelType",      "kind": "categorical",    "literals": ["petrol", "diesel", "electric"] },
+    { "name": "PaymentMethod", "kind": "categorical",    "literals": ["cash", "creditCard", "bankTransfer"] },
+    { "name": "MoneyAmount",   "kind": "nonCategorical" }
+  ],
   "objectTypes": [
-    {
-      "name": "Rental",
-      "attributes": [
-        { "name": "startingDay", "type": "String" },
-        { "name": "endingDay",   "type": "String" }
-      ],
-      "lifecycleStates": ["active"]
-    },
     {
       "name": "Car",
       "attributes": [
-        { "name": "licensePlate", "type": "String" }
+        { "name": "licensePlate", "type": "String"  },
+        { "name": "fuelType",     "type": "FuelType" },
+        { "name": "mileage",      "type": "Integer" }
       ],
       "lifecycleStates": ["registered"]
     },
     {
       "name": "Person",
       "attributes": [
-        { "name": "name", "type": "String" }
+        { "name": "fullName",         "type": "String"        },
+        { "name": "email",            "type": "String"        },
+        { "name": "preferredPayment", "type": "PaymentMethod" }
       ],
       "lifecycleStates": ["registered"]
+    },
+    {
+      "name": "Rental",
+      "attributes": [
+        { "name": "startingDay",  "type": "String"      },
+        { "name": "endingDay",    "type": "String"      },
+        { "name": "totalAmount",  "type": "MoneyAmount" }
+      ],
+      "lifecycleStates": ["active"]
+    },
+    {
+      "name": "RentalLine",
+      "attributes": [
+        { "name": "quantity",    "type": "Integer" },
+        { "name": "description", "type": "String"  }
+      ],
+      "lifecycleStates": ["active"]
     }
   ],
   "existenceDependencies": [
-    {
-      "name": "RentalDependsOnCar",
-      "dependent": "Rental",
-      "master": "Car",
-      "lower": 1,
-      "upper": 1
-    },
-    {
-      "name": "RentalDependsOnPerson",
-      "dependent": "Rental",
-      "master": "Person",
-      "lower": 1,
-      "upper": 1
-    }
+    { "name": "RentalDependsOnCar",        "dependent": "Rental",     "master": "Car",    "lower": 1, "upper": 1 },
+    { "name": "RentalDependsOnPerson",     "dependent": "Rental",     "master": "Person", "lower": 1, "upper": 1 },
+    { "name": "RentalLineDependsOnRental", "dependent": "RentalLine", "master": "Rental", "lower": 1, "upper": 1 }
   ],
   "businessEventTypes": [
-    { "name": "startRental",    "objectType": "Rental", "role": "C" },
-    { "name": "completeRental", "objectType": "Rental", "role": "E" },
-    { "name": "registerCar",    "objectType": "Car",    "role": "C" },
-    { "name": "registerPerson", "objectType": "Person", "role": "C" }
+    { "name": "registerCar",      "objectType": "Car",        "role": "C" },
+    { "name": "updateCarMileage", "objectType": "Car",        "role": "M" },
+    { "name": "deregisterCar",    "objectType": "Car",        "role": "E" },
+    { "name": "registerPerson",   "objectType": "Person",     "role": "C" },
+    { "name": "deregisterPerson", "objectType": "Person",     "role": "E" },
+    { "name": "startRental",      "objectType": "Rental",     "role": "C" },
+    { "name": "completeRental",   "objectType": "Rental",     "role": "E" },
+    { "name": "addRentalLine",    "objectType": "RentalLine", "role": "C" },
+    { "name": "updateRentalLine", "objectType": "RentalLine", "role": "M" },
+    { "name": "removeRentalLine", "objectType": "RentalLine", "role": "E" }
   ]
 }

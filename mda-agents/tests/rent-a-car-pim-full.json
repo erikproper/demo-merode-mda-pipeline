@@ -1,0 +1,183 @@
+{
+  "name": "Rent-A-Car - pimUML",
+  "enumerations": [
+    { "name": "CarGroup", "literals": ["economy", "compact", "luxury"] }
+  ],
+  "dataTypes": [
+    { "name": "MoneyAmount" }
+  ],
+  "associationClasses": [
+    {
+      "name": "BookingDetail",
+      "triggerEvent": "rentalStarted",
+      "memberEnds": [
+        { "name": "rental", "type": "Rental", "lower": 0, "upper": "*" },
+        { "name": "car",    "type": "Car",    "lower": 0, "upper": "*" }
+      ],
+      "ownedAttributes": [
+        { "name": "pricePerDay", "type": "Integer" },
+        { "name": "notes",       "type": "String"  }
+      ]
+    }
+  ],
+  "classes": [
+    {
+      "name": "Rental",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        { "name": "RentalID",        "type": "Integer", "isID": true },
+        { "name": "startingDay",     "type": "String" },
+        { "name": "endingDay",       "type": "String" },
+        { "name": "totalDays",       "type": "Integer", "isDerived": true, "derivationRule": "self.endingDay - self.startingDay" },
+        { "name": "rentalStarted",   "type": "Boolean", "defaultValue": "false" },
+        { "name": "rentalCompleted", "type": "Boolean", "defaultValue": "false" },
+        { "name": "rentalLineID",    "type": "Integer" }
+      ]
+    },
+    {
+      "name": "RentalLine",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        { "name": "RentalLineID", "type": "Integer", "isID": true },
+        { "name": "quantity",     "type": "Integer" }
+      ]
+    },
+    {
+      "name": "Vehicle",
+      "isAbstract": true,
+      "isDerived": false,
+      "ownedAttributes": [
+        { "name": "VehicleID",    "type": "Integer", "isID": true },
+        { "name": "licensePlate", "type": "String"  }
+      ]
+    },
+    {
+      "name": "Car",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        { "name": "CarID", "type": "Integer", "isID": true },
+        { "name": "group", "type": "CarGroup" }
+      ]
+    },
+    {
+      "name": "Person",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        { "name": "PersonID", "type": "Integer", "isID": true },
+        { "name": "name",     "type": "String"  }
+      ]
+    },
+    {
+      "name": "PremiumCustomer",
+      "isAbstract": false,
+      "isDerived": true,
+      "derivationExpression": "Person.rentals->size() > 10",
+      "ownedAttributes": [
+        { "name": "PremiumCustomerID", "type": "Integer", "isID": true }
+      ]
+    },
+    {
+      "name": "ActiveRental",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        { "name": "ActiveRentalID", "type": "Integer", "isID": true }
+      ]
+    }
+  ],
+  "associations": [
+    {
+      "name": "RentalHasLines",
+      "isAggregation": true,
+      "memberEnds": [
+        { "name": "rental",     "type": "Rental",     "lower": 1, "upper": 1   },
+        { "name": "rentalLine", "type": "RentalLine", "lower": 0, "upper": "*" }
+      ]
+    },
+    {
+      "name": "RentalInvolvesCar",
+      "isAggregation": false,
+      "memberEnds": [
+        { "name": "rental", "type": "Rental", "lower": 0, "upper": "*" },
+        { "name": "car",    "type": "Car",    "lower": 1, "upper": 1   }
+      ]
+    },
+    {
+      "name": "RentalMadeByPerson",
+      "isAggregation": false,
+      "memberEnds": [
+        { "name": "rental", "type": "Rental", "lower": 0, "upper": "*" },
+        { "name": "renter", "type": "Person", "lower": 1, "upper": 1   }
+      ]
+    },
+    {
+      "name": "PremiumCustomerIsAPerson",
+      "isDerived": true,
+      "derivationExpression": "Person.rentals->size() > 10",
+      "memberEnds": [
+        { "name": "derived", "type": "PremiumCustomer", "lower": 0, "upper": "*" },
+        { "name": "parent",  "type": "Person",          "lower": 1, "upper": 1   }
+      ]
+    },
+    {
+      "name": "ActiveRentalIsARental",
+      "triggerEvent": "rentalStarted",
+      "memberEnds": [
+        { "name": "specialization", "type": "ActiveRental", "lower": 0, "upper": "*" },
+        { "name": "parent",         "type": "Rental",       "lower": 1, "upper": 1   }
+      ]
+    }
+  ],
+  "generalizations": [
+    { "child": "Car", "parent": "Vehicle" }
+  ],
+  "stateMachines": [
+    {
+      "name": "SM_Rental",
+      "entityType": "Rental",
+      "regions": [
+        {
+          "name": "rentalStarted",
+          "forEvent": "rentalStarted",
+          "states": [
+            { "name": "rentalStarted_initial", "kind": "initial" },
+            { "name": "rentalStarted_false",   "kind": "false"   },
+            { "name": "rentalStarted_true",    "kind": "true", "entryActivity": "CreateActiveRental" }
+          ],
+          "transitions": [
+            { "from": "rentalStarted_initial", "to": "rentalStarted_false" },
+            { "from": "rentalStarted_false", "to": "rentalStarted_true", "trigger": "rentalStarted", "alfExpression": "self.rentalStarted = true" }
+          ]
+        },
+        {
+          "name": "rentalCompleted",
+          "forEvent": "rentalCompleted",
+          "states": [
+            { "name": "rentalCompleted_initial", "kind": "initial" },
+            { "name": "rentalCompleted_false",   "kind": "false"   },
+            { "name": "rentalCompleted_true",    "kind": "true"    }
+          ],
+          "transitions": [
+            { "from": "rentalCompleted_initial", "to": "rentalCompleted_false" },
+            { "from": "rentalCompleted_false", "to": "rentalCompleted_true", "trigger": "rentalCompleted", "alfExpression": "self.rentalCompleted = true" }
+          ]
+        }
+      ],
+      "activities": [
+        { "name": "SetRental_rentalStarted",   "kind": "set",    "targetType": "Rental"       },
+        { "name": "SetRental_rentalCompleted", "kind": "set",    "targetType": "Rental"       },
+        { "name": "CreateActiveRental",        "kind": "create", "targetType": "ActiveRental" }
+      ]
+    },
+    { "name": "SM_RentalLine",      "entityType": "RentalLine",      "regions": [] },
+    { "name": "SM_Vehicle",         "entityType": "Vehicle",         "regions": [] },
+    { "name": "SM_Car",             "entityType": "Car",             "regions": [] },
+    { "name": "SM_Person",          "entityType": "Person",          "regions": [] },
+    { "name": "SM_PremiumCustomer", "entityType": "PremiumCustomer", "regions": [] },
+    { "name": "SM_ActiveRental",    "entityType": "ActiveRental",    "regions": [] }
+  ]
+}

@@ -1,4 +1,4 @@
-// Standalone test: loads rent-a-car-mock.json and runs the DEMO->PIM
+// Standalone test: loads rent-a-car-demo.json and runs the DEMO->PIM
 // transformation without needing an MQTT broker.
 //
 // Run:
@@ -14,9 +14,9 @@ const ajv          = new Ajv({ allErrors: true });
 const validateDemo = ajv.compile(JSON.parse(fs.readFileSync(path.join(schemasDir, "demo-schema.json"),   "utf-8")));
 const validatePim  = ajv.compile(JSON.parse(fs.readFileSync(path.join(schemasDir, "pimuml-schema.json"), "utf-8")));
 
-const demo = JSON.parse(fs.readFileSync(path.resolve(__dirname, "rent-a-car-mock.json"), "utf-8")) as DemoModel;
+const demo = JSON.parse(fs.readFileSync(path.resolve(__dirname, "rent-a-car-demo.json"), "utf-8")) as DemoModel;
 
-console.log("INPUT: rent-a-car-mock.json");
+console.log("INPUT: rent-a-car-demo.json");
 console.log(`  entityTypes : ${demo.entityTypes.length}`);
 console.log(`  factTypes   : ${demo.factTypes?.length ?? 0}`);
 
