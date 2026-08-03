@@ -4,41 +4,29 @@ Dieses Dokument hält fest, was der Prototyp nicht kann und warum. Für die Thes
 
 ---
 
-## 1. Lücken bei den M-Regeln
+## 1. Implementierte M-Regeln (ehemals Lücken)
 
-### M3 - Attributdomänen nicht modelliert
+### M3 - Attributdomänen ✅ implementiert (2026-08-03)
 
-Wenn ein MERODE-Attribut eine aufgezählte Domäne hat (z.B. `carGroup: {economy, standard, luxury}`) oder eine benutzerdefinierte skalare Domäne, behandelt die aktuelle Implementierung das Attribut als einfaches `String`-Attribut. Es wird weder eine pimUML-Enumeration noch ein DataType für die Domäne erzeugt.
+`merode-schema.json` wurde um ein `domainTypes`-Array erweitert. `MerodeDomainType`-Interface in `types.ts`. Kategorische Domänen (z.B. `FuelType`) werden zu pimUML-Enumerationen; nicht-kategorische (z.B. `MoneyAmount`) zu pimUML-DataTypes, die im PSM-Agenten als Mendix-Entity mit Association umgesetzt werden. Vollständig im Rent-A-Car-Fixture getestet.
 
-Das Problem liegt im Schema: `merode-schema.json` definiert den Attributtyp als einfachen String (`"type": { "type": "string" }`). Es gibt keinen Mechanismus, über den angegeben werden kann, dass ein Typname auf eine aufgezählte Domäne mit konkreten Werten verweist. M3 zu implementieren würde erfordern, entweder ein `domains`-Array zum MERODE-Schema hinzuzufügen (analog zu DEMOs `valueTypes`) oder Attribute inline um Enum-Definitionen zu erweitern.
+Verbleibende Einschränkung: der Attributtyp verweist auf den Domänennamen als String — der Zusammenhang wird erst durch das `domainTypes`-Array im selben Modell aufgelöst. Für die Evaluation kein Problem, da das Fixture explizite `domainTypes`-Einträge enthält.
 
-Für die Evaluation bedeutet das: jedes MERODE-Modell, das aufgezählte Attributdomänen verwendet, verliert diese Information beim Durchlaufen der Pipeline. Die Elemente erscheinen in der Vollständigkeitsbewertung als Missing. Für das Rent-A-Car-Fixture, das nur String-Attribute hat, gibt es keine Auswirkung.
+### M9 - Gemeinsame Ereignisbeteiligung und Propagierung ✅ implementiert (2026-08-03)
 
-Aufwandsschätzung für eine Korrektur: mittel. `merode-schema.json` um ein `domainTypes`-Array erweitern, `types.ts` um einen `MerodeDomainType`-Interface ergänzen, und die Verarbeitungslogik im `merode-to-pim-agent.ts` hinzufügen. Das pimUML-Schema unterstützt Enumeration und DataType bereits.
+Die Propagierungshülle wird aus dem EDG berechnet (`allTransitiveDependents()`). Für jedes Master-OT, dessen Dependents Ereignisse besitzen, werden Self-Transitionen auf allen aktiven Lebenszykluszuständen eingefügt (Trigger = Ereignisname). Zusätzlich wird eine `Set_<Master>_<evt>`-Aktivität erzeugt, die im PSM-Agenten zu einem ChangeObjectAction-Microflow wird.
 
-### M9 - Gemeinsame Ereignisbeteiligung und Propagierung nicht implementiert
-
-In MERODE werden Geschäftsereignisse über mehrere Objekttypen hinweg geteilt. Die Propagierungsregel (Snoeck, Kap. 5.3.1, S. 114) besagt: wenn ein Ereignis einen abhängigen Objekttyp einbezieht, bezieht es automatisch auch alle Hauptobjekttypen mit ein (mit Typ M). Zum Beispiel schließt `startRental` Rental (O/C), Car (A/M) und Person (A/M) ein.
-
-Die aktuelle Implementierung verarbeitet nur die Eigentümerbeteiligung. Das `role`-Feld auf einem BusinessEventType entspricht der C/M/E-Rolle des Eigentümers im OET. Die propagierten A/M-Beteiligungen der Hauptobjekttypen werden nicht verarbeitet.
-
-Warum fehlt das: M9 korrekt zu implementieren erfordert den Aufbau einer Propagierungshülle aus dem EDG (alle Existenzabhängigkeiten transitiv traversieren), für jedes Ereignis mit einem abhängigen Objekt alle über die Abhängigkeitskette erreichbaren Hauptobjekttypen zu finden, M-Rollen-Übergänge in den FSMs dieser Hauptobjekttypen einzufügen und Fälle mit mehrstufigen Propagierungsketten zu behandeln. Das ist nicht trivial, und das Testfixture modelliert nur Eigentümerbeteiligungen explizit.
-
-Auswirkung auf die Evaluation: erheblich. Das OET wird nur teilweise erfasst. Im Rent-A-Car-Fall sollten `startRental` und `completeRental` auch als modifizierende Ereignisse in Car und Person erscheinen, was in der aktuellen Ausgabe nicht der Fall ist. Diese Elemente erscheinen als Missing.
-
-M9 ist aus Forschungsperspektive die interessanteste Regel: sie hat das geringste DEMO-Analogon und zeigt am deutlichsten MERODEs paradigmatischen Unterschied. Die formale Spezifikation von M9 sollte in der Thesis stehen, auch wenn die Implementierung unvollständig ist.
+Verbleibende Einschränkung: die Propagierung erzeugt immer Self-Transitionen auf allen Zuständen des Masters, auch wenn das OET für bestimmte Zustandskombinationen keine Beteiligung vorsieht. Das ist eine Überapproximation. Für Rent-A-Car korrekt, da alle Master nur einen Lebenszykluszustand haben.
 
 ---
 
 ## 2. Lücken bei den B-Regeln
 
-### B16 - End-Microflow ist ein Stub
+### B16 - End-Microflow ✅ implementiert (2026-08-03)
 
-Der `End_<Entity>`-Microflow wird mit einem Parameter-Knoten generiert. Er implementiert kein tatsächliches Beendigungsverhalten: keine Löschung, keine Archivierung, keine Statusänderung.
+Der `End_<Entity>`-Microflow generiert: MicroflowParameterObject (Entitätsobjekt) → `DeleteAction` → EndEvent. Die Designentscheidung fiel auf Hard-Delete, weil Snoecks Semantik ("an object ceases to exist") physische Nicht-Existenz impliziert und eine Soft-Delete-Variante eine zusätzliche Filterlogik in allen Abfragen erfordern würde, die über den Prototyp-Scope hinausgeht (DD12 in DESIGN_DECISIONS.md).
 
-Wie ein Objekt in Mendix "beendet" werden soll, ist eine Anwendungsentscheidung, keine Modellentscheidung. Möglichkeiten sind das Setzen von `status = final` (wenn das Status-Attribut aus B13 genutzt wird), Soft-Deletion über ein `deletedAt`-Zeitstempel-Attribut mit Filterung, Hard-Deletion über `DeleteObjectAction` oder Archivierung. Die richtige Wahl hängt von den Anwendungsanforderungen ab, die das pimUML-`end`-Aktivitätskonstrukt nicht vorschreibt.
-
-Aufwandsschätzung: gering, sobald die Designentscheidung (Hard-Delete vs. Soft-Delete) getroffen ist.
+Verbleibende Einschränkung: physische Löschung löscht auch alle abhängigen Objekte (Mendix Cascade-Delete), wenn die Associations entsprechend konfiguriert sind. Für MERODE-Modelle mit Existenzabhängigkeiten bedeutet das, dass ein Master nicht gelöscht werden kann, solange Dependents existieren — das spiegelt Snoecks Semantik korrekt wider, muss aber in der Applikation explizit gehandhabt werden.
 
 ### Workflow-Generierung für MERODE entfällt
 

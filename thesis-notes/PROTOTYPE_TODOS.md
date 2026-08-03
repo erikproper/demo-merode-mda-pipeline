@@ -16,8 +16,10 @@ Stand: 2026-07-28. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
 ## Priorität 2 — Implementierung (verbessert Evaluationsergebnis)
 
 - [x] **M9 — Ereignispropagierung** — Propagierungshülle aus EDG aufgebaut, Self-Transitionen in Master-FSMs eingefügt (`Set_<Master>_<evt>` Aktivitaten). Erhebt MERODE-Completeness auf ~100%. Implementiert 2026-08-03.
-- [ ] **B16 — End-Microflow fertigstellen** — aktuell nur Stub mit Parameter-Knoten. Design-Entscheidung treffen: Hard-Delete (`DeleteObjectAction`) oder Soft-Delete (Status-Attribut setzen). Aufwand gering nach Entscheidung.
+- [x] **B16 — End-Microflow** — Hard-Delete via `DeleteObjectAction`: Parameter (Entität) → DeleteAction → End. Design-Entscheidung: physische Löschung als bewusste Vereinfachung für den Prototyp (DD12 in DESIGN_DECISIONS.md). Implementiert 2026-08-03.
 - [x] **M3 — Attributdomänen** — `merode-schema.json` um `domainTypes`-Array erweitert, `MerodeDomainType`-Interface in `types.ts`, kategorische Domänen -> Enumeration, nicht-kategorische -> DataType. `FuelType`-Beispiel im Rent-A-Car-Fixture. Implementiert 2026-08-03.
+- [x] **Bug: doppelte Create_OT/End_OT-Aktivitäten** — Dedup-Guard in M6/M8 (`smActivities.some(...)`) verhindert Mehrfacheinträge wenn ein OT mehrere C- oder E-Ereignisse hat. Behoben 2026-08-03.
+- [x] **Bug: nicht-kategorischer DataType → String-Fallback** — DataType-typisierte Attribute werden jetzt als Associations statt als String-Attribute umgesetzt (B4+B9). Behoben 2026-08-03.
 
 ---
 

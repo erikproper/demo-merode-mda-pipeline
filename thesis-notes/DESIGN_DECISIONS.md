@@ -100,6 +100,20 @@ Der `pim-to-mendix-agent` abonniert PIM-Artefakte von allen CIM-Agenten, nicht n
 
 Die Lösung war eine Umgebungsvariable `PIM_PUBLISHER_AGENT_IDS` (Standardwert: `"demo-to-pim-agent,merode-to-pim-agent"`), aus der beim Start alle Agenten-IDs ausgelesen werden. Das ist eine Änderung am Mendix-Agenten und damit für die Extensibilitätsbehauptung relevant, was in EXTENSIBILITY_EVIDENCE.md diskutiert wird.
 
+### DD12 - Hard-Delete für MERODE-Beendigungsereignisse
+
+Das pimUML-Konstrukt `activity.kind = "end"` (M8) wird auf einen Mendix-`DeleteObjectAction`-Microflow abgebildet: das Objekt wird physisch aus der Datenbank gelöscht.
+
+Snoeck (Kap. 4.4) sagt: "the END event is the last event in which an object participates. After the END event the object no longer exists in the business domain." Das legt physische Nicht-Existenz nahe. Drei Alternativen wurden erwogen.
+
+Soft-Delete (Status-Attribut auf `final` setzen): Das Status-Attribut aus B13 würde als "Tombstone" genutzt. Vorteil: Datenverlust durch versehentliches Löschen vermeidbar, historische Daten bleiben erhalten. Nachteil: alle Abfragen müssten um `status != final`-Filter erweitert werden; das erfordert Applikationslogik, die über den Prototyp-Scope hinausgeht.
+
+Archivierung (in Archivtabelle verschieben): In produktiven Mendix-Apps gängige Praxis. Erfordert eine Archiv-Entity pro Objekttyp — zu aufwändig für den Prototyp.
+
+Hard-Delete über `DeleteObjectAction` wurde gewählt, weil es Snoecks Semantik am direktesten abbildet und keine zusätzliche Infrastruktur erfordert. Der Preis ist, dass Mendix Cascade-Delete greift: wenn Dependents noch existieren, schlägt die Löschung fehl. Das ist kein Fehler, sondern die korrekte Enforcemet der Existenzabhängigkeit (ein Rental kann nicht gelöscht werden, solange RentalLines existieren).
+
+Für eine produktive Applikation wäre Soft-Delete oder Archivierung die bessere Wahl. Die Einschränkung ist in LIMITATIONS.md dokumentiert.
+
 ---
 
 ## 3. Implementierungsdetails ohne Architekturcharakter
