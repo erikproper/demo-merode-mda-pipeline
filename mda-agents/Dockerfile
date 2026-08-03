@@ -19,7 +19,7 @@ RUN npx tsc
 # After tsc, __dirname resolves to /app/dist — copy assets there too.
 RUN cp schemas/*.json dist/schemas/ && \
     mkdir -p dist/tests && \
-    cp tests/rent-a-car-mock.json dist/tests/rent-a-car-mock.json
+    cp tests/*.json dist/tests/
 
 # Stage 2: lean runtime image (no devDependencies, no TypeScript toolchain)
 FROM node:18-alpine
