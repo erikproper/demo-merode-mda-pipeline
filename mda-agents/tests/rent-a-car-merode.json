@@ -9,9 +9,9 @@
     {
       "name": "Car",
       "attributes": [
-        { "name": "licensePlate", "type": "String"  },
+        { "name": "licensePlate", "type": "String"   },
         { "name": "fuelType",     "type": "FuelType" },
-        { "name": "mileage",      "type": "Integer" }
+        { "name": "mileage",      "type": "Integer"  }
       ],
       "lifecycleStates": ["registered"]
     },
@@ -27,9 +27,9 @@
     {
       "name": "Rental",
       "attributes": [
-        { "name": "startingDay",  "type": "String"      },
-        { "name": "endingDay",    "type": "String"      },
-        { "name": "totalAmount",  "type": "MoneyAmount" }
+        { "name": "startingDay", "type": "String"      },
+        { "name": "endingDay",   "type": "String"      },
+        { "name": "totalAmount", "type": "MoneyAmount" }
       ],
       "lifecycleStates": ["active"]
     },
@@ -48,15 +48,17 @@
     { "name": "RentalLineDependsOnRental", "dependent": "RentalLine", "master": "Rental", "lower": 1, "upper": 1 }
   ],
   "businessEventTypes": [
-    { "name": "registerCar",      "objectType": "Car",        "role": "C" },
-    { "name": "updateCarMileage", "objectType": "Car",        "role": "M", "effects": [{ "attribute": "mileage" }] },
-    { "name": "deregisterCar",    "objectType": "Car",        "role": "E" },
-    { "name": "registerPerson",   "objectType": "Person",     "role": "C" },
-    { "name": "deregisterPerson", "objectType": "Person",     "role": "E" },
-    { "name": "startRental",      "objectType": "Rental",     "role": "C" },
-    { "name": "completeRental",   "objectType": "Rental",     "role": "E" },
-    { "name": "addRentalLine",    "objectType": "RentalLine", "role": "C" },
-    { "name": "updateRentalLine", "objectType": "RentalLine", "role": "M", "effects": [{ "attribute": "quantity" }, { "attribute": "description" }] },
-    { "name": "removeRentalLine", "objectType": "RentalLine", "role": "E" }
+    { "name": "registerCar",         "objectType": "Car",        "role": "C" },
+    { "name": "updateCarMileage",    "objectType": "Car",        "role": "M", "effects": [{ "attribute": "mileage" }] },
+    { "name": "deregisterCar",       "objectType": "Car",        "role": "E" },
+    { "name": "registerPerson",      "objectType": "Person",     "role": "C" },
+    { "name": "updatePersonDetails", "objectType": "Person",     "role": "M", "effects": [{ "attribute": "fullName" }, { "attribute": "email" }] },
+    { "name": "deregisterPerson",    "objectType": "Person",     "role": "E" },
+    { "name": "startRental",         "objectType": "Rental",     "role": "C" },
+    { "name": "extendRental",        "objectType": "Rental",     "role": "M", "effects": [{ "attribute": "endingDay" }] },
+    { "name": "completeRental",      "objectType": "Rental",     "role": "E" },
+    { "name": "addRentalLine",       "objectType": "RentalLine", "role": "C" },
+    { "name": "updateRentalLine",    "objectType": "RentalLine", "role": "M", "effects": [{ "attribute": "quantity" }, { "attribute": "description" }] },
+    { "name": "removeRentalLine",    "objectType": "RentalLine", "role": "E" }
   ]
 }

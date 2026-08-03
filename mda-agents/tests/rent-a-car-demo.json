@@ -16,17 +16,11 @@
   ],
   "entityTypes": [
     {
-      "name": "Rental",
+      "name": "Car",
       "attributes": [
-        { "name": "startingDay", "valueType": "String" },
-        { "name": "endingDay",   "valueType": "String" },
-        { "name": "totalDays",   "valueType": "Integer", "derivationRule": "self.endingDay - self.startingDay" }
-      ]
-    },
-    {
-      "name": "RentalLine",
-      "attributes": [
-        { "name": "quantity", "valueType": "Integer" }
+        { "name": "licensePlate", "valueType": "String"   },
+        { "name": "group",        "valueType": "CarGroup" },
+        { "name": "mileage",      "valueType": "Integer"  }
       ]
     },
     {
@@ -37,16 +31,15 @@
       ]
     },
     {
-      "name": "Car",
-      "parent": "Vehicle",
-      "attributes": [
-        { "name": "group", "valueType": "CarGroup" }
-      ]
+      "name": "SpecialCar",
+      "parent": "Car",
+      "triggerEventType": "carRegistered"
     },
     {
       "name": "Person",
       "attributes": [
-        { "name": "name", "valueType": "String" }
+        { "name": "fullName", "valueType": "String" },
+        { "name": "email",    "valueType": "String" }
       ]
     },
     {
@@ -56,14 +49,40 @@
       "parent": "Person"
     },
     {
+      "name": "Rental",
+      "attributes": [
+        { "name": "startingDay",  "valueType": "String"      },
+        { "name": "endingDay",    "valueType": "String"      },
+        { "name": "totalAmount",  "valueType": "MoneyAmount" },
+        { "name": "totalDays",    "valueType": "Integer", "derivationRule": "self.endingDay - self.startingDay" }
+      ]
+    },
+    {
       "name": "ActiveRental",
       "parent": "Rental",
       "triggerEventType": "rentalStarted"
+    },
+    {
+      "name": "RentalLine",
+      "attributes": [
+        { "name": "quantity",    "valueType": "Integer" },
+        { "name": "description", "valueType": "String"  }
+      ]
     }
   ],
   "eventTypes": [
-    { "name": "rentalStarted",   "entityType": "Rental" },
-    { "name": "rentalCompleted", "entityType": "Rental" }
+    { "name": "carRegistered",    "entityType": "Car"        },
+    { "name": "mileageUpdated",   "entityType": "Car"        },
+    { "name": "carDeregistered",  "entityType": "Car"        },
+    { "name": "personRegistered", "entityType": "Person"     },
+    { "name": "personUpdated",    "entityType": "Person"     },
+    { "name": "personRemoved",    "entityType": "Person"     },
+    { "name": "rentalStarted",    "entityType": "Rental"     },
+    { "name": "rentalExtended",   "entityType": "Rental"     },
+    { "name": "rentalCompleted",  "entityType": "Rental"     },
+    { "name": "rentalLineAdded",  "entityType": "RentalLine" },
+    { "name": "rentalLineUpdated","entityType": "RentalLine" },
+    { "name": "rentalLineRemoved","entityType": "RentalLine" }
   ],
   "factTypes": [
     {
@@ -71,7 +90,7 @@
       "isAggregation": true,
       "roles": [
         { "name": "rental",     "entityType": "Rental",     "lower": 1, "upper": 1  },
-        { "name": "rentalLine", "entityType": "RentalLine",  "lower": 0, "upper": "*" }
+        { "name": "rentalLine", "entityType": "RentalLine", "lower": 0, "upper": "*" }
       ]
     },
     {
@@ -84,8 +103,8 @@
     {
       "name": "RentalMadeByPerson",
       "roles": [
-        { "name": "rental", "entityType": "Rental", "lower": 0, "upper": "*" },
-        { "name": "renter", "entityType": "Person", "lower": 1, "upper": 1  }
+        { "name": "rental",  "entityType": "Rental", "lower": 0, "upper": "*" },
+        { "name": "renter",  "entityType": "Person", "lower": 1, "upper": 1  }
       ]
     }
   ]
