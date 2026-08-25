@@ -35,6 +35,25 @@ Stand: 2026-07-28. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
 
 - [ ] **Dritter Agent (ER-Diagramm)** — formaler Extensibilitätsnachweis E1-E2. In `thesis-notes/EXTENSIBILITY_EVIDENCE.md` Abschnitt 5 als Future Work dokumentiert. Extensibilitätsnachweis ruht auf MERODE-Integration.
 
+- [ ] **pim-to-sql-agent — PostgreSQL DDL als zweiter PSM-Output** — neuer Agent der dasselbe `model.pim.created`-Topic subscribed wie der Mendix-Agent und daraus PostgreSQL-DDL generiert. Kein bestehender Code ändert sich (echter Plug-and-Play-Nachweis für QR5/Extensibilität).
+  - Output: `output/<modelname>.sql`, direkt ausführbar via `psql -d mydb -f output.sql`
+  - Mapping: Enumeration → `CREATE TYPE ... AS ENUM`, DataType → eigene Tabelle, Class → `CREATE TABLE`, Association → FK-Constraint (NOT NULL bei ExistenzAbh., ON DELETE CASCADE bei Aggregation), MERODE-FSM → `status`-Spalte mit `<Entity>_Status`-Enum, DEMO-FSM → Boolean-Spalten (bereits als Attribute im PIM)
+  - Kernkniff: topologischer Sort der Tabellen nach Abhängigkeitsgraph (Kahn's Algorithmus, ~30 Zeilen), damit FK-Constraints beim Ausführen nicht scheitern
+  - Aufwand: ~250-300 Zeilen neuer Code + 1 Zeile docker-compose.yml
+  - Stärkerer Extensibilitätsnachweis als ER-Diagramm, weil SQL ein echter PSM ist (PostgreSQL als Zielplattform)
+
+- [ ] **B-neu: Generische Page-Inhalte** — Aktuell werden Overview-Pages nur als leeres Gerüst (Name + Layout + Navigation-Eintrag) generiert. Folgendes soll automatisch aus dem PIM-Modell abgeleitet werden, ohne Hardcoding auf ein konkretes Beispiel:
+
+  - **Overview-Page je Entity:** DataGrid mit allen nicht-abgeleiteten Attributen als Spalten. Kein manueller Aufbau nötig.
+  - **Detail-Page je Entity:** DataView (Datenquelle: Objekt aus Navigation-Kontext) mit einem Input-Widget pro Attribut (TextBox für String/Integer, DatePicker für Date, Dropdown für Enum-Attribute). Save-Button der ein Commit ausführt.
+  - **Workflow-Trigger-Button je Entity mit FSM:** Auf der Detail-Page einen Button "Start [EntityName] Workflow" generieren, der:
+    1. Zuerst ein `CommitObjectAction` ausführt (Fix für "Only committed persistent objects can be used to start a workflow")
+    2. Dann den generierten `ACR_<EntityName>`-Microflow aufruft
+    Der Button soll nur generiert werden wenn für die Entity ein Workflow (`WF_<EntityName>`) existiert — also bei DEMO-Entities mit `stateMachines`-Eintrag. Kein Button für Entities ohne FSM.
+  - **Neue-Objekt-Button auf Overview-Page:** "New [EntityName]"-Button der ein leeres Objekt erstellt, committed und zur Detail-Page navigiert.
+
+  **Warum:** Getestet am 2026-08-21. Pages waren zwar technisch korrekt im Modell vorhanden, aber vollständig leer — kein Inhalt, keine Interaktion möglich ohne manuellen Aufbau in Studio Pro.
+
 ---
 
 ## Testbefehl

@@ -76,6 +76,21 @@ Die Evaluation (D7) gilt nur für das Rent-A-Car-Fallbeispiel. Snoeck nutzt eine
 
 Die Ausgabe ist ein valides Mendix-Modell, das in Mendix Studio Pro geöffnet werden kann. Das tatsächliche Ausführen der Applikation erfordert eine Mendix-Cloud-Umgebung oder eine lokale Runtime-Lizenz. Die Evaluation bewertet daher die strukturelle Validität des generierten Modells (keine Mendix-Fehler/Warnungen), nicht das Laufzeitverhalten.
 
+### pimUML-Schema approximiert UML-Metaclasses vereinfacht
+
+Das `pimuml-schema.json` bildet das pimUML-Metamodell (Bzowski, Figure C.2–C.3) nicht in voller UML-2.5.1-Treue ab. Alle Pattern-relevanten Metaclasses (grün in der Legende) sind vorhanden: `Class`, `Property`, `Association`, `AssociationClass`, `Generalization`, `Enumeration`, `StateMachine`, `Region`, `Transition`, `State`, `Pseudostate`, `Trigger`. Folgende Vereinfachungen wurden zugunsten von JSON-Serialisierbarkeit vorgenommen:
+
+- `AggregationKind` (none/shared/composite auf `Property`) → `isAggregation: boolean` auf `PimAssociation`. Nur der Composite-Fall wird unterschieden; shared Aggregation ist im Prototyp-Scope nicht nötig.
+- `ValueSpecification`-Hierarchie (`LiteralInteger`, `LiteralBoolean`, `LiteralUnlimitedNatural`) → `defaultValue?: string`. Literalwerte werden als plain Strings serialisiert statt als typisierte Objekt-Instanzen.
+- `PrimitiveType` als formaler Typ-Knoten → Typ-Strings (`"String"`, `"Integer"`, ...). Der Typ eines Attributs wird als String referenziert, nicht als eigenständiges Metamodell-Objekt.
+- `InstanceSpecification` → nicht implementiert. Im Prototyp-Scope nicht benötigt.
+- `Trigger` als benanntes Objekt → `trigger?: string` auf `PimTransition`. Nur der Name wird serialisiert.
+- `Transition.effect → Behavior` → `alfExpression?: string`. Übergangseffekte werden als ALF-Ausdrucks-String dargestellt, nicht als vollständiges Behavior-Objekt.
+- `State.entry → Behavior` → `entryActivity?: string`. Entry-Aktivitäten werden als Name-String referenziert.
+- `PseudostateKind` mit 10 UML-Werten → `kind: "initial" | "false" | "true" | "simple" | "final"`. Nur die für DEMO und MERODE relevanten Zustände sind definiert.
+
+Das Aktivitätsdiagramm (drittes Teil des pimUML-Metamodells) wird durch das vereinfachte `PimActivity`-Konstrukt (`kind` + `effects`) approximiert — komplexe Kontrollflüsse innerhalb von Aktivitäten sind bewusst ausgeklammert, da sie auf Mendix-Ebene nicht generierbar sind ohne einen eigenen Ausdrucks-Parser. Siehe auch DD3 in DESIGN_DECISIONS.md.
+
 ### Konfigurationsabhängigkeit bei PIM-Quellagenten
 
 Der `pim-to-mendix-agent` abonniert PIM-Topics von den Agenten, die in der Umgebungsvariable `PIM_PUBLISHER_AGENT_IDS` aufgelistet sind. Wenn ein dritter Agent hinzugefügt wird, muss diese Variable aktualisiert werden. Das ist eine Konfigurationsänderung, kein Codechange, aber der nachgelagerte Agent ist dadurch nicht vollständig oblivious gegenüber der Menge der vorgelagerten Agenten. Für das Extensibilitätskriterium ist das ein Grenzfall, der in EXTENSIBILITY_EVIDENCE.md diskutiert wird.
