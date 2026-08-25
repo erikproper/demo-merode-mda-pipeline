@@ -22,12 +22,12 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     .filter(vt => vt.kind === "categorical")
     .map(vt => {
       trace.push({ sourceType: "ValueType", sourceName: vt.name, targetType: "Enumeration", targetName: vt.name });
-      return { name: vt.name, literals: vt.literals! };
+      return { name: vt.name, literals: vt.literals ?? [] };
     });
 
-  // non-categorical value types with event + entity relation -> association classes (A8)
+  // association-class value types (kind "associationClass") -> AssociationClass in pimUML (A8)
   const associationClasses = (demo.valueTypes ?? [])
-    .filter(vt => vt.kind === "nonCategorical" && vt.triggerEventType && vt.relatesEntityTypes)
+    .filter(vt => vt.kind === "associationClass")
     .map(vt => {
       trace.push({ sourceType: "ValueType", sourceName: vt.name, targetType: "AssociationClass", targetName: vt.name });
       const [e0, e1] = vt.relatesEntityTypes!;
@@ -48,7 +48,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
 
   // non-categorical value types -> user-defined data types (A2)
   const dataTypes = (demo.valueTypes ?? [])
-    .filter(vt => vt.kind === "nonCategorical" && !vt.triggerEventType)
+    .filter(vt => vt.kind === "nonCategorical")
     .map(vt => {
       trace.push({ sourceType: "ValueType", sourceName: vt.name, targetType: "DataType", targetName: vt.name });
       return { name: vt.name };

@@ -2,7 +2,7 @@
 
 export interface DemoValueType {
   name: string;
-  kind: "categorical" | "nonCategorical";
+  kind: "categorical" | "nonCategorical" | "associationClass";
   literals?: string[];
   triggerEventType?: string;
   relatesEntityTypes?: [string, string];
@@ -55,7 +55,7 @@ export interface DemoModel {
 
 export interface MerodeDomainType {
   name: string;
-  kind: "categorical" | "nonCategorical";
+  kind: "categorical" | "nonCategorical" | "associationClass";
   literals?: string[];
 }
 

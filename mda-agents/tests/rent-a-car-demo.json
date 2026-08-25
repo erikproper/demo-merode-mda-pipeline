@@ -1,11 +1,11 @@
 {
   "name": "Rent-A-Car (DEMO)",
   "valueTypes": [
-    { "name": "CarGroup",    "kind": "categorical",    "literals": ["economy", "compact", "luxury"] },
+    { "name": "CarGroup",    "kind": "categorical" },
     { "name": "MoneyAmount", "kind": "nonCategorical" },
     {
       "name": "BookingDetail",
-      "kind": "nonCategorical",
+      "kind": "associationClass",
       "triggerEventType": "rentalStarted",
       "relatesEntityTypes": ["Rental", "Car"],
       "attributes": [
@@ -24,13 +24,6 @@
       ]
     },
     {
-      "name": "Vehicle",
-      "isAbstract": true,
-      "attributes": [
-        { "name": "licensePlate", "valueType": "String" }
-      ]
-    },
-    {
       "name": "SpecialCar",
       "parent": "Car",
       "triggerEventType": "carRegistered"
@@ -45,7 +38,6 @@
     {
       "name": "PremiumCustomer",
       "isDerived": true,
-      "derivationExpression": "Person.rentals->size() > 10",
       "parent": "Person"
     },
     {
@@ -54,7 +46,7 @@
         { "name": "startingDay",  "valueType": "String"      },
         { "name": "endingDay",    "valueType": "String"      },
         { "name": "totalAmount",  "valueType": "MoneyAmount" },
-        { "name": "totalDays",    "valueType": "Integer", "derivationRule": "self.endingDay - self.startingDay" }
+        { "name": "totalDays",    "valueType": "Integer", "derivationRule": "endingDay - startingDay" }
       ]
     },
     {

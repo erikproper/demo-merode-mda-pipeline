@@ -40,7 +40,7 @@
       "additionalProperties": false,
       "properties": {
         "name":               { "type": "string" },
-        "kind":               { "type": "string", "enum": ["categorical", "nonCategorical"] },
+        "kind":               { "type": "string", "enum": ["categorical", "nonCategorical", "associationClass"] },
         "literals":           { "type": "array", "items": { "type": "string" }, "minItems": 1 },
         "triggerEventType":   { "type": "string" },
         "relatesEntityTypes": {
