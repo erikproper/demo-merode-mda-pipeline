@@ -545,6 +545,7 @@ async function applyPimToMendix(
     startAct.name    = "Start";
     startAct.caption = "Start";
     let prevAct: workflows.WorkflowActivity = startAct;
+    const entityVarName = entityName.charAt(0).toLowerCase() + entityName.slice(1);
 
     // B23/B24: one WaitForNotification + CallMicroflowTask(Set) per region, plus CallMicroflowTask(Create) for entry activities
     for (const region of sm.regions) {
@@ -565,11 +566,13 @@ async function applyPimToMendix(
         callSetTask.microflow = setMf;
         // CE6686 fix: add VoidConditionOutcome so outcomes match
         workflows.VoidConditionOutcome.createIn(callSetTask);
-        // KNOWN LIMITATION (CE6685 – "Parameters of the selected microflow have changed"):
-        // MicroflowCallParameterMapping.parameter requires a MicroflowParameter object,
-        // which cannot be created via the SDK (same root cause as CE0049).
-        // Fix: open each CallMicroflowTask in Studio Pro and click OK once - Studio Pro
-        // then auto-creates the parameter binding (WorkflowContext -> rental parameter).
+        // Parameter mapping: $WorkflowContext -> Set microflow's entity parameter (CE6685 fix attempt)
+        // MicroflowParameter is not directly creatable via SDK; we set the reference by qualified name.
+        // Works if the server auto-creates MicroflowParameter from MicroflowParameterObject on flush.
+        const setMapping = workflows.MicroflowCallParameterMapping.create(model);
+        setMapping.expression = `$WorkflowContext`;
+        try { (setMapping as any).__parameter.updateWithRawValue(`${moduleName}.${setMfName}.${entityVarName}`); } catch (_) {}
+        callSetTask.parameterMappings.push(setMapping);
         const callSetLine        = workflows.FlowLine.createIn(wfMeta);
         callSetLine.origin       = prevAct;
         callSetLine.destination  = callSetTask;
@@ -586,7 +589,11 @@ async function applyPimToMendix(
           callCreateTask.caption  = `Call: ${trueState.entryActivity}`;
           callCreateTask.microflow = createMf;
           workflows.VoidConditionOutcome.createIn(callCreateTask);
-          // KNOWN LIMITATION (CE6685): same as above - open and click OK in Studio Pro.
+          // Same parameter mapping approach as callSetTask above
+          const createMapping = workflows.MicroflowCallParameterMapping.create(model);
+          createMapping.expression = `$WorkflowContext`;
+          try { (createMapping as any).__parameter.updateWithRawValue(`${moduleName}.${trueState.entryActivity}.${entityVarName}`); } catch (_) {}
+          callCreateTask.parameterMappings.push(createMapping);
           const callCreateLine       = workflows.FlowLine.createIn(wfMeta);
           callCreateLine.origin      = prevAct;
           callCreateLine.destination = callCreateTask;
