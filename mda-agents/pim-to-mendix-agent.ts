@@ -41,6 +41,7 @@ function makeAttributeType(
   }
 }
 
+// Used for microflows
 function makeParameterType(
   typeName: string | undefined,
   model: IModel,
@@ -134,7 +135,7 @@ async function applyPimToMendix(
         console.log(`  ~ derived attribute "${cls.name}.${prop.name}" not mapped - Mendix has no OCL; rule: ${prop.derivationRule}`);
         continue;
       }
-      // Non-categorical DataType as attribute type → deferred Association (B4+B9)
+      // Non-categorical DataType as attribute type -> deferred Association (B4+B9)
       if (prop.type && dataTypeNames.has(prop.type)) {
         deferredDTAssocs.push({ clsName: cls.name, propName: prop.name, dtName: prop.type });
         console.log(`  ~ "${cls.name}.${prop.name}: ${prop.type}" deferred as DataType association (B4+B9)`);
@@ -164,8 +165,8 @@ async function applyPimToMendix(
     }
     const mxAssoc  = domainmodels.Association.createIn(domainModel);
     mxAssoc.name   = `${dt.clsName}_${dt.propName}`;
-    mxAssoc.parent = dtEntity;   // DataType entity is the "one" side
-    mxAssoc.child  = clsEntity;  // Class entity is the "many" side
+    mxAssoc.parent = clsEntity;  // Mendix SDK: parent = many-side (FK holder, shown as *)
+    mxAssoc.child  = dtEntity;   // Mendix SDK: child  = one-side  (referenced, shown as 1)
     mxAssoc.owner  = domainmodels.AssociationOwner.Both;
     console.log(`  + DataType association "${dt.clsName}_${dt.propName}": ${dt.clsName} -> ${dt.dtName}`);
   }
@@ -189,8 +190,10 @@ async function applyPimToMendix(
       if (!related) { console.warn(`  skipping association class end "${end.type}" - entity not found`); continue; }
       const mxAssoc  = domainmodels.Association.createIn(domainModel);
       mxAssoc.name   = `${ac.name}_${end.type}`;
-      mxAssoc.parent = related;
-      mxAssoc.child  = acEntity;
+      // Mendix SDK: parent = many-side, child = one-side
+      // acEntity (e.g. BookingDetail) is the many-side; each related entity can have many AC instances
+      mxAssoc.parent = acEntity;
+      mxAssoc.child  = related;
     }
 
     console.log(`  + association class "${ac.name}" [trigger: ${ac.triggerEvent}] approximated as entity + associations (Mendix has no association class concept)`);
@@ -215,28 +218,29 @@ async function applyPimToMendix(
     const end0 = assoc.memberEnds[0];
     const end1 = assoc.memberEnds[1];
 
-    // parent = the "one" side (upper === 1), child = the "many" side (upper === "*")
-    const [parentEnd, childEnd] = end0.upper === "*" ? [end1, end0] : [end0, end1];
+    // oneEnd = the "1" side, manyEnd = the "*" side
+    const [oneEnd, manyEnd] = end0.upper === "*" ? [end1, end0] : [end0, end1];
 
-    const parentEntity = entityMap.get(parentEnd.type);
-    const childEntity  = entityMap.get(childEnd.type);
+    const oneEntity  = entityMap.get(oneEnd.type);
+    const manyEntity = entityMap.get(manyEnd.type);
 
-    if (!parentEntity || !childEntity) {
+    if (!oneEntity || !manyEntity) {
       console.warn(`  skipping association "${assoc.name}" - entity not found`);
       continue;
     }
 
     const mxAssoc  = domainmodels.Association.createIn(domainModel);
     mxAssoc.name   = assoc.name;
-    mxAssoc.parent = parentEntity;
-    mxAssoc.child  = childEntity;
+    // Mendix SDK: parent = many-side (FK holder, shown as *), child = one-side (referenced, shown as 1)
+    mxAssoc.parent = manyEntity;
+    mxAssoc.child  = oneEntity;
     if (assoc.isAggregation || assoc.isDerived || assoc.triggerEvent) {
       mxAssoc.owner = domainmodels.AssociationOwner.Both;
     }
     associationMap.set(assoc.name, mxAssoc);
     const kind = assoc.isDerived ? "derived association" : assoc.triggerEvent ? "event-triggered association" : assoc.isAggregation ? "aggregation" : "association";
     const note = assoc.derivationExpression ? ` [rule: ${assoc.derivationExpression}]` : assoc.triggerEvent ? ` [trigger: ${assoc.triggerEvent}] (state machine behavior NotMapped)` : "";
-    console.log(`  + ${kind} "${assoc.name}": ${parentEnd.type} -> ${childEnd.type}${note}`);
+    console.log(`  + ${kind} "${assoc.name}": ${manyEnd.type}(*) -> ${oneEnd.type}(1)${note}`);
   }
 
   // B13: for each MERODE sequential FSM, generate <Entity>_Status enum + status attribute
