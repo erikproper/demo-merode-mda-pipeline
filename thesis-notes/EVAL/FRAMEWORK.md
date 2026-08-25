@@ -30,86 +30,230 @@ In der dritten Phase werden die Ausgabeelemente klassifiziert. Für jede Ground-
 
 Daraus ergeben sich die Metriken: Completeness = C / (C + M + I), Validity = C / (C + I + Added_unjustified), Schema Validation Rate = immer 100% oder die Pipeline bricht ab, Traceability Coverage = Elemente mit Trace-Links / (alle Elemente ausgenommen explizit NotMapped).
 
+Alle Klassifikationen hier basieren auf statischer Code-Analyse von `merode-to-pim-agent.ts` und `demo-to-pim-agent.ts` gegen die Fixtures. Vor der formalen Abgabe müssen sie gegen tatsächliche Pipeline-Ausgabe verifiziert werden.
+
 ---
 
 ## 2. Ground Truth: Rent-A-Car MERODE
 
 Quellmodell: `mda-agents/tests/rent-a-car-merode.json`
+Agent: `merode-to-pim-agent.ts`, Regeln M1–M9.
 
-### Objekttypen (M1, M2)
+### Domänentypen (M3)
 
-| Aussage | Erwartete PIM-Ausgabe | Klassifikation |
-|---------|----------------------|----------------|
-| ObjectType: Rental | Class "Rental" + Property "RentalID" (Integer, isID) | noch zu prüfen |
-| ObjectType: Car | Class "Car" + Property "CarID" (Integer, isID) | noch zu prüfen |
-| ObjectType: Person | Class "Person" + Property "PersonID" (Integer, isID) | noch zu prüfen |
-| Attribut: Rental.startingDay (String) | Property "startingDay" auf Rental | noch zu prüfen |
-| Attribut: Rental.endingDay (String) | Property "endingDay" auf Rental | noch zu prüfen |
-| Attribut: Car.licensePlate (String) | Property "licensePlate" auf Car | noch zu prüfen |
-| Attribut: Person.name (String) | Property "name" auf Person | noch zu prüfen |
+| # | Atomare Quellaussage | Erwartete PIM-Ausgabe | Klassifikation |
+|---|---------------------|-----------------------|----------------|
+| M3-1 | DomainType: FuelType (categorical, literals: petrol/diesel/electric) | Enumeration "FuelType" mit 3 Literalen | Correct |
+| M3-2 | DomainType: PaymentMethod (categorical, literals: cash/creditCard/bankTransfer) | Enumeration "PaymentMethod" mit 3 Literalen | Correct |
+| M3-3 | DomainType: MoneyAmount (non-categorical) | DataType "MoneyAmount" | Correct |
+
+### Objekttypen und Attribute (M1, M2)
+
+| # | Atomare Quellaussage | Erwartete PIM-Ausgabe | Klassifikation |
+|---|---------------------|-----------------------|----------------|
+| M1-1 | ObjectType: Car | Class "Car" + Property "CarID" (Integer, isID) | Correct |
+| M1-2 | ObjectType: Person | Class "Person" + Property "PersonID" (Integer, isID) | Correct |
+| M1-3 | ObjectType: Rental | Class "Rental" + Property "RentalID" (Integer, isID) | Correct |
+| M1-4 | ObjectType: RentalLine | Class "RentalLine" + Property "RentalLineID" (Integer, isID) | Correct |
+| M2-1 | Attribut: Car.licensePlate (String) | Property "licensePlate" auf Car | Correct |
+| M2-2 | Attribut: Car.fuelType (FuelType) | Property "fuelType" (type: "FuelType") auf Car | Correct |
+| M2-3 | Attribut: Car.mileage (Integer) | Property "mileage" auf Car | Correct |
+| M2-4 | Attribut: Person.fullName (String) | Property "fullName" auf Person | Correct |
+| M2-5 | Attribut: Person.email (String) | Property "email" auf Person | Correct |
+| M2-6 | Attribut: Person.preferredPayment (PaymentMethod) | Property "preferredPayment" (type: "PaymentMethod") auf Person | Correct |
+| M2-7 | Attribut: Rental.startingDay (String) | Property "startingDay" auf Rental | Correct |
+| M2-8 | Attribut: Rental.endingDay (String) | Property "endingDay" auf Rental | Correct |
+| M2-9 | Attribut: Rental.totalAmount (MoneyAmount) | Property "totalAmount" (type: "MoneyAmount") auf Rental | Correct |
+| M2-10 | Attribut: RentalLine.quantity (Integer) | Property "quantity" auf RentalLine | Correct |
+| M2-11 | Attribut: RentalLine.description (String) | Property "description" auf RentalLine | Correct |
 
 ### Existenzabhängigkeiten (M4)
 
-| Aussage | Erwartete PIM-Ausgabe | Klassifikation |
-|---------|----------------------|----------------|
-| ExistenceDependency: Rental zu Car (0..* : 1..1) | Association "RentalDependsOnCar" mit korrekten Multiplizitäten | noch zu prüfen |
-| ExistenceDependency: Rental zu Person (0..* : 1..1) | Association "RentalDependsOnPerson" mit korrekten Multiplizitäten | noch zu prüfen |
+| # | Atomare Quellaussage | Erwartete PIM-Ausgabe | Klassifikation |
+|---|---------------------|-----------------------|----------------|
+| M4-1 | ExistenceDependency: RentalDependsOnCar (Rental 0..* → Car 1..1) | Association "RentalDependsOnCar", memberEnds: dependent(Rental,0..*) / master(Car,1..1) | Correct |
+| M4-2 | ExistenceDependency: RentalDependsOnPerson (Rental 0..* → Person 1..1) | Association "RentalDependsOnPerson", memberEnds: dependent(Rental,0..*) / master(Person,1..1) | Correct |
+| M4-3 | ExistenceDependency: RentalLineDependsOnRental (RentalLine 0..* → Rental 1..1) | Association "RentalLineDependsOnRental", memberEnds: dependent(RentalLine,0..*) / master(Rental,1..1) | Correct |
 
-### Geschäftsereignistypen und Lebenszyklus (M5-M8)
+### Geschäftsereignistypen und Lebenszyklus (M5–M8)
 
-| Aussage | Erwartete PIM-Ausgabe | Klassifikation |
-|---------|----------------------|----------------|
-| BET: startRental, Rolle C für Rental | SM_Rental: Übergang __initial nach active, Trigger startRental | noch zu prüfen |
-| BET: completeRental, Rolle E für Rental | SM_Rental: Übergang active nach __final, Trigger completeRental | noch zu prüfen |
-| BET: registerCar, Rolle C für Car | SM_Car: Übergang __initial nach registered, Trigger registerCar | noch zu prüfen |
-| BET: registerPerson, Rolle C für Person | SM_Person: Übergang __initial nach registered, Trigger registerPerson | noch zu prüfen |
-| Lebenszyklus: Rental hat Zustand "active" | SM_Rental: State {name:"active", kind:"simple"} | noch zu prüfen |
-| Lebenszyklus: Car hat Zustand "registered" | SM_Car: State {name:"registered", kind:"simple"} | noch zu prüfen |
-| Lebenszyklus: Person hat Zustand "registered" | SM_Person: State {name:"registered", kind:"simple"} | noch zu prüfen |
+| # | Atomare Quellaussage | Erwartete PIM-Ausgabe | Klassifikation |
+|---|---------------------|-----------------------|----------------|
+| M5-1 | BET: registerCar, C-Rolle für Car | SM_Car: Übergang `__initial → registered`, Trigger registerCar; Activity Create_Car | Correct |
+| M5-2 | BET: registerPerson, C-Rolle für Person | SM_Person: Übergang `__initial → registered`, Trigger registerPerson; Activity Create_Person | Correct |
+| M5-3 | BET: startRental, C-Rolle für Rental | SM_Rental: Übergang `__initial → active`, Trigger startRental; Activity Create_Rental | Correct |
+| M5-4 | BET: addRentalLine, C-Rolle für RentalLine | SM_RentalLine: Übergang `__initial → active`, Trigger addRentalLine; Activity Create_RentalLine | Correct |
+| M7-1 | BET: updateCarMileage, M-Rolle für Car, effect: mileage (Integer) | SM_Car: Self-Transition `registered → registered`, Trigger updateCarMileage; Activity Set_Car_updateCarMileage mit typisiertem Effect | Correct |
+| M7-2 | BET: updatePersonDetails, M-Rolle für Person, effects: fullName (String), email (String) | SM_Person: Self-Transition `registered → registered`, Trigger updatePersonDetails; Activity Set_Person_updatePersonDetails mit 2 Effects | Correct |
+| M7-3 | BET: extendRental, M-Rolle für Rental, effect: endingDay (String) | SM_Rental: Self-Transition `active → active`, Trigger extendRental; Activity Set_Rental_extendRental mit typisiertem Effect | Correct |
+| M7-4 | BET: updateRentalLine, M-Rolle für RentalLine, effects: quantity (Integer), description (String) | SM_RentalLine: Self-Transition `active → active`, Trigger updateRentalLine; Activity Set_RentalLine_updateRentalLine mit 2 Effects | Correct |
+| M8-1 | BET: deregisterCar, E-Rolle für Car | SM_Car: Übergang `registered → __final`, Trigger deregisterCar; Activity End_Car | Correct |
+| M8-2 | BET: deregisterPerson, E-Rolle für Person | SM_Person: Übergang `registered → __final`, Trigger deregisterPerson; Activity End_Person | Correct |
+| M8-3 | BET: completeRental, E-Rolle für Rental | SM_Rental: Übergang `active → __final`, Trigger completeRental; Activity End_Rental | Correct |
+| M8-4 | BET: removeRentalLine, E-Rolle für RentalLine | SM_RentalLine: Übergang `active → __final`, Trigger removeRentalLine; Activity End_RentalLine | Correct |
+| LC-1 | Lebenszyklus: Car hat Zustand "registered" | SM_Car: State {name:"registered", kind:"simple"} | Correct |
+| LC-2 | Lebenszyklus: Person hat Zustand "registered" | SM_Person: State {name:"registered", kind:"simple"} | Correct |
+| LC-3 | Lebenszyklus: Rental hat Zustand "active" | SM_Rental: State {name:"active", kind:"simple"} | Correct |
+| LC-4 | Lebenszyklus: RentalLine hat Zustand "active" | SM_RentalLine: State {name:"active", kind:"simple"} | Correct |
 
-### Propagierte Ereignisse (M9, transitive Propagierung implementiert)
+### Propagierte Ereignisse (M9 – transitive Propagierung über EDG)
 
-M9 ist implementiert mit vollständigem transitivem Abschluss des EDG. Alle A/M-Einträge werden korrekt abgeleitet:
+Transitive Abhängigkeitshülle: Car → [Rental, RentalLine]; Person → [Rental, RentalLine]; Rental → [RentalLine]. Alle Ereignisse der Dependents werden als Self-Transitionen in den Master-SMs materialisiert.
 
-| Aussage | Erwartete PIM-Ausgabe | Erwartete Klassifikation |
-|---------|----------------------|--------------------------|
-| BET: startRental, A/M für Car (1-hop) | Self-Transition in SM_Car, trigger=startRental | Correct |
-| BET: startRental, A/M für Person (1-hop) | Self-Transition in SM_Person, trigger=startRental | Correct |
-| BET: completeRental, A/M für Car (1-hop) | Self-Transition in SM_Car, trigger=completeRental | Correct |
-| BET: completeRental, A/M für Person (1-hop) | Self-Transition in SM_Person, trigger=completeRental | Correct |
-| BET: addRentalLine, A/M für Rental (1-hop) | Self-Transition in SM_Rental, trigger=addRentalLine | Correct |
-| BET: updateRentalLine, A/M für Rental (1-hop) | Self-Transition in SM_Rental, trigger=updateRentalLine | Correct |
-| BET: removeRentalLine, A/M für Rental (1-hop) | Self-Transition in SM_Rental, trigger=removeRentalLine | Correct |
-| BET: addRentalLine, A/M für Car (2-hop via Rental) | Self-Transition in SM_Car, trigger=addRentalLine | Correct |
-| BET: updateRentalLine, A/M für Car (2-hop via Rental) | Self-Transition in SM_Car, trigger=updateRentalLine | Correct |
-| BET: removeRentalLine, A/M für Car (2-hop via Rental) | Self-Transition in SM_Car, trigger=removeRentalLine | Correct |
-| BET: addRentalLine, A/M für Person (2-hop via Rental) | Self-Transition in SM_Person, trigger=addRentalLine | Correct |
-| BET: updateRentalLine, A/M für Person (2-hop via Rental) | Self-Transition in SM_Person, trigger=updateRentalLine | Correct |
-| BET: removeRentalLine, A/M für Person (2-hop via Rental) | Self-Transition in SM_Person, trigger=removeRentalLine | Correct |
+| # | Atomare Quellaussage (A/M-Beteiligung laut EDG) | Erwartete PIM-Ausgabe | Klassifikation |
+|---|------------------------------------------------|-----------------------|----------------|
+| M9-1 | startRental: A/M für Car (1-hop: Rental depends on Car) | Self-Transition `registered → registered` in SM_Car, trigger=startRental | Correct |
+| M9-2 | startRental: A/M für Person (1-hop: Rental depends on Person) | Self-Transition `registered → registered` in SM_Person, trigger=startRental | Correct |
+| M9-3 | extendRental: A/M für Car (1-hop) | Self-Transition `registered → registered` in SM_Car, trigger=extendRental | Correct |
+| M9-4 | extendRental: A/M für Person (1-hop) | Self-Transition `registered → registered` in SM_Person, trigger=extendRental | Correct |
+| M9-5 | completeRental: A/M für Car (1-hop) | Self-Transition `registered → registered` in SM_Car, trigger=completeRental | Correct |
+| M9-6 | completeRental: A/M für Person (1-hop) | Self-Transition `registered → registered` in SM_Person, trigger=completeRental | Correct |
+| M9-7 | addRentalLine: A/M für Rental (1-hop: RentalLine depends on Rental) | Self-Transition `active → active` in SM_Rental, trigger=addRentalLine | Correct |
+| M9-8 | updateRentalLine: A/M für Rental (1-hop) | Self-Transition `active → active` in SM_Rental, trigger=updateRentalLine | Correct |
+| M9-9 | removeRentalLine: A/M für Rental (1-hop) | Self-Transition `active → active` in SM_Rental, trigger=removeRentalLine | Correct |
+| M9-10 | addRentalLine: A/M für Car (2-hop: via Rental) | Self-Transition `registered → registered` in SM_Car, trigger=addRentalLine | Correct |
+| M9-11 | updateRentalLine: A/M für Car (2-hop) | Self-Transition `registered → registered` in SM_Car, trigger=updateRentalLine | Correct |
+| M9-12 | removeRentalLine: A/M für Car (2-hop) | Self-Transition `registered → registered` in SM_Car, trigger=removeRentalLine | Correct |
+| M9-13 | addRentalLine: A/M für Person (2-hop: via Rental) | Self-Transition `registered → registered` in SM_Person, trigger=addRentalLine | Correct |
+| M9-14 | updateRentalLine: A/M für Person (2-hop) | Self-Transition `registered → registered` in SM_Person, trigger=updateRentalLine | Correct |
+| M9-15 | removeRentalLine: A/M für Person (2-hop) | Self-Transition `registered → registered` in SM_Person, trigger=removeRentalLine | Correct |
 
 ### Hilfsstrukturen (Added_justified)
 
-Diese erscheinen in der PIM-Ausgabe ohne direktes Gegenstück im Quellmodell, sind aber strukturell notwendig:
-
 | Hinzugefügtes Element | Begründung |
 |----------------------|-----------|
-| Zustand `__initial` in jeder SM | Vom pimUML-StateMachine-Format geforderter initialer Pseudozustand |
+| Pseudozustand `__initial` in jeder SM | Vom pimUML-StateMachine-Format geforderter initialer Pseudozustand |
 | Zustand `__final` in jeder SM | Vom pimUML-StateMachine-Format geforderter finaler Zustand |
-| Region "lifecycle" in jeder SM | Notwendiger Wrapper für Zustände und Übergänge |
+| Region "lifecycle" in jeder SM | Notwendiger Wrapper für Zustände und Übergänge (kein forEvent, da MERODE-SM) |
+| Activity Create_<OT> für C-Events | Semantisches Äquivalent des C-Ereignisses auf Aktivitätsebene; notwendig für Mendix-Microflow-Generierung |
+| Activity Set_<OT>_<evt> für M-Events | Semantisches Äquivalent des M-Ereignisses; notwendig für B15-Microflow-Generierung |
+| Activity End_<OT> für E-Events | Semantisches Äquivalent des E-Ereignisses; notwendig für B16-Microflow-Generierung |
 
 Diese zählen als Added_justified und werden nicht als Validitätsfehler gewertet.
+
+### MERODE Zusammenfassung
+
+Gesamt-Quellaussagen: 3 (M3) + 4 (M1) + 11 (M2) + 3 (M4) + 12 (M5–M8) + 4 (LC) + 15 (M9) = **52**
+
+| Metrik | Wert |
+|--------|------|
+| Correct (C) | 52 |
+| Missing (M) | 0 |
+| Incorrect (I) | 0 |
+| **Completeness** = C/(C+M+I) | **100 %** |
+| Added_unjustified | 0 |
+| **Validity** = C/(C+I+Added_unjustified) | **100 %** |
 
 ---
 
 ## 3. Ground Truth: Rent-A-Car DEMO
 
 Quellmodell: `mda-agents/tests/rent-a-car-demo.json`
+Agent: `demo-to-pim-agent.ts`, Regeln A1–A12.
 
-Dieser Abschnitt wird beim Durchführen der Regressionsevaluation ausgefüllt. Die DEMO-Evaluation folgt derselben Struktur wie Bzowskis Tabelle 10.1.
+### Werttypen (A1, A2, A8)
 
-Zu evaluierende Aussagen: EntityTypes (A3), Car, Person, Rental (zu Classes mit IDs), FactTypes und Assoziationen (A12), EventTypes (A6) mit booleschen Regionen in FSMs, AttributeTypes (A5) auf den Entitätstypen.
+| # | Atomare Quellaussage | Erwartete PIM-Ausgabe | Klassifikation |
+|---|---------------------|-----------------------|----------------|
+| A1-1 | ValueType: CarGroup (categorical, literals: economy/compact/luxury) | Enumeration "CarGroup" mit 3 Literalen | Correct |
+| A2-1 | ValueType: MoneyAmount (non-categorical, kein triggerEvent) | DataType "MoneyAmount" | Correct |
+| A8-1 | ValueType: BookingDetail (non-categorical, triggerEvent=rentalStarted, relates: Rental, Car) | AssociationClass "BookingDetail", memberEnds: rental(Rental,0..*)/car(Car,0..*), triggerEvent: rentalStarted | Correct |
+| A8-2 | Attribut: BookingDetail.pricePerDay (Integer) | Property "pricePerDay" (Integer) auf BookingDetail | Correct |
+| A8-3 | Attribut: BookingDetail.notes (String) | Property "notes" (String) auf BookingDetail | Correct |
 
-Erwartetes Ergebnis: alle vorher korrekt funktionierenden DEMO-Elemente bleiben nach den MERODE-Ergänzungen als Correct klassifiziert. Jede Regression wäre kritisch.
+### Entitätstypen und Attribute (A3, A5)
+
+| # | Atomare Quellaussage | Erwartete PIM-Ausgabe | Klassifikation |
+|---|---------------------|-----------------------|----------------|
+| A3-1 | EntityType: Car | Class "Car" + Property "CarID" (Integer, isID) | Correct |
+| A3-2 | EntityType: Vehicle (isAbstract) | Class "Vehicle" (isAbstract: true) + Property "VehicleID" (Integer, isID) | Correct |
+| A3-3 | EntityType: SpecialCar (parent=Car, triggerEvent – kein isDerived) | Class "SpecialCar" + Property "SpecialCarID" (Integer, isID); ID via A3 da !isDerived | Correct |
+| A3-4 | EntityType: Person | Class "Person" + Property "PersonID" (Integer, isID) | Correct |
+| A3-5 | EntityType: PremiumCustomer (isDerived, parent=Person) | Class "PremiumCustomer" (isDerived: true); ID erst via A9 zugewiesen | Correct |
+| A3-6 | EntityType: Rental | Class "Rental" + Property "RentalID" (Integer, isID) | Correct |
+| A3-7 | EntityType: ActiveRental (parent=Rental, triggerEvent – kein isDerived) | Class "ActiveRental" + Property "ActiveRentalID" (Integer, isID) | Correct |
+| A3-8 | EntityType: RentalLine | Class "RentalLine" + Property "RentalLineID" (Integer, isID) | Correct |
+| A5-1 | Attribut: Car.licensePlate (String) | Property "licensePlate" auf Car | Correct |
+| A5-2 | Attribut: Car.group (CarGroup) | Property "group" (type: "CarGroup") auf Car | Correct |
+| A5-3 | Attribut: Car.mileage (Integer) | Property "mileage" auf Car | Correct |
+| A5-4 | Attribut: Vehicle.licensePlate (String) | Property "licensePlate" auf Vehicle | Correct |
+| A5-5 | Attribut: Person.fullName (String) | Property "fullName" auf Person | Correct |
+| A5-6 | Attribut: Person.email (String) | Property "email" auf Person | Correct |
+| A5-7 | Attribut: Rental.startingDay (String) | Property "startingDay" auf Rental | Correct |
+| A5-8 | Attribut: Rental.endingDay (String) | Property "endingDay" auf Rental | Correct |
+| A5-9 | Attribut: Rental.totalAmount (MoneyAmount) | Property "totalAmount" (type: "MoneyAmount") auf Rental | Correct |
+| A5-10 | Attribut: Rental.totalDays (Integer, derivationRule: "self.endingDay - self.startingDay") | DerivedProperty "totalDays" (isDerived: true, derivationRule gesetzt) auf Rental | Correct |
+| A5-11 | Attribut: RentalLine.quantity (Integer) | Property "quantity" auf RentalLine | Correct |
+| A5-12 | Attribut: RentalLine.description (String) | Property "description" auf RentalLine | Correct |
+
+### Ereignistypen → Boolesche Attribute (A6)
+
+| # | Atomare Quellaussage | Erwartete PIM-Ausgabe | Klassifikation |
+|---|---------------------|-----------------------|----------------|
+| A6-1 | EventType: carRegistered (für Car) | Property "carRegistered" (Boolean, defaultValue: "false") auf Car | Correct |
+| A6-2 | EventType: mileageUpdated (für Car) | Property "mileageUpdated" (Boolean, defaultValue: "false") auf Car | Correct |
+| A6-3 | EventType: carDeregistered (für Car) | Property "carDeregistered" (Boolean, defaultValue: "false") auf Car | Correct |
+| A6-4 | EventType: personRegistered (für Person) | Property "personRegistered" (Boolean, defaultValue: "false") auf Person | Correct |
+| A6-5 | EventType: personUpdated (für Person) | Property "personUpdated" (Boolean, defaultValue: "false") auf Person | Correct |
+| A6-6 | EventType: personRemoved (für Person) | Property "personRemoved" (Boolean, defaultValue: "false") auf Person | Correct |
+| A6-7 | EventType: rentalStarted (für Rental) | Property "rentalStarted" (Boolean, defaultValue: "false") auf Rental | Correct |
+| A6-8 | EventType: rentalExtended (für Rental) | Property "rentalExtended" (Boolean, defaultValue: "false") auf Rental | Correct |
+| A6-9 | EventType: rentalCompleted (für Rental) | Property "rentalCompleted" (Boolean, defaultValue: "false") auf Rental | Correct |
+| A6-10 | EventType: rentalLineAdded (für RentalLine) | Property "rentalLineAdded" (Boolean, defaultValue: "false") auf RentalLine | Correct |
+| A6-11 | EventType: rentalLineUpdated (für RentalLine) | Property "rentalLineUpdated" (Boolean, defaultValue: "false") auf RentalLine | Correct |
+| A6-12 | EventType: rentalLineRemoved (für RentalLine) | Property "rentalLineRemoved" (Boolean, defaultValue: "false") auf RentalLine | Correct |
+
+### Faktentypen → Assoziationen (A11, A12)
+
+| # | Atomare Quellaussage | Erwartete PIM-Ausgabe | Klassifikation |
+|---|---------------------|-----------------------|----------------|
+| A11-1 | FactType: RentalHasLines (Aggregation, Rental 1..1 / RentalLine 0..*) | Association "RentalHasLines" (isAggregation: true), memberEnds: rental(Rental,1..1)/rentalLine(RentalLine,0..*); A11: Property "rentalLineID" (Integer) auf Rental hinzugefügt | Correct |
+| A12-1 | FactType: RentalInvolvesCar (Rental 0..* / Car 1..1) | Association "RentalInvolvesCar", memberEnds: rental(Rental,0..*)/car(Car,1..1) | Correct |
+| A12-2 | FactType: RentalMadeByPerson (Rental 0..* / Person 1..1) | Association "RentalMadeByPerson", memberEnds: rental(Rental,0..*)/renter(Person,1..1) | Correct |
+
+### Spezialisierungen (A7, A9, A10)
+
+| # | Atomare Quellaussage | Erwartete PIM-Ausgabe | Klassifikation |
+|---|---------------------|-----------------------|----------------|
+| A7-1 | SpecialCar: parent=Car, triggerEventType=carRegistered | EventTriggeredAssociation "SpecialCarIsACar", triggerEvent: "carRegistered", memberEnds: specialization(SpecialCar,0..*)/parent(Car,1..1) | Correct |
+| A7-2 | ActiveRental: parent=Rental, triggerEventType=rentalStarted | EventTriggeredAssociation "ActiveRentalIsARental", triggerEvent: "rentalStarted", memberEnds: specialization(ActiveRental,0..*)/parent(Rental,1..1) | Correct |
+| A9-1 | PremiumCustomer: isDerived=true, parent=Person, derivationExpression="Person.rentals->size() > 10" | DerivedAssociation "PremiumCustomerIsAPerson" (isDerived: true, derivationExpression gesetzt), memberEnds: derived(PremiumCustomer,0..*)/parent(Person,1..1); Property "PremiumCustomerID" (Integer, isID) auf PremiumCustomer | Correct |
+| A10 | (keine Entity mit parent UND !isDerived UND !triggerEvent im Fixture) | – A10-Regel implementiert, im Rent-A-Car-Fixture nicht aktiviert – | Nicht anwendbar |
+
+### Zustandsmaschinen (A3/A4 – orthogonale Regionen)
+
+| # | Atomare Quellaussage | Erwartete PIM-Ausgabe | Klassifikation |
+|---|---------------------|-----------------------|----------------|
+| SM-1 | Car hat 3 Ereignisse → 3 orthogonale Regionen | SM_Car: Regionen carRegistered/mileageUpdated/carDeregistered; je 3 Zustände ({ev}_initial, {ev}_false, {ev}_true) + 2 Übergänge; carRegistered_true hat entryActivity "CreateSpecialCar" (A7) | Correct |
+| SM-2 | Person hat 3 Ereignisse → 3 orthogonale Regionen | SM_Person: Regionen personRegistered/personUpdated/personRemoved | Correct |
+| SM-3 | Rental hat 3 Ereignisse → 3 orthogonale Regionen | SM_Rental: Regionen rentalStarted/rentalExtended/rentalCompleted; rentalStarted_true hat entryActivity "CreateActiveRental" (A7) | Correct |
+| SM-4 | RentalLine hat 3 Ereignisse → 3 orthogonale Regionen | SM_RentalLine: Regionen rentalLineAdded/rentalLineUpdated/rentalLineRemoved | Correct |
+
+### Hilfsstrukturen (Added_justified)
+
+| Hinzugefügtes Element | Begründung |
+|----------------------|-----------|
+| `{ev}_initial`-Pseudozustand in jeder Region | Vom pimUML-StateMachine-Format gefordert (forEvent gesetzt = DEMO-SM) |
+| Activity `Set{ET}_{ev}` für jedes Ereignis | Semantisches Äquivalent im Aktivitätsmodell; notwendig für Mendix-B-Regeln |
+| Activity `Create{Child}` für getriggerte Spezialisierungen | Strukturhelfer für A7-Semantik (CreateSpecialCar, CreateActiveRental) |
+| Activity `Create{Derived}` für abgeleitete Spezialisierungen | Strukturhelfer für A9-Semantik (CreatePremiumCustomer) |
+| SM mit 0 Regionen für Vehicle/SpecialCar/PremiumCustomer/ActiveRental | Immer generiert pro EntityType; leer weil keine Events referenzieren diese |
+| Property "rentalLineID" auf Rental (A11) | Strukturell notwendiger Identifier-Link der Aggregations-Komposition |
+
+### DEMO Zusammenfassung
+
+Gesamt-Quellaussagen: 5 (A1/A2/A8 + Attribute) + 8 (A3 EntityTypes) + 12 (A5 Attribute) + 12 (A6 Events) + 3 (A11/A12 FactTypes) + 3 (A7/A9 Spezialisierungen) + 4 (A3/A4 SMs) = **47**
+
+| Metrik | Wert |
+|--------|------|
+| Correct (C) | 47 |
+| Missing (M) | 0 |
+| Incorrect (I) | 0 |
+| **Completeness** = C/(C+M+I) | **100 %** |
+| Added_unjustified | 0 |
+| **Validity** = C/(C+I+Added_unjustified) | **100 %** |
+
+Hinweis: A10 (nicht-abgeleitete, nicht-getriggerte Generalisierungen) ist implementiert, im Rent-A-Car-DEMO-Fixture aber nicht aktiviert — kein EntityType qualifiziert sich. Das ist eine Lücke in der Testabdeckung, kein Implementierungsfehler.
 
 ---
 
@@ -123,9 +267,9 @@ Nach dem Beheben von CE7247, CE0117 und CW0263 sollte das Modell ohne Fehler öf
 
 ## 5. Traceability Coverage
 
-Das `_trace`-Array in jeder veröffentlichten PIM-Nachricht enthält Trace-Einträge als `{ sourceType, sourceName, targetType, targetName }`. Zur Berechnung der Traceability Coverage: das `_trace`-Array aus der MERODE-PIM-Nachricht extrahieren (aus der MQTT-Retained-Message oder den Konsolenausgaben), Einträge mit `targetType != "NotMapped"` zählen (nachverfolgte Elemente), Einträge mit `targetType == "NotMapped"` zählen (explizit nicht nachverfolgbar, akzeptabel für M9), und Coverage = verfolgt / (verfolgt + nicht verfolgt) berechnen.
+Das `_trace`-Array in jeder veröffentlichten PIM-Nachricht enthält Trace-Einträge als `{ sourceType, sourceName, targetType, targetName }`. Zur Berechnung der Traceability Coverage: das `_trace`-Array aus der MERODE-PIM-Nachricht extrahieren (aus der MQTT-Retained-Message oder den Konsolenausgaben), Einträge mit `targetType != "NotMapped"` zählen (nachverfolgte Elemente), Einträge mit `targetType == "NotMapped"` zählen (explizit nicht nachverfolgbar, akzeptabel für A7-Verweise), und Coverage = verfolgt / (verfolgt + nicht verfolgt) berechnen.
 
-M9 ist implementiert (transitive Propagierung). Alle propagierten Ereignisse erhalten einen Trace-Eintrag (`targetType: "Transition"`, `targetName: "<OT>.<evt> (M9 propagated)"`). Es gibt keine NotMapped-Einträge mehr für propagierte Ereignisse. NotMapped-Einträge entstehen nur noch bei BusinessEventTypes ohne Role-Angabe (kein C/M/E).
+M9 ist implementiert (transitive Propagierung). Alle propagierten Ereignisse erhalten einen Trace-Eintrag (`targetType: "Transition"`, `targetName: "<OT>.<evt> (M9 propagated)"`). Es gibt keine NotMapped-Einträge mehr für propagierte Ereignisse. NotMapped-Einträge entstehen nur noch bei explizit übersprungenen Elementen (z.B. A7-SM-Behavior im DEMO-Agenten).
 
 ---
 
@@ -135,16 +279,14 @@ Das Evaluationskapitel sollte folgende Struktur haben: Versuchsaufbau (Fallstudi
 
 ---
 
-## 7. Erwartete Ergebnisse (Vorab-Schätzung)
+## 7. Erwartete Ergebnisse (Vorab-Schätzung aus statischer Code-Analyse)
 
-Vor der formalen Evaluation eine grobe Einschätzung auf Basis des aktuellen Implementierungsstands.
+Alle Klassifikationen basieren auf einer vollständigen manuellen Durchverfolgung des Agentencodes gegen die Fixtures. Verifizierung gegen tatsächliche Pipeline-Ausgabe steht noch aus und kann Abweichungen aufdecken.
 
-Für DEMO sollten alle vier Metriken nah an Bzowskis Ergebnissen liegen. Jede Abweichung würde als Regression im DEMO-Pfad sichtbar.
+**DEMO (47 Quellaussagen):** Alle 47 Aussagen werden korrekt transformiert (C=47, M=0, I=0). Completeness = 100 %, Validity = 100 %. A10-Regel ist implementiert, aber im Fixture nicht aktiviert (kein A10-qualifizierender EntityType). Dieses Ergebnis deckt sich mit Bzowskis Erwartungen für einen vollständig implementierten A-Regelkanon.
 
-Für MERODE sollte die semantische Vollständigkeit nun nahe 100% liegen, da M9 mit transitivem Abschluss implementiert ist. Die ground-truth-Aussagen umfassen alle OT-Attribute, ExistenzAbhängigkeiten, BETs (O/C, O/M, O/E) und die abgeleiteten A/M-Einträge — alle sind im PIM-Ausgang abgedeckt. Bekannte verbleibende Einschränkung: M7-modifizierte Attribute (z.B. mileage bei updateCarMileage) werden nicht in Mendix gesetzt — nur der Lifecycle-Status. Das ist eine dokumentierte Einschränkung des B15-Microflows.
+**MERODE (52 Quellaussagen):** Alle 52 Aussagen werden korrekt transformiert (C=52, M=0, I=0). Completeness = 100 %, Validity = 100 %. Bekannte Einschränkung: M7-modifizierte Attribute (z.B. `mileage` bei `updateCarMileage`) erscheinen korrekt im PIM mit typisiertem Effect, werden aber im nachgelagerten B15-Microflow nicht auf Mendix-Attribut-Ebene gesetzt — das ist eine dokumentierte B-Regeleinschränkung, keine M-Regeleinschränkung.
 
-Die semantische Validität dürfte hoch sein, möglicherweise 100%, wenn keine falsch transformierten Elemente gefunden werden. Die bekannten Fehler CE7247, CE0117 und CW0263 sind behoben.
+**Schema Validation Rate:** Konstruktionsbedingt 100 % — die Pipeline bricht bei jedem Schemaverstoß ab, bevor sie publiziert.
 
-Die Schema Validation Rate ist konstruktionsbedingt 100%, da die Pipeline bei jedem Validierungsfehler abbricht.
-
-Die Traceability Coverage (ohne NotMapped) dürfte nahe 100% liegen, weil jede implementierte Regel einen Trace-Eintrag erzeugt. Die vier M9-Ereignisse produzieren NotMapped-Einträge.
+**Traceability Coverage:** Nahe 100 %. Einzige NotMapped-Einträge entstehen beim A7-Trace-Eintrag `{ targetType: "NotMapped", targetName: "StateMachineBehavior" }`, der die nicht-übersetzte SM-Trigger-Semantik explizit kennzeichnet. Diese sind semantisch gerechtfertigt.
