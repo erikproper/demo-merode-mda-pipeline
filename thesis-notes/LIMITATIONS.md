@@ -107,6 +107,10 @@ Diese werden dokumentiert, falls Gutachter danach fragen.
 
 **CW0263:** Mendix verlangt mindestens einen sprachspezifischen Caption für jeden Enum-Wert. Die anfängliche Implementierung erstellte Enum-Werte ohne Captions. Behoben durch automatisches Hinzufügen eines englischen Captions (erster Buchstabe großgeschrieben) über `texts.Text.createInEnumerationValueUnderCaption(v)`.
 
+**CE6685** ("Parameters of the selected microflow have changed"): `CallMicroflowTask`-Schritte im generierten Workflow hatten keine `parameterMappings`-Einträge, weil `MicroflowCallParameterMapping.parameter` einen `MicroflowParameter`-Verweis erfordert, der scheinbar nicht per SDK erstellt werden kann. Behoben (2026-08-25) durch: `MicroflowCallParameterMapping.create(model)`, `expression = "$WorkflowContext"`, und `__parameter.updateWithRawValue("Modul.MicroflowName.parameterName")`. Der Mendix-Modellserver erstellt `MicroflowParameter` beim Flush automatisch aus `MicroflowParameterObject` — die Qualified-Name-Referenz löst sich daher korrekt auf.
+
+**Falsche Association-Kardinalität** (Rental(1)→Person(\*) statt Rental(\*)→Person(1)): `mxAssoc.parent` und `mxAssoc.child` waren vertauscht. Im Mendix SDK gilt: `parent` = Many-Seite (FK-Halter, zeigt als \*), `child` = One-Seite (Referenz, zeigt als 1) — entgegen der intuitiven relational-ORM-Konvention. Behoben (2026-08-25) an allen drei Stellen im Agenten (reguläre Associations, DataType-Associations, AssociationClass-Approximationen).
+
 **Wait_undefined im Workflow-Generator:** Der Workflow-Generator versuchte eine WaitForNotification-Aktivität namens `Wait_${region.forEvent}` anzulegen. Für MERODE-Regionen, wo `forEvent` undefined ist, ergab das `Wait_undefined`. Behoben durch den `isMerodeFSM()`-Check, der die Workflow-Generierung für MERODE-FSMs überspringt.
 
 **MERODE-PIM erreichte den Mendix-Agenten nicht:** Der `pim-to-mendix-agent` war darauf hardcodiert, nur das MQTT-Topic des DEMO-Agenten zu abonnieren. MERODE-PIM-Nachrichten wurden stillschweigend ignoriert. Behoben durch Umstellung auf den `PIM_SOURCE_AGENTS`-Mehrfach-Abonnement-Ansatz.
