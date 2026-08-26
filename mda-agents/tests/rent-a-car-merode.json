@@ -1,37 +1,45 @@
 {
   "name": "Rent-A-Car (MERODE)",
   "domainTypes": [
-    { "name": "FuelType",      "kind": "categorical",    "literals": ["petrol", "diesel", "electric"] },
-    { "name": "PaymentMethod", "kind": "categorical",    "literals": ["cash", "creditCard", "bankTransfer"] },
-    { "name": "MoneyAmount",   "kind": "nonCategorical" }
+    { "name": "CarGroup",    "kind": "categorical",    "literals": ["economy", "compact", "luxury"] },
+    { "name": "MoneyAmount", "kind": "nonCategorical" }
   ],
   "objectTypes": [
     {
       "name": "Car",
       "attributes": [
         { "name": "licensePlate", "type": "String"   },
-        { "name": "fuelType",     "type": "FuelType" },
+        { "name": "group",        "type": "CarGroup" },
         { "name": "mileage",      "type": "Integer"  }
       ],
       "lifecycleStates": ["registered"]
     },
     {
+      "name": "Branch",
+      "attributes": [
+        { "name": "name", "type": "String" },
+        { "name": "city", "type": "String" }
+      ],
+      "lifecycleStates": ["open"]
+    },
+    {
       "name": "Person",
       "attributes": [
-        { "name": "fullName",         "type": "String"        },
-        { "name": "email",            "type": "String"        },
-        { "name": "preferredPayment", "type": "PaymentMethod" }
+        { "name": "fullName", "type": "String" },
+        { "name": "email",    "type": "String" }
       ],
       "lifecycleStates": ["registered"]
     },
     {
       "name": "Rental",
       "attributes": [
-        { "name": "startingDay", "type": "String"      },
-        { "name": "endingDay",   "type": "String"      },
-        { "name": "totalAmount", "type": "MoneyAmount" }
+        { "name": "startingDay",   "type": "String"      },
+        { "name": "endingDay",     "type": "String"      },
+        { "name": "carGroup",      "type": "CarGroup"    },
+        { "name": "depositAmount", "type": "MoneyAmount" },
+        { "name": "invoiceAmount", "type": "MoneyAmount" }
       ],
-      "lifecycleStates": ["active"]
+      "lifecycleStates": ["active", "depositPaid", "returned", "invoicePaid"]
     },
     {
       "name": "RentalLine",
@@ -45,17 +53,23 @@
   "existenceDependencies": [
     { "name": "RentalDependsOnCar",        "dependent": "Rental",     "master": "Car",    "lower": 1, "upper": 1 },
     { "name": "RentalDependsOnPerson",     "dependent": "Rental",     "master": "Person", "lower": 1, "upper": 1 },
+    { "name": "RentalDependsOnBranch",     "dependent": "Rental",     "master": "Branch", "lower": 1, "upper": 1 },
     { "name": "RentalLineDependsOnRental", "dependent": "RentalLine", "master": "Rental", "lower": 1, "upper": 1 }
   ],
   "businessEventTypes": [
     { "name": "registerCar",         "objectType": "Car",        "role": "C" },
     { "name": "updateCarMileage",    "objectType": "Car",        "role": "M", "effects": [{ "attribute": "mileage" }] },
     { "name": "deregisterCar",       "objectType": "Car",        "role": "E" },
+    { "name": "openBranch",          "objectType": "Branch",     "role": "C" },
+    { "name": "closeBranch",         "objectType": "Branch",     "role": "E" },
     { "name": "registerPerson",      "objectType": "Person",     "role": "C" },
     { "name": "updatePersonDetails", "objectType": "Person",     "role": "M", "effects": [{ "attribute": "fullName" }, { "attribute": "email" }] },
     { "name": "deregisterPerson",    "objectType": "Person",     "role": "E" },
     { "name": "startRental",         "objectType": "Rental",     "role": "C" },
-    { "name": "extendRental",        "objectType": "Rental",     "role": "M", "effects": [{ "attribute": "endingDay" }] },
+    { "name": "extendRental",        "objectType": "Rental",     "role": "M", "fromState": "active",      "toState": "active",      "effects": [{ "attribute": "endingDay" }] },
+    { "name": "payDeposit",          "objectType": "Rental",     "role": "M", "fromState": "active",      "toState": "depositPaid", "effects": [{ "attribute": "depositAmount" }] },
+    { "name": "returnCar",           "objectType": "Rental",     "role": "M", "fromState": "depositPaid", "toState": "returned" },
+    { "name": "payInvoice",          "objectType": "Rental",     "role": "M", "fromState": "returned",    "toState": "invoicePaid", "effects": [{ "attribute": "invoiceAmount" }] },
     { "name": "completeRental",      "objectType": "Rental",     "role": "E" },
     { "name": "addRentalLine",       "objectType": "RentalLine", "role": "C" },
     { "name": "updateRentalLine",    "objectType": "RentalLine", "role": "M", "effects": [{ "attribute": "quantity" }, { "attribute": "description" }] },

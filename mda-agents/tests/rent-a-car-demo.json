@@ -29,6 +29,13 @@
       "triggerEventType": "carRegistered"
     },
     {
+      "name": "Branch",
+      "attributes": [
+        { "name": "name", "valueType": "String" },
+        { "name": "city", "valueType": "String" }
+      ]
+    },
+    {
       "name": "Person",
       "attributes": [
         { "name": "fullName", "valueType": "String" },
@@ -43,16 +50,37 @@
     {
       "name": "Rental",
       "attributes": [
-        { "name": "startingDay",  "valueType": "String"      },
-        { "name": "endingDay",    "valueType": "String"      },
-        { "name": "totalAmount",  "valueType": "MoneyAmount" },
-        { "name": "totalDays",    "valueType": "Integer", "derivationRule": "endingDay - startingDay" }
+        { "name": "startingDay", "valueType": "String"   },
+        { "name": "endingDay",   "valueType": "String"   },
+        { "name": "carGroup",    "valueType": "CarGroup" },
+        { "name": "totalDays",   "valueType": "Integer", "derivationRule": "endingDay - startingDay" }
       ]
     },
     {
       "name": "ActiveRental",
       "parent": "Rental",
       "triggerEventType": "rentalStarted"
+    },
+    {
+      "name": "DepositPaidRental",
+      "parent": "Rental",
+      "triggerEventType": "depositPaid",
+      "attributes": [
+        { "name": "depositAmount", "valueType": "MoneyAmount" }
+      ]
+    },
+    {
+      "name": "ReturnedRental",
+      "parent": "Rental",
+      "triggerEventType": "carReturned"
+    },
+    {
+      "name": "InvoicePaidRental",
+      "parent": "Rental",
+      "triggerEventType": "invoicePaid",
+      "attributes": [
+        { "name": "invoiceAmount", "valueType": "MoneyAmount" }
+      ]
     },
     {
       "name": "RentalLine",
@@ -66,11 +94,16 @@
     { "name": "carRegistered",    "entityType": "Car"        },
     { "name": "mileageUpdated",   "entityType": "Car"        },
     { "name": "carDeregistered",  "entityType": "Car"        },
+    { "name": "branchOpened",     "entityType": "Branch"     },
+    { "name": "branchClosed",     "entityType": "Branch"     },
     { "name": "personRegistered", "entityType": "Person"     },
     { "name": "personUpdated",    "entityType": "Person"     },
     { "name": "personRemoved",    "entityType": "Person"     },
     { "name": "rentalStarted",    "entityType": "Rental"     },
     { "name": "rentalExtended",   "entityType": "Rental"     },
+    { "name": "depositPaid",      "entityType": "Rental"     },
+    { "name": "carReturned",      "entityType": "Rental"     },
+    { "name": "invoicePaid",      "entityType": "Rental"     },
     { "name": "rentalCompleted",  "entityType": "Rental"     },
     { "name": "rentalLineAdded",  "entityType": "RentalLine" },
     { "name": "rentalLineUpdated","entityType": "RentalLine" },
@@ -97,6 +130,20 @@
       "roles": [
         { "name": "rental",  "entityType": "Rental", "lower": 0, "upper": "*" },
         { "name": "renter",  "entityType": "Person", "lower": 1, "upper": 1  }
+      ]
+    },
+    {
+      "name": "RentalPickedUpAt",
+      "roles": [
+        { "name": "rental",  "entityType": "Rental", "lower": 0, "upper": "*" },
+        { "name": "branch",  "entityType": "Branch", "lower": 1, "upper": 1  }
+      ]
+    },
+    {
+      "name": "RentalReturnedAt",
+      "roles": [
+        { "name": "rental",  "entityType": "Rental", "lower": 0, "upper": "*" },
+        { "name": "branch",  "entityType": "Branch", "lower": 1, "upper": 1  }
       ]
     }
   ]
