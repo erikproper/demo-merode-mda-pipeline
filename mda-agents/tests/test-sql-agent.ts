@@ -194,3 +194,31 @@ if (!genDdl.includes(`"vehicle_id" INTEGER NOT NULL REFERENCES "vehicle"("vehicl
   process.exit(1);
 }
 console.log("S7 OK");
+
+// S8: one-to-many association -> FK column on the "many" side, NOT NULL when the "one"
+// end's lower bound is >= 1
+const assocPim: PimModel = {
+  name: "S8 smoke test",
+  classes: [
+    { name: "Rental",     ownedAttributes: [{ name: "RentalID", type: "Integer", isID: true }] },
+    { name: "RentalLine", ownedAttributes: [{ name: "RentalLineID", type: "Integer", isID: true }] },
+  ],
+  associations: [
+    {
+      name: "RentalHasLines",
+      memberEnds: [
+        { name: "rental",     type: "Rental",     lower: 1, upper: 1 },
+        { name: "rentalLine", type: "RentalLine", lower: 0, upper: "*" },
+      ],
+    },
+  ],
+};
+
+const assocDdl = pimToSql(assocPim);
+console.log(assocDdl);
+
+if (!assocDdl.includes(`"rental_id" INTEGER NOT NULL REFERENCES "rental"("rental_id")`)) {
+  console.error("FAIL: expected mandatory association FK column not found");
+  process.exit(1);
+}
+console.log("S8 OK");

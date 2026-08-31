@@ -130,6 +130,22 @@ export function pimToSql(pim: PimModel): string {
     child.columns.push(`  ${q(fkCol)} INTEGER NOT NULL REFERENCES ${q(parent.name)}(${q(parent.pkColumn)}) ON DELETE CASCADE`);
   }
 
+  // S8: one-to-one / one-to-many associations -> FK column on the "many" (or arbitrary
+  // "1") side. Same oneEnd/manyEnd determination as pim-to-mendix-agent.ts:222.
+  for (const assoc of pim.associations ?? []) {
+    const [end0, end1] = assoc.memberEnds;
+    if (end0.upper === "*" && end1.upper === "*") continue; // n:m -> handled separately (S9)
+
+    const [oneEnd, manyEnd] = end0.upper === "*" ? [end1, end0] : [end0, end1];
+    const oneTable  = tables.get(oneEnd.type);
+    const manyTable = tables.get(manyEnd.type);
+    if (!oneTable || !manyTable) continue;
+
+    const fkCol   = `${toSnakeCase(oneEnd.name)}_id`;
+    const notNull = (oneEnd.lower ?? 0) >= 1 ? "NOT NULL " : "";
+    manyTable.columns.push(`  ${q(fkCol)} INTEGER ${notNull}REFERENCES ${q(oneTable.name)}(${q(oneTable.pkColumn)})`);
+  }
+
   const createStatements = [...tables.values()].map(t => `CREATE TABLE ${q(t.name)} (\n${t.columns.join(",\n")}\n);`);
 
   const header = [
