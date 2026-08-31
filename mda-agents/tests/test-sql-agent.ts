@@ -296,3 +296,60 @@ if (!fsmDdl.includes(`"status" rental_status_enum`)) {
   process.exit(1);
 }
 console.log("S10 OK");
+
+// S12: topological sort - FK pointing "backwards" in pim.classes array order must still
+// produce a valid CREATE TABLE sequence (dependency before dependent)
+const orderPim: PimModel = {
+  name: "S12 smoke test",
+  classes: [
+    // RentalLine declared BEFORE Rental, but its FK (added below) points at Rental
+    { name: "RentalLine", ownedAttributes: [{ name: "RentalLineID", type: "Integer", isID: true }] },
+    { name: "Rental",     ownedAttributes: [{ name: "RentalID",     type: "Integer", isID: true }] },
+  ],
+  associations: [
+    {
+      name: "RentalHasLines",
+      memberEnds: [
+        { name: "rental",     type: "Rental",     lower: 1, upper: 1 },
+        { name: "rentalLine", type: "RentalLine", lower: 0, upper: "*" },
+      ],
+    },
+  ],
+};
+
+const orderDdl = pimToSql(orderPim);
+console.log(orderDdl);
+
+const rentalIdx     = orderDdl.indexOf(`CREATE TABLE "rental" (`);
+const rentalLineIdx = orderDdl.indexOf(`CREATE TABLE "rental_line" (`);
+if (rentalIdx === -1 || rentalLineIdx === -1 || rentalIdx > rentalLineIdx) {
+  console.error("FAIL: expected 'rental' table to be created before 'rental_line' despite declaration order");
+  process.exit(1);
+}
+console.log("S12 OK");
+
+// S12: a genuine FK cycle must throw with a clear error naming the involved tables
+const cyclePim: PimModel = {
+  name: "S12 cycle test",
+  classes: [
+    { name: "A", ownedAttributes: [{ name: "AID", type: "Integer", isID: true }] },
+    { name: "B", ownedAttributes: [{ name: "BID", type: "Integer", isID: true }] },
+  ],
+  associations: [
+    { name: "AtoB", memberEnds: [{ name: "a", type: "A", lower: 1, upper: 1 }, { name: "b", type: "B", lower: 0, upper: 1 }] },
+    { name: "BtoA", memberEnds: [{ name: "b", type: "B", lower: 1, upper: 1 }, { name: "a", type: "A", lower: 0, upper: 1 }] },
+  ],
+};
+
+try {
+  pimToSql(cyclePim);
+  console.error("FAIL: expected a cyclic-dependency error to be thrown");
+  process.exit(1);
+} catch (e) {
+  const message = e instanceof Error ? e.message : String(e);
+  if (!message.includes("cyclic")) {
+    console.error(`FAIL: expected cyclic-dependency error, got: ${message}`);
+    process.exit(1);
+  }
+}
+console.log("S12 cycle detection OK");

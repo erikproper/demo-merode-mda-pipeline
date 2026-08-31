@@ -46,9 +46,47 @@ function q(ident: string): string {
 }
 
 interface TableDef {
-  name:     string; // snake_case SQL table name
-  columns:  string[]; // rendered column definitions, in declaration order
-  pkColumn: string; // name of this table's primary key column
+  name:      string; // snake_case SQL table name
+  columns:   string[]; // rendered column definitions, in declaration order
+  pkColumn:  string; // name of this table's primary key column
+  dependsOn: string[]; // pim.classes/dataTypes/... names this table has an FK to
+}
+
+// S12: Kahn's algorithm over the FK dependency graph, so CREATE TABLE statements never
+// reference a table that hasn't been declared yet. Throws instead of silently emitting an
+// invalid order if the graph has a cycle - a cycle would make the DDL fail at execution
+// time regardless, so failing fast here is strictly more useful.
+function topoSortTables(tables: Map<string, TableDef>): TableDef[] {
+  const inDegree   = new Map<string, number>();
+  const dependents = new Map<string, string[]>();
+  for (const key of tables.keys()) { inDegree.set(key, 0); dependents.set(key, []); }
+
+  for (const [key, table] of tables) {
+    for (const dep of table.dependsOn) {
+      if (!tables.has(dep) || dep === key) continue; // unknown table or harmless self-FK
+      inDegree.set(key, (inDegree.get(key) ?? 0) + 1);
+      dependents.get(dep)!.push(key);
+    }
+  }
+
+  const queue  = [...tables.keys()].filter(k => inDegree.get(k) === 0);
+  const sorted: string[] = [];
+  while (queue.length > 0) {
+    const key = queue.shift()!;
+    sorted.push(key);
+    for (const dep of dependents.get(key) ?? []) {
+      const newDegree = inDegree.get(dep)! - 1;
+      inDegree.set(dep, newDegree);
+      if (newDegree === 0) queue.push(dep);
+    }
+  }
+
+  if (sorted.length !== tables.size) {
+    const remaining = [...tables.keys()].filter(k => !sorted.includes(k));
+    throw new Error(`pim-to-sql-agent: cyclic foreign-key dependency among tables: ${remaining.join(", ")}`);
+  }
+
+  return sorted.map(key => tables.get(key)!);
 }
 
 // Pure transform: PimModel -> PostgreSQL DDL script. No I/O, no bus - directly
@@ -71,7 +109,7 @@ export function pimToSql(pim: PimModel): string {
   // carries no structure of its own in pimUML) rather than inventing a SQL-specific
   // inline-scalar shortcut that would break comparability between the two PSM outputs.
   for (const dt of pim.dataTypes ?? []) {
-    tables.set(dt.name, { name: toSnakeCase(dt.name), columns: [`  ${q("id")} SERIAL PRIMARY KEY`], pkColumn: "id" });
+    tables.set(dt.name, { name: toSnakeCase(dt.name), columns: [`  ${q("id")} SERIAL PRIMARY KEY`], pkColumn: "id", dependsOn: [] });
   }
 
   const dataTypeNames = new Set((pim.dataTypes ?? []).map(dt => dt.name));
@@ -79,6 +117,7 @@ export function pimToSql(pim: PimModel): string {
   // S4/S6: classes -> CREATE TABLE with attribute columns
   for (const cls of pim.classes ?? []) {
     const columns: string[] = [];
+    const dependsOn: string[] = [];
     let pkColumn: string | undefined;
 
     for (const prop of cls.ownedAttributes ?? []) {
@@ -89,6 +128,7 @@ export function pimToSql(pim: PimModel): string {
         if (!refTable) continue;
         const fkCol = `${toSnakeCase(prop.name)}_id`;
         columns.push(`  ${q(fkCol)} INTEGER REFERENCES ${q(refTable.name)}(${q(refTable.pkColumn)})`);
+        dependsOn.push(prop.type);
         continue;
       }
       const colName = toSnakeCase(prop.name);
@@ -101,7 +141,7 @@ export function pimToSql(pim: PimModel): string {
 
     if (!pkColumn) { columns.unshift(`  ${q("id")} SERIAL PRIMARY KEY`); pkColumn = "id"; }
 
-    tables.set(cls.name, { name: toSnakeCase(cls.name), columns, pkColumn });
+    tables.set(cls.name, { name: toSnakeCase(cls.name), columns, pkColumn, dependsOn });
   }
 
   // S3: association classes -> junction table (own synthetic id + two FKs) + own attributes.
@@ -109,19 +149,21 @@ export function pimToSql(pim: PimModel): string {
   // association class can carry its own attributes, so it always needs a real table.
   for (const ac of pim.associationClasses ?? []) {
     const columns: string[] = [`  ${q("id")} SERIAL PRIMARY KEY`];
+    const dependsOn: string[] = [];
 
     for (const end of ac.memberEnds) {
       const refTable = tables.get(end.type);
       if (!refTable) continue;
       const fkCol = `${toSnakeCase(end.name)}_id`;
       columns.push(`  ${q(fkCol)} INTEGER NOT NULL REFERENCES ${q(refTable.name)}(${q(refTable.pkColumn)})`);
+      dependsOn.push(end.type);
     }
     for (const prop of ac.ownedAttributes ?? []) {
       if (prop.isDerived) continue;
       columns.push(`  ${q(toSnakeCase(prop.name))} ${sqlType(prop.type, enumNames)}`);
     }
 
-    tables.set(ac.name, { name: toSnakeCase(ac.name), columns, pkColumn: "id" });
+    tables.set(ac.name, { name: toSnakeCase(ac.name), columns, pkColumn: "id", dependsOn });
   }
 
   // S7: generalizations -> child gets an extra mandatory FK column to the parent table.
@@ -134,6 +176,7 @@ export function pimToSql(pim: PimModel): string {
     if (!child || !parent) continue;
     const fkCol = `${toSnakeCase(gen.parent)}_id`;
     child.columns.push(`  ${q(fkCol)} INTEGER NOT NULL REFERENCES ${q(parent.name)}(${q(parent.pkColumn)}) ON DELETE CASCADE`);
+    child.dependsOn.push(gen.parent);
   }
 
   // S8: one-to-one / one-to-many associations -> FK column on the "many" (or arbitrary
@@ -150,6 +193,7 @@ export function pimToSql(pim: PimModel): string {
     const fkCol   = `${toSnakeCase(oneEnd.name)}_id`;
     const notNull = (oneEnd.lower ?? 0) >= 1 ? "NOT NULL " : "";
     manyTable.columns.push(`  ${q(fkCol)} INTEGER ${notNull}REFERENCES ${q(oneTable.name)}(${q(oneTable.pkColumn)})`);
+    manyTable.dependsOn.push(oneEnd.type);
   }
 
   // S9: many-to-many associations -> junction table with two NOT NULL FKs, no attributes.
@@ -166,12 +210,13 @@ export function pimToSql(pim: PimModel): string {
     if (!table0 || !table1) continue;
 
     const columns = [`  ${q("id")} SERIAL PRIMARY KEY`];
+    const dependsOn = [end0.type, end1.type];
     for (const [end, refTable] of [[end0, table0], [end1, table1]] as const) {
       const fkCol = `${toSnakeCase(end.name)}_id`;
       columns.push(`  ${q(fkCol)} INTEGER NOT NULL REFERENCES ${q(refTable.name)}(${q(refTable.pkColumn)})`);
     }
 
-    tables.set(assoc.name, { name: toSnakeCase(assoc.name), columns, pkColumn: "id" });
+    tables.set(assoc.name, { name: toSnakeCase(assoc.name), columns, pkColumn: "id", dependsOn });
   }
 
   // S10: MERODE sequential FSM -> status column + <entity>_status_enum type, mirroring
@@ -192,7 +237,7 @@ export function pimToSql(pim: PimModel): string {
     table.columns.push(`  ${q("status")} ${statusEnumName}`);
   }
 
-  const createStatements = [...tables.values()].map(t => `CREATE TABLE ${q(t.name)} (\n${t.columns.join(",\n")}\n);`);
+  const createStatements = topoSortTables(tables).map(t => `CREATE TABLE ${q(t.name)} (\n${t.columns.join(",\n")}\n);`);
 
   const header = [
     `-- Generated by pim-to-sql-agent from pimUML model "${pim.name}"`,
