@@ -4,6 +4,8 @@
 // Run:
 //   npx ts-node tests/test-sql-agent.ts
 
+import * as fs from "fs";
+import * as path from "path";
 import type { PimModel } from "../schemas/types";
 import { pimToSql } from "../pim-to-sql-agent";
 
@@ -353,3 +355,16 @@ try {
   }
 }
 console.log("S12 cycle detection OK");
+
+// End-to-end: run the full Rent-A-Car pimUML fixture through every S-rule at once and
+// write the result to output/rent-a-car.sql - the file used for the real Postgres
+// execution proof (see tests/README.md).
+const fullPim: PimModel = JSON.parse(fs.readFileSync(path.join(__dirname, "rent-a-car-pim-full.json"), "utf-8"));
+const fullDdl = pimToSql(fullPim);
+
+const outputDir = path.join(__dirname, "..", "output");
+fs.mkdirSync(outputDir, { recursive: true });
+fs.writeFileSync(path.join(outputDir, "rent-a-car.sql"), fullDdl);
+
+console.log(`End-to-end: wrote ${fullDdl.split("\n").length} lines to output/rent-a-car.sql`);
+console.log("END-TO-END OK");

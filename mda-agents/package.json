@@ -7,6 +7,7 @@
     "demo-publisher": "ts-node -r dotenv/config demo-publisher.ts",
     "demo-to-pim-agent": "ts-node -r dotenv/config demo-to-pim-agent.ts",
     "pim-to-mendix-agent": "ts-node -r dotenv/config pim-to-mendix-agent.ts",
+    "pim-to-sql-agent": "ts-node -r dotenv/config pim-to-sql-agent.ts",
     "pim-subscriber": "ts-node -r dotenv/config tests/pim-subscriber.ts",
     "api-server": "ts-node -r dotenv/config api-server.ts",
     "broker:up": "docker compose up -d",

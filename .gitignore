@@ -21,6 +21,7 @@ dist/
 # Generated pipeline outputs (re-created by running the pipeline)
 mda-agents/tests/rent-a-car-pim.json
 mda-agents/tests/rent-a-car-pim-from-bus.json
+mda-agents/output/*.sql
 
 # ── Go (big-modelling-bus.go.v1/) ─────────────────────────────────────────────
 big-modelling-bus.go.v1/bin/

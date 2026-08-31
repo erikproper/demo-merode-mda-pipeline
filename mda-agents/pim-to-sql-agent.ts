@@ -3,7 +3,11 @@
 // Second PSM target alongside pim-to-mendix-agent - consumes the exact same
 // model.pim.created artefact, no changes required to any existing agent or schema.
 
+import * as fs from "fs";
+import * as path from "path";
+import { BusClient } from "./bus-client";
 import type { PimModel } from "./schemas/types";
+import { getBusConfig, makeValidator, assertValid, extractMeta } from "./agent-utils";
 
 // Same discriminator as pim-to-mendix-agent.ts:66 - distinguishes a MERODE sequential
 // lifecycle (one region, no forEvent) from a DEMO orthogonal FSM (one region per event).
@@ -245,4 +249,65 @@ export function pimToSql(pim: PimModel): string {
   ].join("\n");
 
   return [header, ...typeStatements, ...createStatements].join("\n\n") + "\n";
+}
+
+function slugify(name: string): string {
+  return toSnakeCase(name.replace(/[^a-zA-Z0-9]+/g, "_")).replace(/^_+|_+$/g, "");
+}
+
+const config = getBusConfig("pim-to-sql-agent");
+
+const PIM_SOURCE_AGENTS = (process.env.PIM_PUBLISHER_AGENT_IDS ?? "demo-to-pim-agent,merode-to-pim-agent").split(",");
+const IN_ARTEFACT        = "model.pim.created";
+const OUTPUT_DIR          = process.env.SQL_OUTPUT_DIR ?? path.join(process.cwd(), "output");
+
+const validatePim = makeValidator("pimuml-schema.json");
+
+async function main() {
+  console.log("[pim-to-sql] starting");
+  console.log(`[pim-to-sql] output directory: ${OUTPUT_DIR}`);
+
+  const bus = new BusClient(config);
+  await bus.connect();
+  console.log(`[pim-to-sql] connected to ${config.broker}:${config.port}`);
+
+  const onPimReceived = async (rawModel: PimModel, timestamp: string) => {
+    console.log(`[pim-to-sql] received model at ${timestamp}`);
+
+    const { clean: pim } = extractMeta(rawModel);
+
+    try {
+      assertValid(validatePim, pim, "pimuml-schema.json");
+    } catch (err) {
+      console.error("[pim-to-sql] invalid input:", (err as Error).message);
+      return;
+    }
+
+    let ddl: string;
+    try {
+      ddl = pimToSql(pim);
+    } catch (err) {
+      console.error("[pim-to-sql] mapping failed:", (err as Error).message);
+      return;
+    }
+
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    const outFile = path.join(OUTPUT_DIR, `${slugify(pim.name)}.sql`);
+    fs.writeFileSync(outFile, ddl);
+    console.log(`[pim-to-sql] wrote ${outFile}`);
+  };
+
+  for (const agentId of PIM_SOURCE_AGENTS) {
+    bus.subscribePimState(agentId, IN_ARTEFACT, onPimReceived);
+    console.log(`[pim-to-sql] subscribed to PIM from "${agentId}"`);
+  }
+
+  console.log("[pim-to-sql] listening … (Ctrl+C to stop)");
+}
+
+if (require.main === module) {
+  main().catch(err => {
+    console.error("[pim-to-sql] unhandled error:", err);
+    process.exit(1);
+  });
 }
