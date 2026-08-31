@@ -30,7 +30,7 @@ console.log("\nStep 1 - input valid");
 // A3 + A5: entity types -> classes with attributes
 // A12:     fact types   -> associations
 const pim = {
-  name: `${demo.name} – pimUML`,
+  name: `${demo.name} - pimUML`,
   classes: demo.entityTypes.map(et => ({
     name: et.name,
     ownedAttributes: (et.attributes ?? []).map(a => ({ name: a.name, type: a.valueType ?? "String" })),

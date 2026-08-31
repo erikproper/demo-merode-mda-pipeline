@@ -220,7 +220,7 @@ function transform(demo: DemoModel): { pim: PimModel; trace: TraceEntry[] } {
     return { name: `SM_${et.name}`, entityType: et.name, regions, ...(activities.length > 0 ? { activities } : {}) };
   });
 
-  return { pim: { name: `${demo.name} – pimUML`, enumerations, dataTypes, associationClasses, classes, associations, generalizations, stateMachines }, trace };
+  return { pim: { name: `${demo.name} - pimUML`, enumerations, dataTypes, associationClasses, classes, associations, generalizations, stateMachines }, trace };
 }
 
 async function main() {
@@ -261,7 +261,7 @@ async function main() {
     console.log(`[demo-to-pim] published to "${OUT_ARTEFACT}"`);
   });
 
-  console.log("[demo-to-pim] listening … (Ctrl+C to stop)");
+  console.log("[demo-to-pim] listening ... (Ctrl+C to stop)");
 }
 
 if (require.main === module) {

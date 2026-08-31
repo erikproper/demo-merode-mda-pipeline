@@ -302,7 +302,7 @@ async function main() {
     console.log(`[pim-to-sql] subscribed to PIM from "${agentId}"`);
   }
 
-  console.log("[pim-to-sql] listening … (Ctrl+C to stop)");
+  console.log("[pim-to-sql] listening ... (Ctrl+C to stop)");
 }
 
 if (require.main === module) {

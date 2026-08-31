@@ -24,7 +24,7 @@ const ARTEFACT_ID = "model.pim.created";
 async function main() {
   const bus = new BusClient(config);
   await bus.connect();
-  console.log(`[pim-subscriber] connected - waiting for PimModel from "${FROM_AGENT}" …`);
+  console.log(`[pim-subscriber] connected - waiting for PimModel from "${FROM_AGENT}" ...`);
 
   bus.subscribePimState(FROM_AGENT, ARTEFACT_ID, (model: PimModel, timestamp: string) => {
     console.log(`\nReceived PimModel at ${timestamp}`);

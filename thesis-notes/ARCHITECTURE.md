@@ -17,63 +17,63 @@ flowchart TB
     classDef agent  fill:#fff7ed,stroke:#ea580c,color:#431407
     classDef ext    fill:#f8fafc,stroke:#94a3b8,color:#334155
 
-    USER(["External System / User\n─────────────\ncurl · REST client\n· tool adapter"]):::ext
+    USER(["External System / User\n-------------\ncurl · REST client\n· tool adapter"]):::ext
 
-    %% ── CIM Layer ──────────────────────────────────────────────────────────────
-    subgraph CIM ["① CIM — Conceptual Information Models"]
+    %% -- CIM Layer --------------------------------------------------------------
+    subgraph CIM ["(1) CIM - Conceptual Information Models"]
         direction LR
-        DEMO_IN["DEMO Fact Model\n─────────────────\n· entityTypes\n· valueTypes (categorical / non-categorical)\n· factTypes (with multiplicities)\n· eventTypes\n· attributeTypes\n─────────────────\nSchema: demo-schema.json"]:::cim
-        MERODE_IN["MERODE Domain Model\n─────────────────\n· objectTypes + attributes\n· existenceDependencies\n· businessEventTypes (C / M / E)\n· lifecycleStates\n─────────────────\nSchema: merode-schema.json"]:::cim
+        DEMO_IN["DEMO Fact Model\n-----------------\n· entityTypes\n· valueTypes (categorical / non-categorical)\n· factTypes (with multiplicities)\n· eventTypes\n· attributeTypes\n-----------------\nSchema: demo-schema.json"]:::cim
+        MERODE_IN["MERODE Domain Model\n-----------------\n· objectTypes + attributes\n· existenceDependencies\n· businessEventTypes (C / M / E)\n· lifecycleStates\n-----------------\nSchema: merode-schema.json"]:::cim
     end
 
-    %% ── API Gateway ─────────────────────────────────────────────────────────────
-    API["② API Gateway  —  api-server\n─────────────────────────────\nHTTP  POST /api/model\nHeader  X-Input-Format: demo | merode\nOptional  X-Mendix-App-Id, X-Mendix-Module-Name\n─────────────────────────────\nWraps payload in meta-envelope:\n{ payload, _source.format, _target? }"]:::agent
+    %% -- API Gateway -------------------------------------------------------------
+    API["(2) API Gateway  -  api-server\n-----------------------------\nHTTP  POST /api/model\nHeader  X-Input-Format: demo | merode\nOptional  X-Mendix-App-Id, X-Mendix-Module-Name\n-----------------------------\nWraps payload in meta-envelope:\n{ payload, _source.format, _target? }"]:::agent
 
-    %% ── Bus: CIM Artefact ───────────────────────────────────────────────────────
-    MQTT_CIM[/"③ Modelling Bus  —  Eclipse Mosquitto MQTT\n──────────────────────────────────────────────────\nArtefact ID:  model.cim.raw\nTopic:  big/bus-version-1.0/dev/api-server/artefacts/json/model.cim.raw/cim-v1.0-v1.0/state\nDelivery:  retained — agents receive last model immediately on (re)connect"/]:::bus
+    %% -- Bus: CIM Artefact -------------------------------------------------------
+    MQTT_CIM[/"(3) Modelling Bus  -  Eclipse Mosquitto MQTT\n--------------------------------------------------\nArtefact ID:  model.cim.raw\nTopic:  big/bus-version-1.0/dev/api-server/artefacts/json/model.cim.raw/cim-v1.0-v1.0/state\nDelivery:  retained - agents receive last model immediately on (re)connect"/]:::bus
 
-    %% ── CIM → PIM Agents ────────────────────────────────────────────────────────
-    subgraph AGENTS ["④ CIM → PIM Transformation  (agents run independently, in parallel)"]
+    %% -- CIM -> PIM Agents --------------------------------------------------------
+    subgraph AGENTS ["(4) CIM -> PIM Transformation  (agents run independently, in parallel)"]
         direction LR
 
         subgraph DA ["demo-to-pim-agent"]
             DA1["Filter: _source.format === 'demo'"]:::agent
             DA2["Validate input\n(demo-schema.json · AJV)"]:::agent
-            DA3["Transform: A1–A12\n────────────────\nA1  Categorical VT → Enumeration\nA2  NonCategorical VT → DataType\nA3  EntityType → Class + ID\nA4  DerivedEntityType → Class\nA5  AttributeType → Property\nA6  EventType → Boolean FSM Region\nA7  EventTriggeredSpec. → Assoc + Activity\nA8  AssocValueType → AssociationClass\nA9  DerivedSpec. → DerivedAssociation\nA10 Generalization → Inheritance\nA11 AggregationFact → Aggregation\nA12 FactType → Association"]:::agent
+            DA3["Transform: A1-A12\n----------------\nA1  Categorical VT -> Enumeration\nA2  NonCategorical VT -> DataType\nA3  EntityType -> Class + ID\nA4  DerivedEntityType -> Class\nA5  AttributeType -> Property\nA6  EventType -> Boolean FSM Region\nA7  EventTriggeredSpec. -> Assoc + Activity\nA8  AssocValueType -> AssociationClass\nA9  DerivedSpec. -> DerivedAssociation\nA10 Generalization -> Inheritance\nA11 AggregationFact -> Aggregation\nA12 FactType -> Association"]:::agent
             DA4["Validate output\n(pimuml-schema.json · AJV)"]:::agent
         end
 
         subgraph MA ["merode-to-pim-agent"]
             MA1["Filter: _source.format === 'merode'"]:::agent
             MA2["Validate input\n(merode-schema.json · AJV)"]:::agent
-            MA3["Transform: M1–M8\n────────────────\nM1  ObjectType → Class + Integer ID\nM2  Attribute → Property\nM4  ExistenceDependency → Association\nM5  lifecycleStates → sequential StateMachine\n    { __initial, s1, …, sN, __final }\nM6  C-Event → transition __initial → s1\nM7  M-Event → transition si → sj\nM8  E-Event → transition sN → __final"]:::agent
+            MA3["Transform: M1-M8\n----------------\nM1  ObjectType -> Class + Integer ID\nM2  Attribute -> Property\nM4  ExistenceDependency -> Association\nM5  lifecycleStates -> sequential StateMachine\n    { __initial, s1, ..., sN, __final }\nM6  C-Event -> transition __initial -> s1\nM7  M-Event -> transition si -> sj\nM8  E-Event -> transition sN -> __final"]:::agent
             MA4["Validate output\n(pimuml-schema.json · AJV)"]:::agent
         end
     end
 
-    %% ── PIM Artefact ────────────────────────────────────────────────────────────
-    subgraph PIM_LAYER ["⑤ PIM — Platform-Independent Model  (pimUML)"]
-        MQTT_PIM[/"Modelling Bus  —  Eclipse Mosquitto MQTT\n────────────────────────────────────────────────────────────────────\nArtefact ID:  model.pim.created\nTopic:  big/bus-version-1.0/dev/{cim-agent}/artefacts/json/model.pim.created/pimuml-v1.0-v1.0/state\nDelivery:  retained   +   _trace[] envelope (traceability)"/]:::bus
-        PIM_STRUCT["pimUML Model (JSON)\n────────────────────────────────────────────────────\nenumerations  — named literals\ndataTypes     — opaque scalar types\nclasses       — name, ownedAttributes, isAbstract, isDerived\nassociations  — memberEnds with name, type, lower, upper\ngeneralizations — child / parent\nassociationClasses — triggerEvent, memberEnds, ownedAttributes\nstateMachines — regions · states · transitions · activities\n────────────────────────────────────────────────────\nState.kind: initial | false | true | simple | final\nActivity.kind: create | set | end\nRegion.forEvent: present (DEMO) | absent (MERODE)"]:::pim
+    %% -- PIM Artefact ------------------------------------------------------------
+    subgraph PIM_LAYER ["(5) PIM - Platform-Independent Model  (pimUML)"]
+        MQTT_PIM[/"Modelling Bus  -  Eclipse Mosquitto MQTT\n--------------------------------------------------------------------\nArtefact ID:  model.pim.created\nTopic:  big/bus-version-1.0/dev/{cim-agent}/artefacts/json/model.pim.created/pimuml-v1.0-v1.0/state\nDelivery:  retained   +   _trace[] envelope (traceability)"/]:::bus
+        PIM_STRUCT["pimUML Model (JSON)\n----------------------------------------------------\nenumerations  - named literals\ndataTypes     - opaque scalar types\nclasses       - name, ownedAttributes, isAbstract, isDerived\nassociations  - memberEnds with name, type, lower, upper\ngeneralizations - child / parent\nassociationClasses - triggerEvent, memberEnds, ownedAttributes\nstateMachines - regions · states · transitions · activities\n----------------------------------------------------\nState.kind: initial | false | true | simple | final\nActivity.kind: create | set | end\nRegion.forEvent: present (DEMO) | absent (MERODE)"]:::pim
     end
 
-    %% ── PIM → PSM Agents ────────────────────────────────────────────────────────
-    subgraph MXA ["⑥ PIM → PSM Transformation  (two independent PSM targets, both subscribe to the same PIM artefact)"]
+    %% -- PIM -> PSM Agents --------------------------------------------------------
+    subgraph MXA ["(6) PIM -> PSM Transformation  (two independent PSM targets, both subscribe to the same PIM artefact)"]
         direction LR
 
-        MX_AGENT["pim-to-mendix-agent\n──────────────────────────────────────────────\nSubscribes to all CIM agents via PIM_SOURCE_AGENTS env var\nDiscriminates DEMO vs MERODE FSMs via isMerodeFSM()\n──────────────────────────────────────────────\nB1   Enumeration → Mendix Enumeration + captions\nB2   DataType → Mendix Entity\nB3   Class → Mendix Entity\nB4   Property → Mendix Attribute (typed)\nB5   Enum type → EnumerationAttributeType\nB6   Boolean type → BooleanAttributeType\nB7   String/other → StringAttributeType\nB8   Association → Mendix Association\nB10  Generalization → Mendix Entity Inheritance\nB11  AssociationClass → Entity + 2 Associations\nB12  Overview Page per entity\n──── MERODE-specific ─────────────────────────\nB13  Entity_Status Enumeration + status attribute\nB14  Create_Entity Microflow (creates + sets status)\nB15  Set_Entity_Event Microflow (updates status)\nB16  End_Entity Microflow (stub — lifecycle end)"]:::agent
+        MX_AGENT["pim-to-mendix-agent\n----------------------------------------------\nSubscribes to all CIM agents via PIM_SOURCE_AGENTS env var\nDiscriminates DEMO vs MERODE FSMs via isMerodeFSM()\n----------------------------------------------\nB1   Enumeration -> Mendix Enumeration + captions\nB2   DataType -> Mendix Entity\nB3   Class -> Mendix Entity\nB4   Property -> Mendix Attribute (typed)\nB5   Enum type -> EnumerationAttributeType\nB6   Boolean type -> BooleanAttributeType\nB7   String/other -> StringAttributeType\nB8   Association -> Mendix Association\nB10  Generalization -> Mendix Entity Inheritance\nB11  AssociationClass -> Entity + 2 Associations\nB12  Overview Page per entity\n---- MERODE-specific -------------------------\nB13  Entity_Status Enumeration + status attribute\nB14  Create_Entity Microflow (creates + sets status)\nB15  Set_Entity_Event Microflow (updates status)\nB16  End_Entity Microflow (stub - lifecycle end)"]:::agent
         MX_SDK["Mendix Platform SDK\n(TypeScript · mendixmodelsdk)\nOnline Working Copy"]:::ext
 
-        SQL_AGENT["pim-to-sql-agent\n──────────────────────────────────────────────\nSubscribes to the same PIM_SOURCE_AGENTS topics\nSame isMerodeFSM() discriminator\n──────────────────────────────────────────────\nS1   Enumeration → CREATE TYPE ... AS ENUM\nS2   DataType → own id-only table\nS3   AssociationClass → junction table + attrs\nS4   Property → typed column\nS5   Derived attribute → skipped\nS6   DataType-typed attribute → FK column\nS7   Generalization → FK + ON DELETE CASCADE\nS8   1:1 / 1:n Association → FK column\nS9   n:m Association → junction table\nS10  MERODE FSM → status column + enum type\nS11  DEMO FSM → no rule (flows through S4)\nS12  Kahn topological sort of CREATE TABLEs"]:::agent
+        SQL_AGENT["pim-to-sql-agent\n----------------------------------------------\nSubscribes to the same PIM_SOURCE_AGENTS topics\nSame isMerodeFSM() discriminator\n----------------------------------------------\nS1   Enumeration -> CREATE TYPE ... AS ENUM\nS2   DataType -> own id-only table\nS3   AssociationClass -> junction table + attrs\nS4   Property -> typed column\nS5   Derived attribute -> skipped\nS6   DataType-typed attribute -> FK column\nS7   Generalization -> FK + ON DELETE CASCADE\nS8   1:1 / 1:n Association -> FK column\nS9   n:m Association -> junction table\nS10  MERODE FSM -> status column + enum type\nS11  DEMO FSM -> no rule (flows through S4)\nS12  Kahn topological sort of CREATE TABLEs"]:::agent
     end
 
-    %% ── PSM Layer ───────────────────────────────────────────────────────────────
-    subgraph PSM ["⑦ PSM — Two Independent Target Platforms"]
-        MX_APP["Mendix Application\n──────────────────────\nDomain Model\n  · Entities + Attributes\n  · Associations\n  · Enumerations\nMicroflows\n  · Create / Set / End\nOverview Pages\nNavigation"]:::psm
-        SQL_APP["PostgreSQL DDL Script\n──────────────────────\nCREATE TYPE ... ENUM\nCREATE TABLE ...\n  · typed columns\n  · FK constraints\n  · status enum column\nWritten to output/<model>.sql"]:::psm
+    %% -- PSM Layer ---------------------------------------------------------------
+    subgraph PSM ["(7) PSM - Two Independent Target Platforms"]
+        MX_APP["Mendix Application\n----------------------\nDomain Model\n  · Entities + Attributes\n  · Associations\n  · Enumerations\nMicroflows\n  · Create / Set / End\nOverview Pages\nNavigation"]:::psm
+        SQL_APP["PostgreSQL DDL Script\n----------------------\nCREATE TYPE ... ENUM\nCREATE TABLE ...\n  · typed columns\n  · FK constraints\n  · status enum column\nWritten to output/<model>.sql"]:::psm
     end
 
-    %% ── Edges ───────────────────────────────────────────────────────────────────
+    %% -- Edges -------------------------------------------------------------------
     USER         -->|"HTTP POST\n/api/model"| API
     DEMO_IN      -->|"JSON body"| API
     MERODE_IN    -->|"JSON body"| API
@@ -104,21 +104,21 @@ flowchart LR
     classDef data fill:#f0fdf4,stroke:#16a34a,color:#14532d
     classDef err  fill:#fef2f2,stroke:#dc2626,color:#7f1d1d
 
-    RECV["① Receive\nMQTT retained message\nfrom upstream agent\n(subscribeCimState /\nsubscribePimState)"]:::step
+    RECV["(1) Receive\nMQTT retained message\nfrom upstream agent\n(subscribeCimState /\nsubscribePimState)"]:::step
 
-    META["② Extract Meta-Envelope\nextractMeta(payload)\n─────────────────\n_source.format → routing decision\n_target → Mendix coordinates\n_trace → pass-through"]:::step
+    META["(2) Extract Meta-Envelope\nextractMeta(payload)\n-----------------\n_source.format -> routing decision\n_target -> Mendix coordinates\n_trace -> pass-through"]:::step
 
-    FILTER["③ Filter\nCheck _source.format\nIgnore if not for this agent"]:::step
+    FILTER["(3) Filter\nCheck _source.format\nIgnore if not for this agent"]:::step
 
-    VAL_IN["④ Validate Input\nassertValid(schema, model)\nAJV · JSON Schema Draft-07\nadditionalProperties: false\n─────────────────\nPipeline aborts on error"]:::step
+    VAL_IN["(4) Validate Input\nassertValid(schema, model)\nAJV · JSON Schema Draft-07\nadditionalProperties: false\n-----------------\nPipeline aborts on error"]:::step
 
-    TRANSFORM["⑤ Transform\nApply mapping rules\n(A1–A12 / M1–M8 / B1–B16)\nBuild output model\nRecord TraceEntry[] per rule"]:::step
+    TRANSFORM["(5) Transform\nApply mapping rules\n(A1-A12 / M1-M8 / B1-B16)\nBuild output model\nRecord TraceEntry[] per rule"]:::step
 
-    VAL_OUT["⑥ Validate Output\nassertValid(pimuml-schema, pimModel)\nPipeline aborts on error"]:::step
+    VAL_OUT["(6) Validate Output\nassertValid(pimuml-schema, pimModel)\nPipeline aborts on error"]:::step
 
-    PUBLISH["⑦ Publish\npublishPimState()\nretained MQTT message\nattachMeta(model, { _source, _target, _trace })"]:::step
+    PUBLISH["(7) Publish\npublishPimState()\nretained MQTT message\nattachMeta(model, { _source, _target, _trace })"]:::step
 
-    ABORT(["✗ Abort\nlog error\nno publish"]):::err
+    ABORT(["x Abort\nlog error\nno publish"]):::err
 
     RECV --> META --> FILTER --> VAL_IN
     VAL_IN -->|"invalid"| ABORT
@@ -137,17 +137,17 @@ Schema validation is a core concern. Every boundary in the pipeline is guarded b
 flowchart LR
     classDef schema fill:#ede9fe,stroke:#7c3aed,color:#3b0764
 
-    DS["demo-schema.json\n─────────────────────────\nValueType (categorical / nonCategorical)\nEntityType (attributes, parent, derived)\nFactType (roles, multiplicities)\nEventType (entityType reference)"]:::schema
+    DS["demo-schema.json\n-------------------------\nValueType (categorical / nonCategorical)\nEntityType (attributes, parent, derived)\nFactType (roles, multiplicities)\nEventType (entityType reference)"]:::schema
 
-    MS["merode-schema.json\n─────────────────────────\nObjectType (attributes, lifecycleStates)\nExistenceDependency (dependent, master, lower, upper)\nBusinessEventType (role: C|M|E, fromState, toState)"]:::schema
+    MS["merode-schema.json\n-------------------------\nObjectType (attributes, lifecycleStates)\nExistenceDependency (dependent, master, lower, upper)\nBusinessEventType (role: C|M|E, fromState, toState)"]:::schema
 
-    PS["pimuml-schema.json\n─────────────────────────\nEnumeration · DataType\nClass (ownedAttributes, isAbstract, isDerived)\nAssociation (memberEnds, isAggregation, isDerived)\nGeneralization · AssociationClass\nStateMachine\n  Region (forEvent optional)\n  State (kind: initial|false|true|simple|final)\n  Transition (from, to, trigger)\n  Activity (kind: create|set|end)"]:::schema
+    PS["pimuml-schema.json\n-------------------------\nEnumeration · DataType\nClass (ownedAttributes, isAbstract, isDerived)\nAssociation (memberEnds, isAggregation, isDerived)\nGeneralization · AssociationClass\nStateMachine\n  Region (forEvent optional)\n  State (kind: initial|false|true|simple|final)\n  Transition (from, to, trigger)\n  Activity (kind: create|set|end)"]:::schema
 
-    DA_IN(["demo-to-pim-agent\n← validates input"])
-    MA_IN(["merode-to-pim-agent\n← validates input"])
-    DA_OUT(["demo-to-pim-agent\n→ validates output"])
-    MA_OUT(["merode-to-pim-agent\n→ validates output"])
-    MX_IN(["pim-to-mendix-agent\n← validates input"])
+    DA_IN(["demo-to-pim-agent\n<- validates input"])
+    MA_IN(["merode-to-pim-agent\n<- validates input"])
+    DA_OUT(["demo-to-pim-agent\n-> validates output"])
+    MA_OUT(["merode-to-pim-agent\n-> validates output"])
+    MX_IN(["pim-to-mendix-agent\n<- validates input"])
 
     DS --> DA_IN
     MS --> MA_IN
@@ -176,7 +176,7 @@ The bus follows the BIG Modelling Bus naming convention (layer 1 of the Go refer
 | `agentID`       | `api-server`, `demo-to-pim-agent`, `merode-to-pim-agent`, `pim-to-mendix-agent` |
 | `artefactID`    | `model.cim.raw`, `model.pim.created`                                            |
 | `jsonVersion`   | `cim-v1.0-v1.0`, `pimuml-v1.0-v1.0`                                             |
-| `state`         | retained — newly connected agents immediately get the last known model          |
+| `state`         | retained - newly connected agents immediately get the last known model          |
 
 Example topics:
 
@@ -203,7 +203,7 @@ flowchart TB
     INTERNET(["Internet\nhttps://mda.tlolab.com"]):::external
     MENDIX_CLOUD(["Mendix Cloud\nMendix Platform SDK API"]):::external
 
-    subgraph PI ["Raspberry Pi  —  Docker Compose  (network: mda-bus)"]
+    subgraph PI ["Raspberry Pi  -  Docker Compose  (network: mda-bus)"]
         CF["Cloudflare Tunnel\n(TLS termination)"]:::container
         API_C["mda-api-server\nport 3001\napi-server.ts"]:::container
         MQTT_C["mda-mqtt-broker\nEclipse Mosquitto 2\nport 1883 (MQTT)"]:::container
@@ -231,7 +231,7 @@ flowchart TB
     MQTT_C     -.->|"healthcheck\nrestart: unless-stopped"| API_C
 ```
 
-No permanent PostgreSQL container runs on the Pi — `mda-sql-agent` only writes `.sql` files to a mounted host directory. Executability against a real PostgreSQL instance is verified on demand via a throwaway Docker container (procedure: `mda-agents/tests/README.md`), not via a permanently running database service.
+No permanent PostgreSQL container runs on the Pi - `mda-sql-agent` only writes `.sql` files to a mounted host directory. Executability against a real PostgreSQL instance is verified on demand via a throwaway Docker container (procedure: `mda-agents/tests/README.md`), not via a permanently running database service.
 
 CI/CD: a GitHub Actions workflow (`deploy-pi.yml`) deploys the stack automatically on every push to `main`. It SSHes into the Pi, pulls the latest image, and runs `docker compose up -d`.
 
@@ -254,9 +254,9 @@ The architecture is designed to absorb new CIM languages without touching existi
 | `types.ts`               | New interfaces and small type extensions                    | No changes                                           |
 | `docker-compose.yml`     | One new service block                                       | One new service block (plus a volume mount for file output) |
 
-The SQL agent was actually built and validated (see `EXTENSIBILITY_EVIDENCE.md` §5) as the real replacement for a previously only-planned third-agent experiment (ER diagram language). It is the stronger of the two proofs: it required no schema change at all, because it consumes PIM concepts (Classes, Associations, Enumerations, StateMachines) that B1-B13 already handle — it is a pure downstream consumer, not a new source language.
+The SQL agent was actually built and validated (see `EXTENSIBILITY_EVIDENCE.md` §5) as the real replacement for a previously only-planned third-agent experiment (ER diagram language). It is the stronger of the two proofs: it required no schema change at all, because it consumes PIM concepts (Classes, Associations, Enumerations, StateMachines) that B1-B13 already handle - it is a pure downstream consumer, not a new source language.
 
-The extensibility boundary, now demonstrated from both directions: adding a *language* (CIM or PSM) for already-covered PIM concepts is purely additive — zero changes to any existing agent or schema. Adding a language with genuinely new PIM *concepts* (like MERODE's sequential FSMs) additionally needs a minimal additive schema extension and new PSM rules. The boundary sits at the concept level, not the language level.
+The extensibility boundary, now demonstrated from both directions: adding a *language* (CIM or PSM) for already-covered PIM concepts is purely additive - zero changes to any existing agent or schema. Adding a language with genuinely new PIM *concepts* (like MERODE's sequential FSMs) additionally needs a minimal additive schema extension and new PSM rules. The boundary sits at the concept level, not the language level.
 
 ---
 

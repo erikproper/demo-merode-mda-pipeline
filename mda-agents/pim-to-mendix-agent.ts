@@ -107,7 +107,7 @@ async function applyPimToMendix(
   const attributeMap = new Map<string, domainmodels.Attribute>(); // key: "EntityName.attrName"
   let x = 0;
 
-  // DataType names (non-categorical domain types) — their attributes become Associations (B4+B9)
+  // DataType names (non-categorical domain types) - their attributes become Associations (B4+B9)
   const dataTypeNames = new Set((pimModel.dataTypes ?? []).map(dt => dt.name));
   const deferredDTAssocs: { clsName: string; propName: string; dtName: string }[] = [];
 
@@ -611,7 +611,7 @@ async function applyPimToMendix(
 
     // B11: ACR Microflow that triggers the Workflow
     //
-    // KNOWN LIMITATION (CE0049 – "No variable name specified"):
+    // KNOWN LIMITATION (CE0049 - "No variable name specified"):
     // The Mendix SDK does not expose MicroflowParameter (the logical scope variable
     // that the CE checker requires for WorkflowCallAction.workflowContextVariable).
     // MicroflowParameterObject (the visual canvas element) is created and populated
@@ -658,7 +658,7 @@ async function applyPimToMendix(
     console.log(`  + ACR microflow "ACR_${entityName}" -> workflow "WF_${entityName}" [${sm.regions.length} region(s)]`);
   }
 
-  // ── Pages + Navigation ────────────────────────────────────────────────────────
+  // -- Pages + Navigation --------------------------------------------------------
   // Find a web layout by borrowing the reference from any existing page outside
   // our module. A blank Mendix starter app always has at least one pre-built page
   // that already has a valid Atlas layout wired up.
@@ -960,7 +960,7 @@ async function main() {
     console.log(`[pim-to-mendix] subscribed to PIM from "${agentId}"`);
   }
 
-  console.log("[pim-to-mendix] listening … (Ctrl+C to stop)");
+  console.log("[pim-to-mendix] listening ... (Ctrl+C to stop)");
 }
 
 if (require.main === module) {

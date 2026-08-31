@@ -40,7 +40,7 @@ function transform(merode: MerodeModel): { pim: PimModel; trace: TraceEntry[] } 
 
   // M9 pre-pass: transitive propagation through the full EDG (Snoeck ch. 5.3.1).
   // The Propagation Rule is transitive: if C depends on B and B depends on A,
-  // every event of C also involves A with role A/M — not just B.
+  // every event of C also involves A with role A/M - not just B.
   // We compute the transitive closure of the dependency graph, then collect events.
   const directDeps = new Map<string, string[]>(); // master -> [direct dependents]
   for (const dep of merode.existenceDependencies ?? []) {
@@ -240,7 +240,7 @@ async function main() {
     console.log(`[merode-to-pim] published to "${OUT_ARTEFACT}"`);
   });
 
-  console.log("[merode-to-pim] listening … (Ctrl+C to stop)");
+  console.log("[merode-to-pim] listening ... (Ctrl+C to stop)");
 }
 
 if (require.main === module) {

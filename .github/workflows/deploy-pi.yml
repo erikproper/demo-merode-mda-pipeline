@@ -10,11 +10,11 @@
 #   2. Add mda.tlolab.com to your Cloudflare Tunnel config (see cloudflare-tunnel.md)
 #
 #   3. Register the self-hosted runner:
-#        GitHub repo → Settings → Actions → Runners → New self-hosted runner
+#        GitHub repo -> Settings -> Actions -> Runners -> New self-hosted runner
 #        Choose: Linux / ARM64, label: raspberry-pi
 #        Start as service: sudo ./svc.sh install && sudo ./svc.sh start
 #
-#   4. Add GitHub Secrets (repo → Settings → Secrets → Actions):
+#   4. Add GitHub Secrets (repo -> Settings -> Secrets -> Actions):
 #        MENDIX_TOKEN        your Mendix Personal Access Token
 #        MENDIX_APP_ID       your Mendix App UUID
 
@@ -67,7 +67,7 @@ jobs:
           sleep 5
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health)
           if [ "$STATUS" = "200" ]; then
-            echo "API server healthy — https://mda.tlolab.com/health"
+            echo "API server healthy - https://mda.tlolab.com/health"
           else
             echo "Health check failed (HTTP $STATUS)"
             docker compose -f ~/Projects/mda-master-thesis-workspace/docker-compose.yml logs --tail=20

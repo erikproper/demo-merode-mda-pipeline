@@ -196,7 +196,7 @@ smActivities.push({ name: `Set_${ot.name}_${evt.name}`, kind: "set", targetType:
   ...(effects.length > 0 ? { effects } : {}) })
 ```
 
-Das optionale `effects`-Array in `BusinessEventType` (MERODE-Schema) listet die Attribute, die ein M-Event ändert. Der Attributtyp wird zur Transformationszeit aus der OT-Attributliste aufgelöst und in der pimUML-Activity mitgegeben, damit die nachgelagerte B15-Regel korrekt typisierte Microflow-Parameter generieren kann — ohne Rückgriff auf das MERODE-Modell.
+Das optionale `effects`-Array in `BusinessEventType` (MERODE-Schema) listet die Attribute, die ein M-Event ändert. Der Attributtyp wird zur Transformationszeit aus der OT-Attributliste aufgelöst und in der pimUML-Activity mitgegeben, damit die nachgelagerte B15-Regel korrekt typisierte Microflow-Parameter generieren kann - ohne Rückgriff auf das MERODE-Modell.
 
 Bezug zu DEMO: Analog zu den Set-Aktivitäten von A6. Der Hauptunterschied: in DEMO bewegt der Übergang eine boolesche Region von `false` nach `true` (monoton). In MERODE bewegt er sich zwischen zwei benannten, sich gegenseitig ausschließenden Lebenszykluszuständen, und ändert dabei konkrete Attribute.
 
@@ -297,7 +297,7 @@ Der `Set_<Entity>_<Ereignisname>`-Microflow nimmt die Entity als Pflichtparamete
 
 ### B16 - MERODE End-Aktivität nach Delete-Microflow
 
-Der `End_<Entity>`-Microflow nimmt die Entity als Parameter und führt eine `DeleteAction` aus. Das entspricht direkt M8: das Objekt „hört auf zu existieren" in der Geschäftsdomäne (Snoeck, S. 53). In Mendix ist das eine permanente Entfernung aus der Datenbank. Alternativ wäre Soft-Delete möglich (Status-Attribut auf einen „ended"-Wert setzen), was aber einen zusätzlichen Enum-Wert im _Status-Enum erfordert. Hard-Delete ist der einfachere, semantisch korrekte Standardfall für die Thesis-Demonstration.
+Der `End_<Entity>`-Microflow nimmt die Entity als Parameter und führt eine `DeleteAction` aus. Das entspricht direkt M8: das Objekt "hört auf zu existieren" in der Geschäftsdomäne (Snoeck, S. 53). In Mendix ist das eine permanente Entfernung aus der Datenbank. Alternativ wäre Soft-Delete möglich (Status-Attribut auf einen "ended"-Wert setzen), was aber einen zusätzlichen Enum-Wert im _Status-Enum erfordert. Hard-Delete ist der einfachere, semantisch korrekte Standardfall für die Thesis-Demonstration.
 
 ---
 
@@ -317,12 +317,12 @@ Zweiter PSM-Pfad, parallel zu den B-Regeln (Abschnitt 5). Beide Pfade konsumiere
 | S8  | `associations[]` (1:1, 1:n) | FK-Spalte auf der Seite mit `upper !== "*"` | implementiert |
 | S9  | `associations[]` (n:m) | eigene Junction-Tabelle mit zwei NOT-NULL-FKs | implementiert |
 | S10 | `stateMachines[]`, sequenziell (`isMerodeFSM`) | `status`-Spalte + `<Entity>_status_enum` | implementiert |
-| S11 | DEMO-orthogonale FSMs | keine Sonderregel — läuft über S4 | implementiert (kein Zusatzcode nötig) |
+| S11 | DEMO-orthogonale FSMs | keine Sonderregel - läuft über S4 | implementiert (kein Zusatzcode nötig) |
 | S12 | Tabellenreihenfolge | topologischer Sort (Kahn) über den FK-Abhängigkeitsgraphen | implementiert |
 
 Vollständiger Begründungstext pro Regel, Designentscheidung zur DataType-Spiegelung (S2/S6) und die Rent-A-Car-Validierung: `SqlMappingRules.md`.
 
-Der zentrale Unterschied zur MERODE-Integration: der SQL-Agent ist ein reiner Konsument des bestehenden `pimuml-schema.json` und führt keine PIM-Erweiterung ein. Während MERODE neue PIM-Konzepte einführte und damit das gemeinsame Schema additiv erweitern musste (Abschnitt 4.5, M5), deckt der SQL-Agent dieselben pimUML-Konstrukte ab, die B1-B13 bereits konsumieren — nur mit einer anderen Zielsyntax. Das macht ihn zum saubereren der beiden Extensibilitätsnachweise: null Änderungen an `pimuml-schema.json`, `bus-client.ts`, `agent-utils.ts` oder einem der beiden CIM-Agenten (Diff-Nachweis: `EXTENSIBILITY_EVIDENCE.md`).
+Der zentrale Unterschied zur MERODE-Integration: der SQL-Agent ist ein reiner Konsument des bestehenden `pimuml-schema.json` und führt keine PIM-Erweiterung ein. Während MERODE neue PIM-Konzepte einführte und damit das gemeinsame Schema additiv erweitern musste (Abschnitt 4.5, M5), deckt der SQL-Agent dieselben pimUML-Konstrukte ab, die B1-B13 bereits konsumieren - nur mit einer anderen Zielsyntax. Das macht ihn zum saubereren der beiden Extensibilitätsnachweise: null Änderungen an `pimuml-schema.json`, `bus-client.ts`, `agent-utils.ts` oder einem der beiden CIM-Agenten (Diff-Nachweis: `EXTENSIBILITY_EVIDENCE.md`).
 
 ---
 
@@ -348,7 +348,7 @@ Diese Tabelle zeigt, wie DEMO- und MERODE-Quellkonzepte auf pimUML abbilden, und
 
 Die beiden als "Neu in MERODE" markierten Zeilen (M8, M9) sind es, die MERODE auf PIM-Ebene paradigmatisch von DEMO unterscheiden und die PIM-Erweiterung rechtfertigen. Die FSM-Zeile unterscheidet sich im internen Aufbau, kann aber durch dasselbe PIM-Konstrukt mit unterschiedlicher interner Struktur aufgenommen werden.
 
-Die SQL-Spalte zeigt zusätzlich die Grenze zwischen strukturellem und verhaltensbezogenem PIM-Gehalt: alle strukturellen Zeilen (Geschäftsobjekt bis Vererbung) haben ein SQL-Ziel, alle verhaltensbezogenen Zeilen (Ereignisse, Propagierung) werden von den S-Regeln bewusst als `NotMapped` behandelt — ein PostgreSQL-Schema hat kein natives Konzept für Microflow-Logik. Das ist kein Mangel der S-Regeln, sondern eine Eigenschaft der Zielplattform, und macht den Struktur/Verhalten-Schnitt des pimUML-Metamodells selbst sichtbar.
+Die SQL-Spalte zeigt zusätzlich die Grenze zwischen strukturellem und verhaltensbezogenem PIM-Gehalt: alle strukturellen Zeilen (Geschäftsobjekt bis Vererbung) haben ein SQL-Ziel, alle verhaltensbezogenen Zeilen (Ereignisse, Propagierung) werden von den S-Regeln bewusst als `NotMapped` behandelt - ein PostgreSQL-Schema hat kein natives Konzept für Microflow-Logik. Das ist kein Mangel der S-Regeln, sondern eine Eigenschaft der Zielplattform, und macht den Struktur/Verhalten-Schnitt des pimUML-Metamodells selbst sichtbar.
 
 ---
 

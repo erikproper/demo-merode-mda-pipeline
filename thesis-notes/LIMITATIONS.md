@@ -6,13 +6,13 @@ Dieses Dokument hält fest, was der Prototyp nicht kann und warum. Für die Thes
 
 ## 1. Implementierte M-Regeln (ehemals Lücken)
 
-### M3 - Attributdomänen ✅ implementiert (2026-08-03)
+### M3 - Attributdomänen OK implementiert (2026-08-03)
 
 `merode-schema.json` wurde um ein `domainTypes`-Array erweitert. `MerodeDomainType`-Interface in `types.ts`. Kategorische Domänen (z.B. `FuelType`) werden zu pimUML-Enumerationen; nicht-kategorische (z.B. `MoneyAmount`) zu pimUML-DataTypes, die im PSM-Agenten als Mendix-Entity mit Association umgesetzt werden. Vollständig im Rent-A-Car-Fixture getestet.
 
-Verbleibende Einschränkung: der Attributtyp verweist auf den Domänennamen als String — der Zusammenhang wird erst durch das `domainTypes`-Array im selben Modell aufgelöst. Für die Evaluation kein Problem, da das Fixture explizite `domainTypes`-Einträge enthält.
+Verbleibende Einschränkung: der Attributtyp verweist auf den Domänennamen als String - der Zusammenhang wird erst durch das `domainTypes`-Array im selben Modell aufgelöst. Für die Evaluation kein Problem, da das Fixture explizite `domainTypes`-Einträge enthält.
 
-### M9 - Gemeinsame Ereignisbeteiligung und Propagierung ✅ implementiert (2026-08-03)
+### M9 - Gemeinsame Ereignisbeteiligung und Propagierung OK implementiert (2026-08-03)
 
 Die Propagierungshülle wird aus dem EDG berechnet (`allTransitiveDependents()`). Für jedes Master-OT, dessen Dependents Ereignisse besitzen, werden Self-Transitionen auf allen aktiven Lebenszykluszuständen eingefügt (Trigger = Ereignisname). Zusätzlich wird eine `Set_<Master>_<evt>`-Aktivität erzeugt, die im PSM-Agenten zu einem ChangeObjectAction-Microflow wird.
 
@@ -22,11 +22,11 @@ Verbleibende Einschränkung: die Propagierung erzeugt immer Self-Transitionen au
 
 ## 2. Lücken bei den B-Regeln
 
-### B16 - End-Microflow ✅ implementiert (2026-08-03)
+### B16 - End-Microflow OK implementiert (2026-08-03)
 
-Der `End_<Entity>`-Microflow generiert: MicroflowParameterObject (Entitätsobjekt) → `DeleteAction` → EndEvent. Die Designentscheidung fiel auf Hard-Delete, weil Snoecks Semantik ("an object ceases to exist") physische Nicht-Existenz impliziert und eine Soft-Delete-Variante eine zusätzliche Filterlogik in allen Abfragen erfordern würde, die über den Prototyp-Scope hinausgeht (DD12 in DESIGN_DECISIONS.md).
+Der `End_<Entity>`-Microflow generiert: MicroflowParameterObject (Entitätsobjekt) -> `DeleteAction` -> EndEvent. Die Designentscheidung fiel auf Hard-Delete, weil Snoecks Semantik ("an object ceases to exist") physische Nicht-Existenz impliziert und eine Soft-Delete-Variante eine zusätzliche Filterlogik in allen Abfragen erfordern würde, die über den Prototyp-Scope hinausgeht (DD12 in DESIGN_DECISIONS.md).
 
-Verbleibende Einschränkung: physische Löschung löscht auch alle abhängigen Objekte (Mendix Cascade-Delete), wenn die Associations entsprechend konfiguriert sind. Für MERODE-Modelle mit Existenzabhängigkeiten bedeutet das, dass ein Master nicht gelöscht werden kann, solange Dependents existieren — das spiegelt Snoecks Semantik korrekt wider, muss aber in der Applikation explizit gehandhabt werden.
+Verbleibende Einschränkung: physische Löschung löscht auch alle abhängigen Objekte (Mendix Cascade-Delete), wenn die Associations entsprechend konfiguriert sind. Für MERODE-Modelle mit Existenzabhängigkeiten bedeutet das, dass ein Master nicht gelöscht werden kann, solange Dependents existieren - das spiegelt Snoecks Semantik korrekt wider, muss aber in der Applikation explizit gehandhabt werden.
 
 ### Workflow-Generierung für MERODE entfällt
 
@@ -78,18 +78,18 @@ Die Ausgabe ist ein valides Mendix-Modell, das in Mendix Studio Pro geöffnet we
 
 ### pimUML-Schema approximiert UML-Metaclasses vereinfacht
 
-Das `pimuml-schema.json` bildet das pimUML-Metamodell (Bzowski, Figure C.2–C.3) nicht in voller UML-2.5.1-Treue ab. Alle Pattern-relevanten Metaclasses (grün in der Legende) sind vorhanden: `Class`, `Property`, `Association`, `AssociationClass`, `Generalization`, `Enumeration`, `StateMachine`, `Region`, `Transition`, `State`, `Pseudostate`, `Trigger`. Folgende Vereinfachungen wurden zugunsten von JSON-Serialisierbarkeit vorgenommen:
+Das `pimuml-schema.json` bildet das pimUML-Metamodell (Bzowski, Figure C.2-C.3) nicht in voller UML-2.5.1-Treue ab. Alle Pattern-relevanten Metaclasses (grün in der Legende) sind vorhanden: `Class`, `Property`, `Association`, `AssociationClass`, `Generalization`, `Enumeration`, `StateMachine`, `Region`, `Transition`, `State`, `Pseudostate`, `Trigger`. Folgende Vereinfachungen wurden zugunsten von JSON-Serialisierbarkeit vorgenommen:
 
-- `AggregationKind` (none/shared/composite auf `Property`) → `isAggregation: boolean` auf `PimAssociation`. Nur der Composite-Fall wird unterschieden; shared Aggregation ist im Prototyp-Scope nicht nötig.
-- `ValueSpecification`-Hierarchie (`LiteralInteger`, `LiteralBoolean`, `LiteralUnlimitedNatural`) → `defaultValue?: string`. Literalwerte werden als plain Strings serialisiert statt als typisierte Objekt-Instanzen.
-- `PrimitiveType` als formaler Typ-Knoten → Typ-Strings (`"String"`, `"Integer"`, ...). Der Typ eines Attributs wird als String referenziert, nicht als eigenständiges Metamodell-Objekt.
-- `InstanceSpecification` → nicht implementiert. Im Prototyp-Scope nicht benötigt.
-- `Trigger` als benanntes Objekt → `trigger?: string` auf `PimTransition`. Nur der Name wird serialisiert.
-- `Transition.effect → Behavior` → `alfExpression?: string`. Übergangseffekte werden als ALF-Ausdrucks-String dargestellt, nicht als vollständiges Behavior-Objekt.
-- `State.entry → Behavior` → `entryActivity?: string`. Entry-Aktivitäten werden als Name-String referenziert.
-- `PseudostateKind` mit 10 UML-Werten → `kind: "initial" | "false" | "true" | "simple" | "final"`. Nur die für DEMO und MERODE relevanten Zustände sind definiert.
+- `AggregationKind` (none/shared/composite auf `Property`) -> `isAggregation: boolean` auf `PimAssociation`. Nur der Composite-Fall wird unterschieden; shared Aggregation ist im Prototyp-Scope nicht nötig.
+- `ValueSpecification`-Hierarchie (`LiteralInteger`, `LiteralBoolean`, `LiteralUnlimitedNatural`) -> `defaultValue?: string`. Literalwerte werden als plain Strings serialisiert statt als typisierte Objekt-Instanzen.
+- `PrimitiveType` als formaler Typ-Knoten -> Typ-Strings (`"String"`, `"Integer"`, ...). Der Typ eines Attributs wird als String referenziert, nicht als eigenständiges Metamodell-Objekt.
+- `InstanceSpecification` -> nicht implementiert. Im Prototyp-Scope nicht benötigt.
+- `Trigger` als benanntes Objekt -> `trigger?: string` auf `PimTransition`. Nur der Name wird serialisiert.
+- `Transition.effect -> Behavior` -> `alfExpression?: string`. Übergangseffekte werden als ALF-Ausdrucks-String dargestellt, nicht als vollständiges Behavior-Objekt.
+- `State.entry -> Behavior` -> `entryActivity?: string`. Entry-Aktivitäten werden als Name-String referenziert.
+- `PseudostateKind` mit 10 UML-Werten -> `kind: "initial" | "false" | "true" | "simple" | "final"`. Nur die für DEMO und MERODE relevanten Zustände sind definiert.
 
-Das Aktivitätsdiagramm (drittes Teil des pimUML-Metamodells) wird durch das vereinfachte `PimActivity`-Konstrukt (`kind` + `effects`) approximiert — komplexe Kontrollflüsse innerhalb von Aktivitäten sind bewusst ausgeklammert, da sie auf Mendix-Ebene nicht generierbar sind ohne einen eigenen Ausdrucks-Parser. Siehe auch DD3 in DESIGN_DECISIONS.md.
+Das Aktivitätsdiagramm (drittes Teil des pimUML-Metamodells) wird durch das vereinfachte `PimActivity`-Konstrukt (`kind` + `effects`) approximiert - komplexe Kontrollflüsse innerhalb von Aktivitäten sind bewusst ausgeklammert, da sie auf Mendix-Ebene nicht generierbar sind ohne einen eigenen Ausdrucks-Parser. Siehe auch DD3 in DESIGN_DECISIONS.md.
 
 ### Konfigurationsabhängigkeit bei PIM-Quellagenten
 
@@ -103,15 +103,15 @@ Der SQL-Agent ist ein reiner Downstream-Konsument von `pimuml-schema.json` (sieh
 
 ### S7 - keine geteilte Primärschlüssel-Konvention bei Generalisierung
 
-Jede Klasse erhält im pimUML-Metamodell ihr eigenes, unabhängiges `isID`-Attribut, auch eine Generalisierungs-Kind-Klasse. `pim-to-sql-agent.ts` bildet Generalisierung deshalb auf eine Pflicht-FK-Spalte (`<parent>_id`, `ON DELETE CASCADE`) statt auf eine relational übliche PK-Sharing-Konvention (Kind-Tabellen-PK = Eltern-Tabellen-PK) ab. Das ist funktional korrekt (referenzielle Integrität ist gewährleistet), aber relational nicht die eleganteste Lösung: eine Kind-Instanz hat zwei unabhängige Integer-Identitäten (ihre eigene `isID`-Spalte und die FK auf den Elternteil) statt einer geteilten. Eine PK-Sharing-Variante würde eine pimUML-seitige Konvention voraussetzen, die es aktuell nicht gibt (z. B. eine explizite Markierung, dass eine Generalisierungs-Kind-Klasse kein eigenes `isID`-Attribut trägt, sondern das des Elternteils übernimmt). Für die Rent-A-Car-Fixture (Car→Vehicle) unproblematisch, da keine Abfrage von der PK-Teilung abhängt.
+Jede Klasse erhält im pimUML-Metamodell ihr eigenes, unabhängiges `isID`-Attribut, auch eine Generalisierungs-Kind-Klasse. `pim-to-sql-agent.ts` bildet Generalisierung deshalb auf eine Pflicht-FK-Spalte (`<parent>_id`, `ON DELETE CASCADE`) statt auf eine relational übliche PK-Sharing-Konvention (Kind-Tabellen-PK = Eltern-Tabellen-PK) ab. Das ist funktional korrekt (referenzielle Integrität ist gewährleistet), aber relational nicht die eleganteste Lösung: eine Kind-Instanz hat zwei unabhängige Integer-Identitäten (ihre eigene `isID`-Spalte und die FK auf den Elternteil) statt einer geteilten. Eine PK-Sharing-Variante würde eine pimUML-seitige Konvention voraussetzen, die es aktuell nicht gibt (z. B. eine explizite Markierung, dass eine Generalisierungs-Kind-Klasse kein eigenes `isID`-Attribut trägt, sondern das des Elternteils übernimmt). Für die Rent-A-Car-Fixture (Car->Vehicle) unproblematisch, da keine Abfrage von der PK-Teilung abhängt.
 
 ### S2/S6 - DataType-Tabelle spiegelt eine PIM-Limitation, statt sie zu beheben
 
-Wie bereits für den Mendix-Pfad dokumentiert (Abschnitt 4, "pimUML-Schema approximiert UML-Metaclasses vereinfacht"), trägt ein pimUML-DataType keine eigene Struktur. `pim-to-sql-agent.ts` erzeugt deshalb für jeden DataType eine Tabelle mit ausschließlich einer `id`-Spalte und verweist per FK darauf (S2/S6), statt den DataType als Inline-Spaltentyp zu behandeln. Das ist bewusst keine SQL-spezifische Verbesserung der PIM-Limitation, sondern deren getreue Spiegelung — eine Begründung dazu in `SqlMappingRules.md` Abschnitt 3. Konsequenz: ein DataType wie `MoneyAmount` erzeugt eine praktisch leere Tabelle, die in einer echten Datenbank überflüssig wirkt, bis pimUML DataTypes eine eigene Basistyp-Eigenschaft bekommt.
+Wie bereits für den Mendix-Pfad dokumentiert (Abschnitt 4, "pimUML-Schema approximiert UML-Metaclasses vereinfacht"), trägt ein pimUML-DataType keine eigene Struktur. `pim-to-sql-agent.ts` erzeugt deshalb für jeden DataType eine Tabelle mit ausschließlich einer `id`-Spalte und verweist per FK darauf (S2/S6), statt den DataType als Inline-Spaltentyp zu behandeln. Das ist bewusst keine SQL-spezifische Verbesserung der PIM-Limitation, sondern deren getreue Spiegelung - eine Begründung dazu in `SqlMappingRules.md` Abschnitt 3. Konsequenz: ein DataType wie `MoneyAmount` erzeugt eine praktisch leere Tabelle, die in einer echten Datenbank überflüssig wirkt, bis pimUML DataTypes eine eigene Basistyp-Eigenschaft bekommt.
 
 ### S12 - Zyklen brechen die Erzeugung vollständig ab
 
-`topoSortTables()` (Kahn-Algorithmus) wirft bei einer zirkulären Pflicht-FK-Abhängigkeit zwischen zwei oder mehr Tabellen eine Exception und erzeugt gar keine DDL-Datei, statt eine unvollständige oder mit `ALTER TABLE`-Nachträgen aufgelöste Teillösung auszugeben. Das ist eine bewusste Fail-fast-Entscheidung (ein Zyklus würde beim tatsächlichen Ausführen der DDL ohnehin scheitern), bedeutet aber, dass der Agent für ein zyklisches PIM-Modell keinerlei Output produziert — auch nicht für die zyklusfreien Teile des Modells. Eine vollständigere Lösung würde zyklische FKs automatisch als `ALTER TABLE ... ADD CONSTRAINT` nach den `CREATE TABLE`-Anweisungen nachziehen (deferred FK), was den Zyklus auflösen würde, ist aber als Future Work eingestuft, da im Rent-A-Car-Fixture kein solcher Zyklus auftritt.
+`topoSortTables()` (Kahn-Algorithmus) wirft bei einer zirkulären Pflicht-FK-Abhängigkeit zwischen zwei oder mehr Tabellen eine Exception und erzeugt gar keine DDL-Datei, statt eine unvollständige oder mit `ALTER TABLE`-Nachträgen aufgelöste Teillösung auszugeben. Das ist eine bewusste Fail-fast-Entscheidung (ein Zyklus würde beim tatsächlichen Ausführen der DDL ohnehin scheitern), bedeutet aber, dass der Agent für ein zyklisches PIM-Modell keinerlei Output produziert - auch nicht für die zyklusfreien Teile des Modells. Eine vollständigere Lösung würde zyklische FKs automatisch als `ALTER TABLE ... ADD CONSTRAINT` nach den `CREATE TABLE`-Anweisungen nachziehen (deferred FK), was den Zyklus auflösen würde, ist aber als Future Work eingestuft, da im Rent-A-Car-Fixture kein solcher Zyklus auftritt.
 
 ### S4 - unbekannter PIM-Typ fällt auf TEXT zurück
 
@@ -129,9 +129,9 @@ Diese werden dokumentiert, falls Gutachter danach fragen.
 
 **CW0263:** Mendix verlangt mindestens einen sprachspezifischen Caption für jeden Enum-Wert. Die anfängliche Implementierung erstellte Enum-Werte ohne Captions. Behoben durch automatisches Hinzufügen eines englischen Captions (erster Buchstabe großgeschrieben) über `texts.Text.createInEnumerationValueUnderCaption(v)`.
 
-**CE6685** ("Parameters of the selected microflow have changed"): `CallMicroflowTask`-Schritte im generierten Workflow hatten keine `parameterMappings`-Einträge, weil `MicroflowCallParameterMapping.parameter` einen `MicroflowParameter`-Verweis erfordert, der scheinbar nicht per SDK erstellt werden kann. Behoben (2026-08-25) durch: `MicroflowCallParameterMapping.create(model)`, `expression = "$WorkflowContext"`, und `__parameter.updateWithRawValue("Modul.MicroflowName.parameterName")`. Der Mendix-Modellserver erstellt `MicroflowParameter` beim Flush automatisch aus `MicroflowParameterObject` — die Qualified-Name-Referenz löst sich daher korrekt auf.
+**CE6685** ("Parameters of the selected microflow have changed"): `CallMicroflowTask`-Schritte im generierten Workflow hatten keine `parameterMappings`-Einträge, weil `MicroflowCallParameterMapping.parameter` einen `MicroflowParameter`-Verweis erfordert, der scheinbar nicht per SDK erstellt werden kann. Behoben (2026-08-25) durch: `MicroflowCallParameterMapping.create(model)`, `expression = "$WorkflowContext"`, und `__parameter.updateWithRawValue("Modul.MicroflowName.parameterName")`. Der Mendix-Modellserver erstellt `MicroflowParameter` beim Flush automatisch aus `MicroflowParameterObject` - die Qualified-Name-Referenz löst sich daher korrekt auf.
 
-**Falsche Association-Kardinalität** (Rental(1)→Person(\*) statt Rental(\*)→Person(1)): `mxAssoc.parent` und `mxAssoc.child` waren vertauscht. Im Mendix SDK gilt: `parent` = Many-Seite (FK-Halter, zeigt als \*), `child` = One-Seite (Referenz, zeigt als 1) — entgegen der intuitiven relational-ORM-Konvention. Behoben (2026-08-25) an allen drei Stellen im Agenten (reguläre Associations, DataType-Associations, AssociationClass-Approximationen).
+**Falsche Association-Kardinalität** (Rental(1)->Person(\*) statt Rental(\*)->Person(1)): `mxAssoc.parent` und `mxAssoc.child` waren vertauscht. Im Mendix SDK gilt: `parent` = Many-Seite (FK-Halter, zeigt als \*), `child` = One-Seite (Referenz, zeigt als 1) - entgegen der intuitiven relational-ORM-Konvention. Behoben (2026-08-25) an allen drei Stellen im Agenten (reguläre Associations, DataType-Associations, AssociationClass-Approximationen).
 
 **Wait_undefined im Workflow-Generator:** Der Workflow-Generator versuchte eine WaitForNotification-Aktivität namens `Wait_${region.forEvent}` anzulegen. Für MERODE-Regionen, wo `forEvent` undefined ist, ergab das `Wait_undefined`. Behoben durch den `isMerodeFSM()`-Check, der die Workflow-Generierung für MERODE-FSMs überspringt.
 

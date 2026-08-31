@@ -1,19 +1,19 @@
 # =============================================================================
-# .gitignore  –  MDA Master Thesis Workspace (root)
+# .gitignore  -  MDA Master Thesis Workspace (root)
 # =============================================================================
 
-# ── Claude AI / IDE context ───────────────────────────────────────────────────
+# -- Claude AI / IDE context ---------------------------------------------------
 .claude/
 CLAUDE.md
 1MToken.md
 
-# ── Secrets & local environment ──────────────────────────────────────────────
-# Never commit credentials — use .env.example as template
+# -- Secrets & local environment ----------------------------------------------
+# Never commit credentials - use .env.example as template
 .env
 *.env.local
 *.env.*.local
 
-# ── Node.js / TypeScript (mda-agents/) ───────────────────────────────────────
+# -- Node.js / TypeScript (mda-agents/) ---------------------------------------
 node_modules/
 dist/
 *.js.map
@@ -23,35 +23,35 @@ mda-agents/tests/rent-a-car-pim.json
 mda-agents/tests/rent-a-car-pim-from-bus.json
 mda-agents/output/*.sql
 
-# ── Go (big-modelling-bus.go.v1/) ─────────────────────────────────────────────
+# -- Go (big-modelling-bus.go.v1/) ---------------------------------------------
 big-modelling-bus.go.v1/bin/
 big-modelling-bus.go.v1/*.exe
 big-modelling-bus.go.v1/*.test
 big-modelling-bus.go.v1/vendor/
 
-# ── Docker ────────────────────────────────────────────────────────────────────
-# Local override files (never commit — use docker-compose.yml as base)
+# -- Docker --------------------------------------------------------------------
+# Local override files (never commit - use docker-compose.yml as base)
 docker-compose.override.yml
 docker-compose.local.yml
 
-# ── macOS ─────────────────────────────────────────────────────────────────────
+# -- macOS ---------------------------------------------------------------------
 .DS_Store
 .AppleDouble
 .LSOverride
 ._*
 
-# ── Windows ───────────────────────────────────────────────────────────────────
+# -- Windows -------------------------------------------------------------------
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# ── Editors & IDEs ────────────────────────────────────────────────────────────
+# -- Editors & IDEs ------------------------------------------------------------
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# ── Logs ──────────────────────────────────────────────────────────────────────
+# -- Logs ----------------------------------------------------------------------
 *.log
 npm-debug.log*

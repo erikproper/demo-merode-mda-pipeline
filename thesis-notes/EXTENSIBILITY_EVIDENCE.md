@@ -90,7 +90,7 @@ Gesamter neuer Code: ca. 335 Zeilen. Geänderte bestehende Dateien: ca. 183 Zeil
 
 ## 5. Der SQL-Agent als ausgeführtes zweites Extensibilitätsexperiment
 
-Ein ursprünglich geplantes drittes-Agenten-Experiment (ein ER-Diagramm-CIM-Agent, E1-E2) war als formaler, aber rein hypothetischer Nachweis vorgesehen — mit vorhergesagten, nicht tatsächlich verifizierten Dateiänderungen. Dieser Plan wurde durch ein reales, ausgeführtes Experiment ersetzt: `pim-to-sql-agent.ts`, ein zweiter PSM-Agent, der PostgreSQL-DDL statt einer Mendix-App erzeugt. Er konsumiert exakt dasselbe `model.pim.created`-Artefakt wie `pim-to-mendix-agent.ts` und ist damit kein Spielzeug-Format, sondern eine echte, andersartige Zielplattform.
+Ein ursprünglich geplantes drittes-Agenten-Experiment (ein ER-Diagramm-CIM-Agent, E1-E2) war als formaler, aber rein hypothetischer Nachweis vorgesehen - mit vorhergesagten, nicht tatsächlich verifizierten Dateiänderungen. Dieser Plan wurde durch ein reales, ausgeführtes Experiment ersetzt: `pim-to-sql-agent.ts`, ein zweiter PSM-Agent, der PostgreSQL-DDL statt einer Mendix-App erzeugt. Er konsumiert exakt dasselbe `model.pim.created`-Artefakt wie `pim-to-mendix-agent.ts` und ist damit kein Spielzeug-Format, sondern eine echte, andersartige Zielplattform.
 
 Der SQL-Agent ist ein stärkerer Extensibilitätsnachweis als der geplante ER-Agent aus zwei Gründen: er testet die Behauptung auf der PSM-Seite (bisher nur auf der CIM-Seite durch MERODE belegt), und er wurde tatsächlich gebaut, getestet und gegen echtes PostgreSQL validiert statt nur vorhergesagt.
 
@@ -104,7 +104,7 @@ Der SQL-Agent ist ein stärkerer Extensibilitätsnachweis als der geplante ER-Ag
 
 ### Additiv geänderte Infrastrukturdateien
 
-- `docker-compose.yml`: ein neuer Service-Block (`sql-agent`) hinzugefügt, inklusive eines zusätzlichen Volume-Mounts (`./mda-agents/output:/app/output`) für den Datei-Output — die einzige strukturelle Abweichung vom Service-Block-Muster der bestehenden Agenten, begründet durch die Notwendigkeit, generierte `.sql`-Dateien aus dem Container herauszureichen (der Mendix-Agent braucht das nicht, weil sein Output über die Mendix Cloud API geht, kein lokales Dateiartefakt ist). Keine bestehenden Service-Definitionen geändert.
+- `docker-compose.yml`: ein neuer Service-Block (`sql-agent`) hinzugefügt, inklusive eines zusätzlichen Volume-Mounts (`./mda-agents/output:/app/output`) für den Datei-Output - die einzige strukturelle Abweichung vom Service-Block-Muster der bestehenden Agenten, begründet durch die Notwendigkeit, generierte `.sql`-Dateien aus dem Container herauszureichen (der Mendix-Agent braucht das nicht, weil sein Output über die Mendix Cloud API geht, kein lokales Dateiartefakt ist). Keine bestehenden Service-Definitionen geändert.
 - `mda-agents/package.json`: ein neues Script (`"pim-to-sql-agent"`).
 - `.gitignore`: ein neues Pattern (`mda-agents/output/*.sql`) in der bereits bestehenden "Generated pipeline outputs"-Sektion.
 - `tests/README.md`: neue Zeilen in der Dateitabelle sowie ein neuer Abschnitt mit einem reproduzierbaren Docker-Kommando für den Ausführbarkeitsnachweis gegen echtes PostgreSQL.
@@ -113,7 +113,7 @@ Bewusste Design-Entscheidung: kein permanenter Postgres-Service in `docker-compo
 
 ### Unveränderte Kerndateien
 
-`bus-client.ts`, `agent-utils.ts`, `demo-to-pim-agent.ts`, `merode-to-pim-agent.ts`, `pim-to-mendix-agent.ts`, `pimuml-schema.json`, `demo-schema.json` und `merode-schema.json` haben null Änderungen erhalten. Das ist der entscheidende Unterschied zur MERODE-Integration (Abschnitt 2): dort musste `pimuml-schema.json` additiv erweitert werden, weil MERODE neue PIM-Konzepte (benannte Lebenszykluszustände) einführte. Der SQL-Agent konsumiert ausschließlich bereits bestehende pimUML-Konstrukte und braucht daher keinerlei Schema-Änderung — nicht einmal eine additive.
+`bus-client.ts`, `agent-utils.ts`, `demo-to-pim-agent.ts`, `merode-to-pim-agent.ts`, `pim-to-mendix-agent.ts`, `pimuml-schema.json`, `demo-schema.json` und `merode-schema.json` haben null Änderungen erhalten. Das ist der entscheidende Unterschied zur MERODE-Integration (Abschnitt 2): dort musste `pimuml-schema.json` additiv erweitert werden, weil MERODE neue PIM-Konzepte (benannte Lebenszykluszustände) einführte. Der SQL-Agent konsumiert ausschließlich bereits bestehende pimUML-Konstrukte und braucht daher keinerlei Schema-Änderung - nicht einmal eine additive.
 
 ### Zeilenänderungs-Analyse
 
@@ -134,7 +134,7 @@ Bewusste Design-Entscheidung: kein permanenter Postgres-Service in `docker-compo
 | `pim-to-mendix-agent.ts` | Keine Änderungen | 0 |
 | `pimuml-schema.json` | Keine Änderungen | 0 |
 
-Gesamter neuer Code: ca. 900 Zeilen, verteilt auf ausschließlich neue Dateien. Geänderte bestehende Dateien: ca. 47 Zeilen, ausnahmslos additive Infrastruktur-Ergänzungen (ein neuer Service-Block, ein neues Script, ein neues `.gitignore`-Pattern). Kein bestehendes Core-File wurde angetastet — der `git diff` dieses Arbeitspakets zeigt ausschließlich neue Dateien plus drei einzeilige/kleinteilige additive Ergänzungen.
+Gesamter neuer Code: ca. 900 Zeilen, verteilt auf ausschließlich neue Dateien. Geänderte bestehende Dateien: ca. 47 Zeilen, ausnahmslos additive Infrastruktur-Ergänzungen (ein neuer Service-Block, ein neues Script, ein neues `.gitignore`-Pattern). Kein bestehendes Core-File wurde angetastet - der `git diff` dieses Arbeitspakets zeigt ausschließlich neue Dateien plus drei einzeilige/kleinteilige additive Ergänzungen.
 
 ### Ausführbarkeitsnachweis
 
@@ -154,4 +154,4 @@ Nicht beansprucht wird: das Hinzufügen einer neuen CIM-Sprache mit genuinen neu
 
 This framing turns the MERODE schema extension from a potential embarrassment ("the schema had to change") into a contribution: "we can now say exactly what a shared PIM needs to support to accommodate both fact-oriented and lifecycle-oriented CIM languages."
 
-Der SQL-Agent (Abschnitt 5) belegt dieselbe Behauptung auf der PSM-Seite, mit einem saubereren Ergebnis: das Hinzufügen eines zweiten, strukturell andersartigen PSM-Ziels für bereits bestehende PIM-Semantik erfordert weder eine Schema-Erweiterung noch Änderungen an einem bestehenden Agenten — nur neue Dateien und additive Infrastruktur. Zusammengenommen zeigen die beiden Experimente die vollständige Grenze: neue *Sprachen* (CIM oder PSM) für bereits abgedeckte PIM-Konzepte sind rein additiv; nur genuin neue PIM-*Konzepte* (wie MERODEs sequenzielle Lebenszyklen) zwingen den gemeinsamen Vertrag zur Weiterentwicklung.
+Der SQL-Agent (Abschnitt 5) belegt dieselbe Behauptung auf der PSM-Seite, mit einem saubereren Ergebnis: das Hinzufügen eines zweiten, strukturell andersartigen PSM-Ziels für bereits bestehende PIM-Semantik erfordert weder eine Schema-Erweiterung noch Änderungen an einem bestehenden Agenten - nur neue Dateien und additive Infrastruktur. Zusammengenommen zeigen die beiden Experimente die vollständige Grenze: neue *Sprachen* (CIM oder PSM) für bereits abgedeckte PIM-Konzepte sind rein additiv; nur genuin neue PIM-*Konzepte* (wie MERODEs sequenzielle Lebenszyklen) zwingen den gemeinsamen Vertrag zur Weiterentwicklung.

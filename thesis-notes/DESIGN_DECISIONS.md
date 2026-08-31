@@ -108,7 +108,7 @@ Snoeck (Kap. 4.4) sagt: "the END event is the last event in which an object part
 
 Soft-Delete (Status-Attribut auf `final` setzen): Das Status-Attribut aus B13 würde als "Tombstone" genutzt. Vorteil: Datenverlust durch versehentliches Löschen vermeidbar, historische Daten bleiben erhalten. Nachteil: alle Abfragen müssten um `status != final`-Filter erweitert werden; das erfordert Applikationslogik, die über den Prototyp-Scope hinausgeht.
 
-Archivierung (in Archivtabelle verschieben): In produktiven Mendix-Apps gängige Praxis. Erfordert eine Archiv-Entity pro Objekttyp — zu aufwändig für den Prototyp.
+Archivierung (in Archivtabelle verschieben): In produktiven Mendix-Apps gängige Praxis. Erfordert eine Archiv-Entity pro Objekttyp - zu aufwändig für den Prototyp.
 
 Hard-Delete über `DeleteObjectAction` wurde gewählt, weil es Snoecks Semantik am direktesten abbildet und keine zusätzliche Infrastruktur erfordert. Der Preis ist, dass Mendix Cascade-Delete greift: wenn Dependents noch existieren, schlägt die Löschung fehl. Das ist kein Fehler, sondern die korrekte Enforcemet der Existenzabhängigkeit (ein Rental kann nicht gelöscht werden, solange RentalLines existieren).
 

@@ -1,4 +1,4 @@
-// TypeScript client for the BIG Modelling Bus (mirrors Go bus layers 1–3).
+// TypeScript client for the BIG Modelling Bus (mirrors Go bus layers 1-3).
 //
 // The bus uses MQTT as transport. Every agent has its own topic namespace:
 //   {prefix}/bus-version-1.0/{environmentID}/{agentID}/{path}

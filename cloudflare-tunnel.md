@@ -1,4 +1,4 @@
-# Cloudflare Tunnel — mda.tlolab.com
+# Cloudflare Tunnel - mda.tlolab.com
 
 Da `books.tlolab.com` bereits läuft, muss nur ein neuer `ingress`-Eintrag in der
 bestehenden Tunnel-Config ergänzt werden.
@@ -21,11 +21,11 @@ tunnel: <deine-tunnel-id>
 credentials-file: /home/<user>/.cloudflared/<tunnel-id>.json
 
 ingress:
-  # Bestehend — books
+  # Bestehend - books
   - hostname: books.tlolab.com
     service: http://localhost:<books-port>
 
-  # Neu — MDA Pipeline API
+  # Neu - MDA Pipeline API
   - hostname: mda.tlolab.com
     service: http://localhost:3000
 
@@ -40,7 +40,7 @@ cloudflared tunnel route dns <tunnel-name-oder-id> mda.tlolab.com
 ```
 
 Oder im Cloudflare Dashboard:
-- **Zero Trust → Networks → Tunnels → dein Tunnel → Public Hostname → Add**
+- **Zero Trust -> Networks -> Tunnels -> dein Tunnel -> Public Hostname -> Add**
 - Subdomain: `mda`, Domain: `tlolab.com`, Service: `HTTP`, URL: `localhost:3000`
 
 ## 4. Tunnel neu starten
@@ -57,10 +57,10 @@ docker restart cloudflared
 
 ```bash
 curl https://mda.tlolab.com/health
-# → {"status":"ok","service":"api-server","broker":"mqtt-broker:1883"}
+# -> {"status":"ok","service":"api-server","broker":"mqtt-broker:1883"}
 
 curl -X POST https://mda.tlolab.com/api/model \
      -H "Content-Type: application/json" \
      -d @mda-agents/tests/rent-a-car-demo.json
-# → {"ok":true,"artefactID":"model.demo.raw","timestamp":"..."}
+# -> {"ok":true,"artefactID":"model.demo.raw","timestamp":"..."}
 ```

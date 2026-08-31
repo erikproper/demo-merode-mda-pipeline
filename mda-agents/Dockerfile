@@ -16,7 +16,7 @@ COPY . .
 RUN npx tsc
 
 # Agents load schemas and test data via fs.readFileSync at runtime.
-# After tsc, __dirname resolves to /app/dist — copy assets there too.
+# After tsc, __dirname resolves to /app/dist - copy assets there too.
 RUN cp schemas/*.json dist/schemas/ && \
     mkdir -p dist/tests && \
     cp tests/*.json dist/tests/

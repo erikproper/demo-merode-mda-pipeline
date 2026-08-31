@@ -1,7 +1,7 @@
 node_modules/
 dist/
 
-# Local environment – contains secrets, never commit
+# Local environment - contains secrets, never commit
 .env
 
 # Generated transformation outputs (re-created by running the pipeline)
