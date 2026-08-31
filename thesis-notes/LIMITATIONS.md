@@ -97,6 +97,28 @@ Der `pim-to-mendix-agent` abonniert PIM-Topics von den Agenten, die in der Umgeb
 
 ---
 
+## 4a. Einschränkungen der S-Regeln (pim-to-sql-agent)
+
+Der SQL-Agent ist ein reiner Downstream-Konsument von `pimuml-schema.json` (siehe `SqlMappingRules.md` Abschnitt 4) und teilt daher viele der oben genannten pimUML-Limitationen unverändert. Zusätzlich hat die SQL-Zielplattform selbst einige spezifische Konsequenzen.
+
+### S7 - keine geteilte Primärschlüssel-Konvention bei Generalisierung
+
+Jede Klasse erhält im pimUML-Metamodell ihr eigenes, unabhängiges `isID`-Attribut, auch eine Generalisierungs-Kind-Klasse. `pim-to-sql-agent.ts` bildet Generalisierung deshalb auf eine Pflicht-FK-Spalte (`<parent>_id`, `ON DELETE CASCADE`) statt auf eine relational übliche PK-Sharing-Konvention (Kind-Tabellen-PK = Eltern-Tabellen-PK) ab. Das ist funktional korrekt (referenzielle Integrität ist gewährleistet), aber relational nicht die eleganteste Lösung: eine Kind-Instanz hat zwei unabhängige Integer-Identitäten (ihre eigene `isID`-Spalte und die FK auf den Elternteil) statt einer geteilten. Eine PK-Sharing-Variante würde eine pimUML-seitige Konvention voraussetzen, die es aktuell nicht gibt (z. B. eine explizite Markierung, dass eine Generalisierungs-Kind-Klasse kein eigenes `isID`-Attribut trägt, sondern das des Elternteils übernimmt). Für die Rent-A-Car-Fixture (Car→Vehicle) unproblematisch, da keine Abfrage von der PK-Teilung abhängt.
+
+### S2/S6 - DataType-Tabelle spiegelt eine PIM-Limitation, statt sie zu beheben
+
+Wie bereits für den Mendix-Pfad dokumentiert (Abschnitt 4, "pimUML-Schema approximiert UML-Metaclasses vereinfacht"), trägt ein pimUML-DataType keine eigene Struktur. `pim-to-sql-agent.ts` erzeugt deshalb für jeden DataType eine Tabelle mit ausschließlich einer `id`-Spalte und verweist per FK darauf (S2/S6), statt den DataType als Inline-Spaltentyp zu behandeln. Das ist bewusst keine SQL-spezifische Verbesserung der PIM-Limitation, sondern deren getreue Spiegelung — eine Begründung dazu in `SqlMappingRules.md` Abschnitt 3. Konsequenz: ein DataType wie `MoneyAmount` erzeugt eine praktisch leere Tabelle, die in einer echten Datenbank überflüssig wirkt, bis pimUML DataTypes eine eigene Basistyp-Eigenschaft bekommt.
+
+### S12 - Zyklen brechen die Erzeugung vollständig ab
+
+`topoSortTables()` (Kahn-Algorithmus) wirft bei einer zirkulären Pflicht-FK-Abhängigkeit zwischen zwei oder mehr Tabellen eine Exception und erzeugt gar keine DDL-Datei, statt eine unvollständige oder mit `ALTER TABLE`-Nachträgen aufgelöste Teillösung auszugeben. Das ist eine bewusste Fail-fast-Entscheidung (ein Zyklus würde beim tatsächlichen Ausführen der DDL ohnehin scheitern), bedeutet aber, dass der Agent für ein zyklisches PIM-Modell keinerlei Output produziert — auch nicht für die zyklusfreien Teile des Modells. Eine vollständigere Lösung würde zyklische FKs automatisch als `ALTER TABLE ... ADD CONSTRAINT` nach den `CREATE TABLE`-Anweisungen nachziehen (deferred FK), was den Zyklus auflösen würde, ist aber als Future Work eingestuft, da im Rent-A-Car-Fixture kein solcher Zyklus auftritt.
+
+### S4 - unbekannter PIM-Typ fällt auf TEXT zurück
+
+`sqlType()` mappt einen unbekannten oder nicht deklarierten `Property.type`-String stillschweigend auf `TEXT`, statt einen Fehler zu werfen. Das verhindert, dass ein Tippfehler oder ein noch nicht unterstützter PIM-Typ die gesamte DDL-Erzeugung blockiert, kann aber echte Modellierungsfehler maskieren (ein falsch geschriebener Enum-Name würde z. B. zu einer `TEXT`-Spalte statt zu einem Enum-Typ führen, ohne Warnung). Dieselbe Fallback-Strategie nutzt auch der Mendix-Agent (B7) für den analogen Fall.
+
+---
+
 ## 5. Behobene Implementierungsfehler
 
 Diese werden dokumentiert, falls Gutachter danach fragen.
