@@ -15,6 +15,8 @@ Stand: 2026-07-28. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
 
 ## Priorität 2 — Implementierung (verbessert Evaluationsergebnis)
 
+- [x] **pim-to-sql-agent — PostgreSQL DDL als zweiter PSM-Output** — neuer Agent (`mda-agents/pim-to-sql-agent.ts`), der dasselbe `model.pim.created`-Topic subscribed wie der Mendix-Agent und daraus PostgreSQL-DDL generiert (S1-S12, vollständige Regeltabelle: `thesis-notes/SqlMappingRules.md`). Kein bestehender Core-Code geändert (`bus-client.ts`, `agent-utils.ts`, `demo-to-pim-agent.ts`, `merode-to-pim-agent.ts`, `pim-to-mendix-agent.ts`, `pimuml-schema.json` — 0 Änderungen), realer Extensibilitätsnachweis für QR5 (`thesis-notes/EXTENSIBILITY_EVIDENCE.md` Abschnitt 5). Output: `mda-agents/output/<modelname>.sql`, Ausführbarkeitsnachweis gegen echtes PostgreSQL via Wegwerf-Docker-Container (Prozedur: `mda-agents/tests/README.md`). Bus-Anbindung (`docker-compose.yml`-Service, `package.json`-Script) implementiert 2026-08-31.
+
 - [x] **M9 — Ereignispropagierung** — Propagierungshülle aus EDG aufgebaut, Self-Transitionen in Master-FSMs eingefügt (`Set_<Master>_<evt>` Aktivitaten). Erhebt MERODE-Completeness auf ~100%. Implementiert 2026-08-03.
 - [x] **B16 — End-Microflow** — Hard-Delete via `DeleteObjectAction`: Parameter (Entität) → DeleteAction → End. Design-Entscheidung: physische Löschung als bewusste Vereinfachung für den Prototyp (DD12 in DESIGN_DECISIONS.md). Implementiert 2026-08-03.
 - [x] **M3 — Attributdomänen** — `merode-schema.json` um `domainTypes`-Array erweitert, `MerodeDomainType`-Interface in `types.ts`, kategorische Domänen -> Enumeration, nicht-kategorische -> DataType. `FuelType`-Beispiel im Rent-A-Car-Fixture. Implementiert 2026-08-03.
@@ -33,14 +35,7 @@ Stand: 2026-07-28. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
 
 ## Future Work (kein Scope mehr für diese Thesis)
 
-- [ ] **Dritter Agent (ER-Diagramm)** — formaler Extensibilitätsnachweis E1-E2. In `thesis-notes/EXTENSIBILITY_EVIDENCE.md` Abschnitt 5 als Future Work dokumentiert. Extensibilitätsnachweis ruht auf MERODE-Integration.
-
-- [ ] **pim-to-sql-agent — PostgreSQL DDL als zweiter PSM-Output** — neuer Agent der dasselbe `model.pim.created`-Topic subscribed wie der Mendix-Agent und daraus PostgreSQL-DDL generiert. Kein bestehender Code ändert sich (echter Plug-and-Play-Nachweis für QR5/Extensibilität).
-  - Output: `output/<modelname>.sql`, direkt ausführbar via `psql -d mydb -f output.sql`
-  - Mapping: Enumeration → `CREATE TYPE ... AS ENUM`, DataType → eigene Tabelle, Class → `CREATE TABLE`, Association → FK-Constraint (NOT NULL bei ExistenzAbh., ON DELETE CASCADE bei Aggregation), MERODE-FSM → `status`-Spalte mit `<Entity>_Status`-Enum, DEMO-FSM → Boolean-Spalten (bereits als Attribute im PIM)
-  - Kernkniff: topologischer Sort der Tabellen nach Abhängigkeitsgraph (Kahn's Algorithmus, ~30 Zeilen), damit FK-Constraints beim Ausführen nicht scheitern
-  - Aufwand: ~250-300 Zeilen neuer Code + 1 Zeile docker-compose.yml
-  - Stärkerer Extensibilitätsnachweis als ER-Diagramm, weil SQL ein echter PSM ist (PostgreSQL als Zielplattform)
+- [ ] **Dritter CIM-Agent (ER-Diagramm)** — ursprünglich als formaler Extensibilitätsnachweis E1-E2 geplant, aber durch den tatsächlich gebauten `pim-to-sql-agent` (siehe oben, Priorität 2) als realen PSM-seitigen Extensibilitätsnachweis ersetzt (`thesis-notes/EXTENSIBILITY_EVIDENCE.md` Abschnitt 5). Ein zusätzlicher dritter CIM-Agent bliebe als natürlicher nächster Schritt, ist aber kein Scope mehr für diese Thesis.
 
 - [ ] **B-neu: Generische Page-Inhalte** — Aktuell werden Overview-Pages nur als leeres Gerüst (Name + Layout + Navigation-Eintrag) generiert. Folgendes soll automatisch aus dem PIM-Modell abgeleitet werden, ohne Hardcoding auf ein konkretes Beispiel:
 
