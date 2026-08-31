@@ -111,3 +111,27 @@ if (!dataTypeDdl.includes(`CREATE TABLE "money_amount" (\n  "id" SERIAL PRIMARY 
   process.exit(1);
 }
 console.log("S2 OK");
+
+// S6: DataType-typed attribute -> deferred FK column instead of an inline column
+const dtFkPim: PimModel = {
+  name: "S6 smoke test",
+  dataTypes: [{ name: "MoneyAmount" }],
+  classes: [
+    {
+      name: "Rental",
+      ownedAttributes: [
+        { name: "RentalID", type: "Integer", isID: true },
+        { name: "depositAmount", type: "MoneyAmount" },
+      ],
+    },
+  ],
+};
+
+const dtFkDdl = pimToSql(dtFkPim);
+console.log(dtFkDdl);
+
+if (!dtFkDdl.includes(`"deposit_amount_id" INTEGER REFERENCES "money_amount"("id")`)) {
+  console.error("FAIL: expected DataType FK column not found");
+  process.exit(1);
+}
+console.log("S6 OK");

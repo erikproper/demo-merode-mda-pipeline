@@ -68,13 +68,23 @@ export function pimToSql(pim: PimModel): string {
     tables.set(dt.name, { name: toSnakeCase(dt.name), columns: [`  ${q("id")} SERIAL PRIMARY KEY`], pkColumn: "id" });
   }
 
-  // S4: classes -> CREATE TABLE with attribute columns
+  const dataTypeNames = new Set((pim.dataTypes ?? []).map(dt => dt.name));
+
+  // S4/S6: classes -> CREATE TABLE with attribute columns
   for (const cls of pim.classes ?? []) {
     const columns: string[] = [];
     let pkColumn: string | undefined;
 
     for (const prop of cls.ownedAttributes ?? []) {
       if (prop.isDerived) continue; // S5: no OCL/computed-column equivalent, same as B-rule
+      if (prop.type && dataTypeNames.has(prop.type)) {
+        // S6: DataType-typed attribute -> deferred FK column, not an inline column
+        const refTable = tables.get(prop.type);
+        if (!refTable) continue;
+        const fkCol = `${toSnakeCase(prop.name)}_id`;
+        columns.push(`  ${q(fkCol)} INTEGER REFERENCES ${q(refTable.name)}(${q(refTable.pkColumn)})`);
+        continue;
+      }
       const colName = toSnakeCase(prop.name);
       const colType = sqlType(prop.type, enumNames);
       let colDef = `  ${q(colName)} ${colType}`;
