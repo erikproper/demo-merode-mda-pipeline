@@ -1,8 +1,8 @@
 # Extensibilitätsnachweis
 
-Arbeitsdokument zur Extensibilitätsbehauptung: kann eine neue CIM-Sprache hinzugefügt werden, ohne bestehende Komponenten zu ändern? Das ist das binäre Kriterium aus dem Proposal (Abschnitt 2.3) und operationalisiert AR3.
+Arbeitsdokument zur Extensibilitätsbehauptung: kann eine neue CIM-Sprache bzw. ein neues PSM-Ziel hinzugefügt werden, ohne bestehende Komponenten zu ändern? Das ist das binäre Kriterium aus dem Proposal (Abschnitt 2.3) und operationalisiert AR3.
 
-Das Dokument ist in zwei Teile gegliedert: zunächst der Nachweis aus der tatsächlichen MERODE-Integration, danach der Plan für das formale Extensibilitätsexperiment (E1-E2), bei dem ein dritter Agent die Behauptung von Grund auf belegt.
+Das Dokument ist in drei Teile gegliedert: zunächst der Nachweis aus der tatsächlichen MERODE-Integration (neuer CIM-Agent), danach der Nachweis aus der tatsächlichen SQL-Agent-Integration (neuer PSM-Agent, Abschnitt 5), zuletzt eine Einordnung, welche Form der Extensibilität damit insgesamt belegt ist.
 
 ---
 
@@ -88,29 +88,57 @@ Gesamter neuer Code: ca. 335 Zeilen. Geänderte bestehende Dateien: ca. 183 Zeil
 
 ---
 
-## 5. Das Dritte-Agenten-Experiment (E1-E2)
+## 5. Der SQL-Agent als ausgeführtes zweites Extensibilitätsexperiment
 
-Um einen sauberen Extensibilitätsnachweis unabhängig von MERODE-spezifischen Details zu erbringen, ist das Hinzufügen eines dritten CIM-Sprach-Agenten geplant. Die dritte Sprache sollte einfach genug sein, um schnell implementiert zu werden (damit das Experiment auf die Architektur fokussiert bleibt, nicht auf die Sprachsemantik), aber unterschiedlich genug, um zu zeigen, dass das Muster verallgemeinert.
+Ein ursprünglich geplantes drittes-Agenten-Experiment (ein ER-Diagramm-CIM-Agent, E1-E2) war als formaler, aber rein hypothetischer Nachweis vorgesehen — mit vorhergesagten, nicht tatsächlich verifizierten Dateiänderungen. Dieser Plan wurde durch ein reales, ausgeführtes Experiment ersetzt: `pim-to-sql-agent.ts`, ein zweiter PSM-Agent, der PostgreSQL-DDL statt einer Mendix-App erzeugt. Er konsumiert exakt dasselbe `model.pim.created`-Artefakt wie `pim-to-mendix-agent.ts` und ist damit kein Spielzeug-Format, sondern eine echte, andersartige Zielplattform.
 
-### Kandidat: Einfaches ER-Diagramm (ER-light)
+Der SQL-Agent ist ein stärkerer Extensibilitätsnachweis als der geplante ER-Agent aus zwei Gründen: er testet die Behauptung auf der PSM-Seite (bisher nur auf der CIM-Seite durch MERODE belegt), und er wurde tatsächlich gebaut, getestet und gegen echtes PostgreSQL validiert statt nur vorhergesagt.
 
-Ein vereinfachtes Entity-Relationship-Diagramm-Format mit zwei Konzepten: `entities` (Liste von Entitätsnamen mit Attributen) und `relationships` (binäre Beziehungen zwischen Entitäten mit Name und Multiplizitäten). Das ist einfacher als sowohl DEMO als auch MERODE (kein Lebenszyklus, keine Ereignisse, keine Existenzabhängigkeit), deckt aber den strukturellen Teil des PIM ab.
+### Neue Dateien (rein additiv, keine bestehende Datei geändert)
 
-Vorhergesagte neue Dateien: `er-to-pim-agent.ts`, `er-schema.json`, `rent-a-car-er.json` und ein neuer Service-Block in `docker-compose.yml`.
+- `mda-agents/pim-to-sql-agent.ts` (vollständig neu, ~310 Zeilen inkl. Bus-Wrapper)
+- `mda-agents/tests/test-sql-agent.ts` (vollständig neu, Offline-Test)
+- `mda-agents/tests/rent-a-car-pim-full.json` (vollständig neues Testfixture)
+- `mda-agents/output/.gitkeep` (leeres Zielverzeichnis für generierte DDL)
+- `thesis-notes/SqlMappingRules.md` (vollständig neu)
 
-Vorhergesagte unveränderte Dateien: `demo-to-pim-agent.ts`, `merode-to-pim-agent.ts`, `pim-to-mendix-agent.ts` (ER-Entitäten werden zu pimUML-Classes, die B2 bereits handhabt), `bus-client.ts`, `agent-utils.ts` und `pimuml-schema.json` (ER-Konzepte bilden auf bestehende pimUML-Konstrukte ab).
+### Additiv geänderte Infrastrukturdateien
 
-Wenn diese Vorhersage stimmt, ist das starker Nachweis für den Extensibilitätsanspruch. Der `git diff` nach dem Hinzufügen des ER-Agenten würde nur neue Dateien und den `docker-compose.yml`-Zusatz zeigen.
+- `docker-compose.yml`: ein neuer Service-Block (`sql-agent`) hinzugefügt, inklusive eines zusätzlichen Volume-Mounts (`./mda-agents/output:/app/output`) für den Datei-Output — die einzige strukturelle Abweichung vom Service-Block-Muster der bestehenden Agenten, begründet durch die Notwendigkeit, generierte `.sql`-Dateien aus dem Container herauszureichen (der Mendix-Agent braucht das nicht, weil sein Output über die Mendix Cloud API geht, kein lokales Dateiartefakt ist). Keine bestehenden Service-Definitionen geändert.
+- `mda-agents/package.json`: ein neues Script (`"pim-to-sql-agent"`).
+- `.gitignore`: ein neues Pattern (`mda-agents/output/*.sql`) in der bereits bestehenden "Generated pipeline outputs"-Sektion.
+- `tests/README.md`: neue Zeilen in der Dateitabelle sowie ein neuer Abschnitt mit einem reproduzierbaren Docker-Kommando für den Ausführbarkeitsnachweis gegen echtes PostgreSQL.
 
-### Versuchsablauf
+Bewusste Design-Entscheidung: kein permanenter Postgres-Service in `docker-compose.yml`. Der Agent schreibt ausschließlich `.sql`-Dateien; eine echte Datenbank wird nur bei Bedarf als Wegwerf-Container gestartet (dokumentiert in `tests/README.md`). Das hält den permanenten Ressourcen- und Angriffsflächen-Fußabdruck auf dem Raspberry Pi unverändert.
 
-Nach dem Hinzufügen des dritten Agenten: DEMO-Rent-A-Car-Test ausführen und prüfen, ob die Ausgabe identisch ist (Regressionstest). MERODE-Rent-A-Car-Test ausführen und dasselbe prüfen. ER-Rent-A-Car-Test ausführen und prüfen, ob das Mendix-Modell korrekt generiert wird. Den `git diff` zeigen und die Änderungsfläche quantifizieren.
+### Unveränderte Kerndateien
 
-### Einschätzung: eher Future Work
+`bus-client.ts`, `agent-utils.ts`, `demo-to-pim-agent.ts`, `merode-to-pim-agent.ts`, `pim-to-mendix-agent.ts`, `pimuml-schema.json`, `demo-schema.json` und `merode-schema.json` haben null Änderungen erhalten. Das ist der entscheidende Unterschied zur MERODE-Integration (Abschnitt 2): dort musste `pimuml-schema.json` additiv erweitert werden, weil MERODE neue PIM-Konzepte (benannte Lebenszykluszustände) einführte. Der SQL-Agent konsumiert ausschließlich bereits bestehende pimUML-Konstrukte und braucht daher keinerlei Schema-Änderung — nicht einmal eine additive.
 
-Das ER-Diagramm-Experiment ist innerhalb des Thesis-Scopes wahrscheinlich nicht mehr realisierbar. Der Implementierungsaufwand für den dritten Agenten selbst ist gering, aber die verbleibende Zeit fehlt. Der Extensibilitätsnachweis ruht damit auf der MERODE-Integration allein, was in der Thesis explizit so argumentiert werden muss.
+### Zeilenänderungs-Analyse
 
-Für die Thesis ist das vertretbar: die MERODE-Integration ist ein reales, nicht konstruiertes Experiment. Zwei Sprachen belegen das Muster, und der `git diff` (null Änderungen an `demo-to-pim-agent.ts`, `bus-client.ts`, `agent-utils.ts`) ist ein konkreter Nachweis. Das ER-Experiment sollte in der Thesis als natürlicher nächster Schritt beschrieben werden, der das Muster vollends abstrakt bestätigen würde.
+| Datei | Änderungstyp | Ungefähre Zeilen |
+|-------|-------------|-----------------|
+| `pim-to-sql-agent.ts` | Neue Datei | ~310 |
+| `test-sql-agent.ts` | Neues Testskript | ~200 |
+| `rent-a-car-pim-full.json` | Neues Testfixture | ~180 |
+| `SqlMappingRules.md` | Neue Thesis-Doku | ~165 |
+| `docker-compose.yml` | Neuer Service-Block | ~15 |
+| `package.json` | Neue Script-Zeile | 1 |
+| `.gitignore` | Neue Pattern-Zeile | 1 |
+| `tests/README.md` | Neue Abschnitte | ~30 |
+| `bus-client.ts` | Keine Änderungen | 0 |
+| `agent-utils.ts` | Keine Änderungen | 0 |
+| `demo-to-pim-agent.ts` | Keine Änderungen | 0 |
+| `merode-to-pim-agent.ts` | Keine Änderungen | 0 |
+| `pim-to-mendix-agent.ts` | Keine Änderungen | 0 |
+| `pimuml-schema.json` | Keine Änderungen | 0 |
+
+Gesamter neuer Code: ca. 900 Zeilen, verteilt auf ausschließlich neue Dateien. Geänderte bestehende Dateien: ca. 47 Zeilen, ausnahmslos additive Infrastruktur-Ergänzungen (ein neuer Service-Block, ein neues Script, ein neues `.gitignore`-Pattern). Kein bestehendes Core-File wurde angetastet — der `git diff` dieses Arbeitspakets zeigt ausschließlich neue Dateien plus drei einzeilige/kleinteilige additive Ergänzungen.
+
+### Ausführbarkeitsnachweis
+
+Anders als beim Mendix-Pfad (dessen Korrektheit sich nur indirekt über die Schema-Validierungsrate der Mendix-Studio-Pro-Öffnung zeigen lässt) lässt sich die DDL-Korrektheit des SQL-Agenten direkt und maschinell verifizieren: die generierte DDL läuft fehlerfrei gegen eine echte PostgreSQL-Instanz (reproduzierbares Docker-Kommando in `mda-agents/tests/README.md`). Das ist ein strengerer Korrektheitsnachweis als eine reine Struktur-/Schema-Validierung, weil er die tatsächliche Ausführbarkeit auf der Zielplattform demonstriert, nicht nur die syntaktische Plausibilität der Ausgabe.
 
 ---
 
@@ -125,3 +153,5 @@ Nicht beansprucht wird: das Hinzufügen einer neuen CIM-Sprache mit genuinen neu
 **The boundary:** The architecture is extensible at the *structural* level without any downstream changes. It is extensible at the *behavioural* level with minimal, additive changes to the shared PIM schema and to the PSM agent's rule set. This boundary is itself a finding: it shows where a common PIM's vocabulary needs to grow when a new paradigm is introduced.
 
 This framing turns the MERODE schema extension from a potential embarrassment ("the schema had to change") into a contribution: "we can now say exactly what a shared PIM needs to support to accommodate both fact-oriented and lifecycle-oriented CIM languages."
+
+Der SQL-Agent (Abschnitt 5) belegt dieselbe Behauptung auf der PSM-Seite, mit einem saubereren Ergebnis: das Hinzufügen eines zweiten, strukturell andersartigen PSM-Ziels für bereits bestehende PIM-Semantik erfordert weder eine Schema-Erweiterung noch Änderungen an einem bestehenden Agenten — nur neue Dateien und additive Infrastruktur. Zusammengenommen zeigen die beiden Experimente die vollständige Grenze: neue *Sprachen* (CIM oder PSM) für bereits abgedeckte PIM-Konzepte sind rein additiv; nur genuin neue PIM-*Konzepte* (wie MERODEs sequenzielle Lebenszyklen) zwingen den gemeinsamen Vertrag zur Weiterentwicklung.
