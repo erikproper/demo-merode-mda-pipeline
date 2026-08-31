@@ -11,6 +11,41 @@ Testdaten und Skripte für die DEMO→pimUML-Transformationspipeline.
 | `pim-subscriber.ts` | **Bus-Utility** — abonniert `model.pim.created`, schreibt `rent-a-car-pim-from-bus.json` |
 | `rent-a-car-pim.json` | *Generiert* durch `test:transform` — nicht versioniert (.gitignore) |
 | `rent-a-car-pim-from-bus.json` | *Generiert* durch `pim-subscriber` — nicht versioniert (.gitignore) |
+| `rent-a-car-pim-full.json` | **Eingabe** — vollständige pimUML-Fixture für `test-sql-agent.ts` (Enums, DataTypes, AssociationClass, Generalisierung, Assoziationen, orthogonale FSM) |
+| `test-sql-agent.ts` | **Offline-Test** — `pim-to-sql-agent`, ein Fall pro S-Regel + End-to-End-Lauf, schreibt `../output/rent-a-car.sql` |
+| `../output/*.sql` | *Generiert* durch `test-sql-agent.ts` bzw. `pim-to-sql-agent` im Live-Betrieb — nicht versioniert (.gitignore) |
+
+---
+
+## pim-to-sql-agent — DDL-Ausführungsnachweis gegen echtes PostgreSQL
+
+Die von `pim-to-sql-agent` erzeugte DDL soll nicht nur syntaktisch plausibel aussehen,
+sondern nachweislich fehlerfrei gegen eine echte PostgreSQL-Instanz laufen. Dafür reicht
+ein Wegwerf-Container (kein Eintrag in `docker-compose.yml`, kein persistenter State):
+
+```bash
+# 1. DDL erzeugen (schreibt mda-agents/output/rent-a-car.sql)
+cd mda-agents && npx ts-node tests/test-sql-agent.ts
+
+# 2. Wegwerf-Postgres starten
+docker run -d --name sql-proof -e POSTGRES_PASSWORD=postgres -p 55432:5432 postgres:16-alpine
+
+# 3. warten, bis Postgres bereit ist
+until docker exec sql-proof pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
+
+# 4. generierte DDL ausführen
+docker exec -i sql-proof psql -U postgres < output/rent-a-car.sql
+
+# 5. Ergebnis prüfen (sollte alle CREATE-TABLE-Namen aus output/rent-a-car.sql auflisten)
+docker exec sql-proof psql -U postgres -c '\dt'
+
+# 6. aufräumen
+docker rm -f sql-proof
+```
+
+Kein Fehler in Schritt 4 = Ausführbarkeitsnachweis erbracht. Dieser Test ist bewusst
+nicht Teil von `test-sql-agent.ts`, da er einen laufenden Docker-Daemon voraussetzt und
+damit nicht in jeder Umgebung (z. B. CI ohne Docker) lauffähig wäre.
 
 ---
 
