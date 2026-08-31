@@ -1,7 +1,7 @@
 {
   "name": "Rent-A-Car (DEMO)",
   "valueTypes": [
-    { "name": "CarGroup",    "kind": "categorical" },
+    { "name": "CarGroup",    "kind": "categorical", "literals": ["economy", "compact", "luxury"] },
     { "name": "MoneyAmount", "kind": "nonCategorical" },
     {
       "name": "BookingDetail",
@@ -16,9 +16,15 @@
   ],
   "entityTypes": [
     {
-      "name": "Car",
+      "name": "Vehicle",
       "attributes": [
-        { "name": "licensePlate", "valueType": "String"   },
+        { "name": "licensePlate", "valueType": "String" }
+      ]
+    },
+    {
+      "name": "Car",
+      "parent": "Vehicle",
+      "attributes": [
         { "name": "group",        "valueType": "CarGroup" },
         { "name": "mileage",      "valueType": "Integer"  }
       ]
@@ -45,7 +51,8 @@
     {
       "name": "PremiumCustomer",
       "isDerived": true,
-      "parent": "Person"
+      "parent": "Person",
+      "derivationExpression": "Person.rentals->size() > 10"
     },
     {
       "name": "Rental",

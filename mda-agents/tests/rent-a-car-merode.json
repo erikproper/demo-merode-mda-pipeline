@@ -48,13 +48,22 @@
         { "name": "description", "type": "String"  }
       ],
       "lifecycleStates": ["active"]
+    },
+    {
+      "name": "Invoice",
+      "attributes": [
+        { "name": "amount", "type": "MoneyAmount" },
+        { "name": "paidOn", "type": "String"      }
+      ],
+      "lifecycleStates": ["issued", "paid"]
     }
   ],
   "existenceDependencies": [
-    { "name": "RentalDependsOnCar",        "dependent": "Rental",     "master": "Car",    "lower": 1, "upper": 1 },
-    { "name": "RentalDependsOnPerson",     "dependent": "Rental",     "master": "Person", "lower": 1, "upper": 1 },
-    { "name": "RentalDependsOnBranch",     "dependent": "Rental",     "master": "Branch", "lower": 1, "upper": 1 },
-    { "name": "RentalLineDependsOnRental", "dependent": "RentalLine", "master": "Rental", "lower": 1, "upper": 1 }
+    { "name": "RentalDependsOnCar",         "dependent": "Rental",     "master": "Car",        "lower": 1, "upper": 1 },
+    { "name": "RentalDependsOnPerson",      "dependent": "Rental",     "master": "Person",     "lower": 1, "upper": 1 },
+    { "name": "RentalDependsOnBranch",      "dependent": "Rental",     "master": "Branch",     "lower": 1, "upper": 1 },
+    { "name": "RentalLineDependsOnRental",  "dependent": "RentalLine", "master": "Rental",     "lower": 1, "upper": 1 },
+    { "name": "InvoiceDependsOnRentalLine", "dependent": "Invoice",   "master": "RentalLine", "lower": 1, "upper": 1 }
   ],
   "businessEventTypes": [
     { "name": "registerCar",         "objectType": "Car",        "role": "C" },
@@ -73,6 +82,9 @@
     { "name": "completeRental",      "objectType": "Rental",     "role": "E" },
     { "name": "addRentalLine",       "objectType": "RentalLine", "role": "C" },
     { "name": "updateRentalLine",    "objectType": "RentalLine", "role": "M", "effects": [{ "attribute": "quantity" }, { "attribute": "description" }] },
-    { "name": "removeRentalLine",    "objectType": "RentalLine", "role": "E" }
+    { "name": "removeRentalLine",    "objectType": "RentalLine", "role": "E" },
+    { "name": "issueInvoice",        "objectType": "Invoice",    "role": "C" },
+    { "name": "markInvoicePaid",     "objectType": "Invoice",    "role": "M", "fromState": "issued", "toState": "paid", "effects": [{ "attribute": "paidOn" }] },
+    { "name": "closeInvoice",        "objectType": "Invoice",    "role": "E" }
   ]
 }
