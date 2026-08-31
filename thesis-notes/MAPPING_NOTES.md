@@ -31,7 +31,7 @@ Wichtige Konzepte im Überblick: Ein ObjectType (Geschäftsobjekttyp) hat eine I
 
 ## 3. A-Regeln: DEMO Fact Model nach pimUML
 
-Bzowskis Regeln [4], Tabelle 10.1. Hier zur Vollständigkeit und für den Sprachvergleich in Abschnitt 6.
+Bzowskis Regeln [4], Tabelle 10.1. Hier zur Vollständigkeit und für den Sprachvergleich in Abschnitt 7.
 
 | ID  | DEMO Fact Model Quellkonzept | pimUML Ziel |
 |-----|------------------------------|-------------|
@@ -301,35 +301,62 @@ Der `End_<Entity>`-Microflow nimmt die Entity als Parameter und führt eine `Del
 
 ---
 
-## 6. Sprachübergreifender Vergleich auf PIM-Ebene
+## 6. S-Regeln: pimUML nach PostgreSQL-DDL
 
-Diese Tabelle zeigt, wie DEMO- und MERODE-Quellkonzepte auf pimUML abbilden, und hebt hervor, wo sie dieselben PIM-Konstrukte erzeugen und wo sie auseinanderlaufen. Das ist der Vergleich, den die Thesis benötigt, um den Heterogenitätsanspruch konkret zu machen.
+Zweiter PSM-Pfad, parallel zu den B-Regeln (Abschnitt 5). Beide Pfade konsumieren denselben `model.pim.created`-Artefakt; der Unterschied liegt ausschließlich in der Zielplattform (Mendix-App vs. PostgreSQL-Skript). Implementiert in `mda-agents/pim-to-sql-agent.ts`.
 
-| Konzeptkategorie | DEMO-Quelle | MERODE-Quelle | pimUML-Ziel | Gleichwertig? |
-|------------------|------------|---------------|-------------|---------------|
-| Geschäftsobjekt | EntityType (deklariert) | ObjectType | Class | Ja |
-| Identität | Integer-ID aus A3 | ObjectType (ID aus M1) | Property (isID=true) | Ja |
-| Attribut | AttributeType (A5) | Attribut (M2) | Property | Ja |
-| Kategorische Domäne | ValueType/kategorisch (A1) | Attribut mit Enum-Domäne (M3) | Enumeration | Ähnlich |
-| Skalare Domäne | ValueType/nicht-kat. (A2) | Attribut mit skalarer Domäne (M3) | DataType | Ähnlich |
-| Beziehung | FactType / Property (A12) | ExistenceDependency (M4) | Association | Ähnlich |
-| Aggregation | Aggregation Fact (A11) | Kein direktes Gegenstück | Association mit Aggregation | Einseitig |
-| Vererbung | Generalisierung (A10) | Kap. 8, nicht im Scope | Generalization | Einseitig |
-| Lebenszyklus-FSM | Orthogonale Regionen-FSM (A6) | Sequenzielle FSM (M5-M8) | StateMachine | Verschieden |
-| Erzeugendes Ereignis | Event type (A6/A7) | BET mit Rolle C (M6) | Übergang + Create-Aktivität | Ähnlich, Kontext unterschiedlich |
-| Modifizierendes Ereignis | Event type (A6) | BET mit Rolle M (M7) | Übergang + Set-Aktivität | Ähnlich, aber monoton vs. sequenziell |
-| Beendendes Ereignis | Kein Gegenstück | BET mit Rolle E (M8) | Übergang zu final + End-Aktivität | Neu in MERODE |
-| Gemeinsames Ereignis / Propagierung | Kein Gegenstück | Propagierungsregel (M9) | Synchronisierte Trigger | Neu in MERODE |
+| ID  | pimUML-Quellkonzept | SQL-Ziel | Status |
+|-----|---------------------|----------|--------|
+| S1  | `enumerations[]` | `CREATE TYPE <name>_enum AS ENUM (...)` | implementiert |
+| S2  | `dataTypes[]` | eigene Tabelle, nur `id SERIAL PRIMARY KEY` | implementiert |
+| S3  | `associationClasses[]` | Junction-Tabelle mit zwei NOT-NULL-FKs + eigenen Attributspalten | implementiert |
+| S4  | `classes[].ownedAttributes[]` (nicht abgeleitet, kein DataType-Typ) | Spalte mit typgemapptem SQL-Typ | implementiert |
+| S5  | `ownedAttributes[].isDerived === true` | Spalte wird ausgelassen | implementiert |
+| S6  | Attribut mit `type` = Name eines `dataTypes[]`-Eintrags | FK-Spalte auf die DataType-Tabelle (S2) | implementiert |
+| S7  | `generalizations[]` | Kind-Tabelle bekommt `<parent>_id`-FK, `ON DELETE CASCADE` | implementiert |
+| S8  | `associations[]` (1:1, 1:n) | FK-Spalte auf der Seite mit `upper !== "*"` | implementiert |
+| S9  | `associations[]` (n:m) | eigene Junction-Tabelle mit zwei NOT-NULL-FKs | implementiert |
+| S10 | `stateMachines[]`, sequenziell (`isMerodeFSM`) | `status`-Spalte + `<Entity>_status_enum` | implementiert |
+| S11 | DEMO-orthogonale FSMs | keine Sonderregel — läuft über S4 | implementiert (kein Zusatzcode nötig) |
+| S12 | Tabellenreihenfolge | topologischer Sort (Kahn) über den FK-Abhängigkeitsgraphen | implementiert |
 
-Die beiden als "Neu in MERODE" markierten Zeilen (M8, M9) sind es, die MERODE auf PIM-Ebene paradigmatisch von DEMO unterscheiden und die PIM-Erweiterung rechtfertigen. Die FSM-Zeile unterscheidet sich im internen Aufbau, kann aber durch dasselbe PIM-Konstrukt mit unterschiedlicher interner Struktur aufgenommen werden.
+Vollständiger Begründungstext pro Regel, Designentscheidung zur DataType-Spiegelung (S2/S6) und die Rent-A-Car-Validierung: `SqlMappingRules.md`.
+
+Der zentrale Unterschied zur MERODE-Integration: der SQL-Agent ist ein reiner Konsument des bestehenden `pimuml-schema.json` und führt keine PIM-Erweiterung ein. Während MERODE neue PIM-Konzepte einführte und damit das gemeinsame Schema additiv erweitern musste (Abschnitt 4.5, M5), deckt der SQL-Agent dieselben pimUML-Konstrukte ab, die B1-B13 bereits konsumieren — nur mit einer anderen Zielsyntax. Das macht ihn zum saubereren der beiden Extensibilitätsnachweise: null Änderungen an `pimuml-schema.json`, `bus-client.ts`, `agent-utils.ts` oder einem der beiden CIM-Agenten (Diff-Nachweis: `EXTENSIBILITY_EVIDENCE.md`).
 
 ---
 
-## 7. Hinweise für das Thesis-Kapitel
+## 7. Sprachübergreifender Vergleich auf PIM-Ebene
 
-Die formale Präsentation der M-Regeln sollte Bzowskis Format folgen: eine Tabelle mit Quellkonzept, Zielkonzept und Bezug zu DEMO (für vollständigen Begründungstext: MerodeMappingRules.md).
+Diese Tabelle zeigt, wie DEMO- und MERODE-Quellkonzepte auf pimUML abbilden, und wie das PIM-Konstrukt anschließend von den beiden PSM-Pfaden (Mendix, SQL) weiterverarbeitet wird. Das ist der Vergleich, den die Thesis braucht, um sowohl den CIM-Heterogenitätsanspruch als auch den PSM-Extensibilitätsanspruch konkret zu machen.
 
-Der sprachübergreifende Vergleich (Abschnitt 6) eignet sich als Abbildung in der Thesis.
+| Konzeptkategorie | DEMO-Quelle | MERODE-Quelle | pimUML-Ziel | Gleichwertig? | Mendix-Ziel (B) | SQL-Ziel (S) |
+|------------------|------------|---------------|-------------|---------------|------------------|--------------|
+| Geschäftsobjekt | EntityType (deklariert) | ObjectType | Class | Ja | Entity (B2) | Tabelle (S4) |
+| Identität | Integer-ID aus A3 | ObjectType (ID aus M1) | Property (isID=true) | Ja | Integer-Attribut (B6) | `PRIMARY KEY`-Spalte (S4) |
+| Attribut | AttributeType (A5) | Attribut (M2) | Property | Ja | Attribut (B7) | Spalte (S4) |
+| Kategorische Domäne | ValueType/kategorisch (A1) | Attribut mit Enum-Domäne (M3) | Enumeration | Ähnlich | Enumeration + Captions (B4) | `CREATE TYPE ... ENUM` (S1) |
+| Skalare Domäne | ValueType/nicht-kat. (A2) | Attribut mit skalarer Domäne (M3) | DataType | Ähnlich | Entity ohne Struktur (B5) | Tabelle ohne Struktur (S2) |
+| Beziehung | FactType / Property (A12) | ExistenceDependency (M4) | Association | Ähnlich | Association (B9) | FK-Spalte oder Junction-Tabelle (S8/S9) |
+| Aggregation | Aggregation Fact (A11) | Kein direktes Gegenstück | Association mit Aggregation | Einseitig | Association-Adornment (B9) | keine Sonderregel, wie reguläre Association |
+| Vererbung | Generalisierung (A10) | Kap. 8, nicht im Scope | Generalization | Einseitig | Generalization/Specialization (B10) | Pflicht-FK mit `ON DELETE CASCADE` (S7) |
+| Lebenszyklus-FSM | Orthogonale Regionen-FSM (A6) | Sequenzielle FSM (M5-M8) | StateMachine | Verschieden | Workflow (B11/B12) / Status-Enum (B13) | keine Regel (S11) / Status-Spalte (S10) |
+| Erzeugendes Ereignis | Event type (A6/A7) | BET mit Rolle C (M6) | Übergang + Create-Aktivität | Ähnlich, Kontext unterschiedlich | Create-Microflow (B14) | `NotMapped` (DDL kennt kein Verhalten) |
+| Modifizierendes Ereignis | Event type (A6) | BET mit Rolle M (M7) | Übergang + Set-Aktivität | Ähnlich, aber monoton vs. sequenziell | Set-Microflow (B15) | `NotMapped` |
+| Beendendes Ereignis | Kein Gegenstück | BET mit Rolle E (M8) | Übergang zu final + End-Aktivität | Neu in MERODE | Delete-Microflow (B16) | `NotMapped` |
+| Gemeinsames Ereignis / Propagierung | Kein Gegenstück | Propagierungsregel (M9) | Synchronisierte Trigger | Neu in MERODE | Change-Microflow (B15) | `NotMapped` |
+
+Die beiden als "Neu in MERODE" markierten Zeilen (M8, M9) sind es, die MERODE auf PIM-Ebene paradigmatisch von DEMO unterscheiden und die PIM-Erweiterung rechtfertigen. Die FSM-Zeile unterscheidet sich im internen Aufbau, kann aber durch dasselbe PIM-Konstrukt mit unterschiedlicher interner Struktur aufgenommen werden.
+
+Die SQL-Spalte zeigt zusätzlich die Grenze zwischen strukturellem und verhaltensbezogenem PIM-Gehalt: alle strukturellen Zeilen (Geschäftsobjekt bis Vererbung) haben ein SQL-Ziel, alle verhaltensbezogenen Zeilen (Ereignisse, Propagierung) werden von den S-Regeln bewusst als `NotMapped` behandelt — ein PostgreSQL-Schema hat kein natives Konzept für Microflow-Logik. Das ist kein Mangel der S-Regeln, sondern eine Eigenschaft der Zielplattform, und macht den Struktur/Verhalten-Schnitt des pimUML-Metamodells selbst sichtbar.
+
+---
+
+## 8. Hinweise für das Thesis-Kapitel
+
+Die formale Präsentation der M-Regeln sollte Bzowskis Format folgen: eine Tabelle mit Quellkonzept, Zielkonzept und Bezug zu DEMO (für vollständigen Begründungstext: MerodeMappingRules.md). Die S-Regeln (Abschnitt 6) sollten analog präsentiert werden (voller Begründungstext: SqlMappingRules.md).
+
+Der sprachübergreifende Vergleich (Abschnitt 7) eignet sich als Abbildung in der Thesis.
 
 Der FSM-Vergleich (orthogonale Regionen vs. sequenziell) ist der zentrale konzeptuelle Beitrag und verdient einen eigenen Unterabschnitt mit Diagrammen: die DEMO-FSM für `Rental` (mit `startRental`/`completeRental` booleschen Regionen) neben der MERODE-FSM (mit `active`-Zustand und `__initial`/`__final`-Pseudozuständen).
 
