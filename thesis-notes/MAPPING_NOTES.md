@@ -86,7 +86,7 @@ Snoeck diskutiert Attributdomänen in Kapitel 7 (S. 149-168). Wenn ein Attribut 
 
 Das spiegelt die A1/A2-Unterscheidung von Bzowski wider, angewendet auf Attributdomänen statt auf eigenständige Konzepte. Der Unterschied: in DEMO sind Value Types Top-Level-Konzepte im Fact Model. In MERODE lebt die Domänenbeschränkung am Attribut selbst.
 
-Implementierung: `merode-schema.json` hat eine Top-Level-`domainTypes`-Liste. Jeder Eintrag hat `name`, `kind` (`"categorical"` oder `"nonCategorical"`) und optional `literals`. Ein Attribut referenziert eine Domäne über seinen `type`-String. Der Agent verarbeitet `domainTypes` vor der ObjectType-Schleife und erzeugt pimUML Enumerations bzw. DataTypes. Die `FuelType`-Domäne im Rent-A-Car-Fixture demonstriert einen kategorischen Fall.
+Implementierung: `merode-schema.json` hat eine Top-Level-`domainTypes`-Liste. Jeder Eintrag hat `name`, `kind` (`"categorical"` oder `"nonCategorical"`) und optional `literals`. Ein Attribut referenziert eine Domäne über seinen `type`-String. Der Agent verarbeitet `domainTypes` vor der ObjectType-Schleife und erzeugt pimUML Enumerations bzw. DataTypes. Die `CarGroup`-Domäne im Rent-A-Car-Fixture demonstriert einen kategorischen Fall.
 
 ```typescript
 for (const dt of merode.domainTypes ?? []) {

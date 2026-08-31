@@ -78,40 +78,52 @@ Die Punkte 1 und 2 sind klein und gehören in die Thesis, weil sie Teil des Beit
 
 Quellmodell (MERODE): `mda-agents/tests/rent-a-car-merode.json`
 
-ObjectTypes: `Car`, `Person`, `Rental`, `RentalLine`. DomainTypes: `FuelType` (kategorisch), `PaymentMethod` (kategorisch), `MoneyAmount` (nicht-kategorisch). ExistenceDependencies: Rental->Car, Rental->Person, RentalLine->Rental.
+ObjectTypes: `Car`, `Branch`, `Person`, `Rental`, `RentalLine`, `Invoice`. DomainTypes: `CarGroup` (kategorisch), `MoneyAmount` (nicht-kategorisch). ExistenceDependencies: Rental->Car, Rental->Person, Rental->Branch, RentalLine->Rental, Invoice->RentalLine (3-Hop-Kette).
 
 **Object-Event Table (vollständig, inkl. M9 transitive):**
 
-| Ereignis | Car | Person | Rental | RentalLine |
-|---------|-----|--------|--------|------------|
-| registerCar | O/C | | | |
-| updateCarMileage | O/M | | | |
-| deregisterCar | O/E | | | |
-| registerPerson | | O/C | | |
-| deregisterPerson | | O/E | | |
-| startRental | A/M | A/M | O/C | |
-| completeRental | A/M | A/M | O/E | |
-| addRentalLine | A/M | A/M | A/M | O/C |
-| updateRentalLine | A/M | A/M | A/M | O/M |
-| removeRentalLine | A/M | A/M | A/M | O/E |
+| Ereignis | Car | Branch | Person | Rental | RentalLine | Invoice |
+|---------|-----|--------|--------|--------|------------|---------|
+| registerCar | O/C | | | | | |
+| updateCarMileage | O/M | | | | | |
+| deregisterCar | O/E | | | | | |
+| openBranch | | O/C | | | | |
+| closeBranch | | O/E | | | | |
+| registerPerson | | | O/C | | | |
+| updatePersonDetails | | | O/M | | | |
+| deregisterPerson | | | O/E | | | |
+| startRental | A/M | A/M | A/M | O/C | | |
+| extendRental | A/M | A/M | A/M | O/M | | |
+| payDeposit | A/M | A/M | A/M | O/M | | |
+| returnCar | A/M | A/M | A/M | O/M | | |
+| payInvoice | A/M | A/M | A/M | O/M | | |
+| completeRental | A/M | A/M | A/M | O/E | | |
+| addRentalLine | A/M | A/M | A/M | A/M | O/C | |
+| updateRentalLine | A/M | A/M | A/M | A/M | O/M | |
+| removeRentalLine | A/M | A/M | A/M | A/M | O/E | |
+| issueInvoice | A/M | A/M | A/M | A/M | A/M | O/C |
+| markInvoicePaid | A/M | A/M | A/M | A/M | A/M | O/M |
+| closeInvoice | A/M | A/M | A/M | A/M | A/M | O/E |
 
-Die A/M-Einträge für Car und Person bei `addRentalLine/updateRentalLine/removeRentalLine` resultieren aus der **transitiven Propagierung**: RentalLine->Rental->Car/Person (2-hop). Die Implementierung berechnet den transitiven Abschluss des EDG.
+Die A/M-Einträge resultieren aus der **transitiven Propagierung** über die volle EDG-Hülle: RentalLine->Rental (1-hop), Invoice->RentalLine->Rental (2-hop), Invoice->RentalLine->Rental->{Car,Branch,Person} (3-hop). Die Implementierung berechnet den transitiven Abschluss des EDG (`allTransitiveDependents()`); jedes Ereignis eines transitiven Dependents wird auf jedem Lebenszyklus-Zustand des Masters materialisiert - bei Rental (4 Zwischenzustände) entstehen so pro propagiertem Ereignis 4 Self-Transitionen statt einer.
 
 **Resultierendes pimUML, Klassendiagramm (M1-M4):**
 
-- `Car`: Class, `CarID: Integer (isID)`, `licensePlate: String`, `fuelType: FuelType`, `mileage: Integer`
-- `Person`: Class, `PersonID: Integer (isID)`, `fullName: String`, `email: String`, `preferredPayment: PaymentMethod`
-- `Rental`: Class, `RentalID: Integer (isID)`, `startingDay: String`, `endingDay: String`, `totalAmount: MoneyAmount`
+- `Car`: Class, `CarID: Integer (isID)`, `licensePlate: String`, `group: CarGroup`, `mileage: Integer`
+- `Branch`: Class, `BranchID: Integer (isID)`, `name: String`, `city: String`
+- `Person`: Class, `PersonID: Integer (isID)`, `fullName: String`, `email: String`
+- `Rental`: Class, `RentalID: Integer (isID)`, `startingDay: String`, `endingDay: String`, `carGroup: CarGroup`, `depositAmount: MoneyAmount`, `invoiceAmount: MoneyAmount`
 - `RentalLine`: Class, `RentalLineID: Integer (isID)`, `quantity: Integer`, `description: String`
-- Enumerations: `FuelType` [petrol, diesel, electric], `PaymentMethod` [cash, creditCard, bankTransfer]
+- `Invoice`: Class, `InvoiceID: Integer (isID)`, `amount: MoneyAmount`, `paidOn: String`
+- Enumeration: `CarGroup` [economy, compact, luxury]
 - DataType: `MoneyAmount`
-- Associations: `RentalDependsOnCar` (Rental 0..* -> Car 1..1), `RentalDependsOnPerson` (Rental 0..* -> Person 1..1), `RentalLineDependsOnRental` (RentalLine 0..* -> Rental 1..1)
+- Associations: `RentalDependsOnCar` (Rental 0..* -> Car 1..1), `RentalDependsOnPerson` (Rental 0..* -> Person 1..1), `RentalDependsOnBranch` (Rental 0..* -> Branch 1..1), `RentalLineDependsOnRental` (RentalLine 0..* -> Rental 1..1), `InvoiceDependsOnRentalLine` (Invoice 0..* -> RentalLine 1..1)
 
 **Resultierendes pimUML, Zustandsmaschinen (M5-M9):**
 
-- `SM_Car`: `__initial -[registerCar]-> registered -[updateCarMileage]-> registered (self) -[deregisterCar]-> __final`; Self-Transitionen für startRental, completeRental, addRentalLine, updateRentalLine, removeRentalLine (M9, transitive)
-- `SM_Person`: `__initial -[registerPerson]-> registered -[deregisterPerson]-> __final`; Self-Transitionen für startRental, completeRental, addRentalLine, updateRentalLine, removeRentalLine (M9, transitive)
-- `SM_Rental`: `__initial -[startRental]-> active -[completeRental]-> __final`; Self-Transitionen für addRentalLine, updateRentalLine, removeRentalLine (M9, 1-hop)
-- `SM_RentalLine`: `__initial -[addRentalLine]-> active -[updateRentalLine]-> active (self) -[removeRentalLine]-> __final`; keine propagierten Events (RentalLine ist immer Dependent)
+- `SM_Car` / `SM_Branch` / `SM_Person`: je ein direkter C->M->E-Ablauf (`registerCar`/`openBranch`/`registerPerson` -> ... -> `deregisterCar`/`closeBranch`/`deregisterPerson`), plus 12 propagierte Self-Transitionen (6 Rental-, 3 RentalLine-, 3 Invoice-Ereignisse; M9, 1- bis 3-hop)
+- `SM_Rental`: sequenzieller 4-Zustands-Lebenszyklus `__initial -[startRental]-> active -[payDeposit]-> depositPaid -[returnCar]-> returned -[payInvoice]-> invoicePaid -[completeRental]-> __final`, dazu Self-Transition `extendRental` auf `active`; plus 6 propagierte Ereignisse (3 RentalLine-, 3 Invoice-Ereignisse) x 4 Zustände = 24 Self-Transitionen (M9, 1- bzw. 2-hop)
+- `SM_RentalLine`: `__initial -[addRentalLine]-> active -[updateRentalLine]-> active (self) -[removeRentalLine]-> __final`; plus 3 propagierte Invoice-Ereignisse als Self-Transitionen (M9, 1-hop)
+- `SM_Invoice`: `__initial -[issueInvoice]-> issued -[markInvoicePaid]-> paid -[closeInvoice]-> __final`; keine propagierten Events (Invoice ist das Ende der EDG-Kette)
 
-Validierungsbeobachtung: M1-M4 reproduzieren exakt das strukturelle Muster, das Bzowski für DEMO ableitet (Class + ID + Association), was strukturelle Interoperabilität ohne Schema-Änderung bestätigt. M5-M9 demonstrieren die genuinen neuen MERODE-Konzepte: sequenzielle FSMs, Terminierung, und transitive Ereignispropagierung.
+Validierungsbeobachtung: M1-M4 reproduzieren exakt das strukturelle Muster, das Bzowski für DEMO ableitet (Class + ID + Association), was strukturelle Interoperabilität ohne Schema-Änderung bestätigt. M5-M9 demonstrieren die genuinen neuen MERODE-Konzepte: sequenzielle Mehrzustands-FSMs, Terminierung, und transitive Ereignispropagierung über eine 3-Hop-EDG-Kette - inklusive der Vervielfachung propagierter Self-Transitionen auf einem Master mit mehreren Lebenszyklus-Zuständen (Rental). Real gegen `merode-to-pim-agent.ts::transform()` verifiziert (schemagültiger Output, siehe `EVAL/FRAMEWORK.md` Abschnitt 2).
