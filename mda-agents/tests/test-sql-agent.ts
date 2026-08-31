@@ -222,3 +222,38 @@ if (!assocDdl.includes(`"rental_id" INTEGER NOT NULL REFERENCES "rental"("rental
   process.exit(1);
 }
 console.log("S8 OK");
+
+// S9: many-to-many association -> junction table with two NOT NULL FKs, no attributes
+const n2mPim: PimModel = {
+  name: "S9 smoke test",
+  classes: [
+    { name: "Person", ownedAttributes: [{ name: "PersonID", type: "Integer", isID: true }] },
+    { name: "Rental",  ownedAttributes: [{ name: "RentalID", type: "Integer", isID: true }] },
+  ],
+  associations: [
+    {
+      name: "PersonRentsVehicles",
+      memberEnds: [
+        { name: "person", type: "Person", lower: 0, upper: "*" },
+        { name: "rental", type: "Rental", lower: 0, upper: "*" },
+      ],
+    },
+  ],
+};
+
+const n2mDdl = pimToSql(n2mPim);
+console.log(n2mDdl);
+
+if (!n2mDdl.includes(`CREATE TABLE "person_rents_vehicles"`)) {
+  console.error("FAIL: expected n:m junction table not found");
+  process.exit(1);
+}
+if (!n2mDdl.includes(`"person_id" INTEGER NOT NULL REFERENCES "person"("person_id")`)) {
+  console.error("FAIL: expected person FK in junction table not found");
+  process.exit(1);
+}
+if (!n2mDdl.includes(`"rental_id" INTEGER NOT NULL REFERENCES "rental"("rental_id")`)) {
+  console.error("FAIL: expected rental FK in junction table not found");
+  process.exit(1);
+}
+console.log("S9 OK");

@@ -146,6 +146,28 @@ export function pimToSql(pim: PimModel): string {
     manyTable.columns.push(`  ${q(fkCol)} INTEGER ${notNull}REFERENCES ${q(oneTable.name)}(${q(oneTable.pkColumn)})`);
   }
 
+  // S9: many-to-many associations -> junction table with two NOT NULL FKs, no attributes.
+  // Contrast with S3 (association class): a plain n:m association carries no attributes
+  // of its own, so no synthetic id column is needed either - the two FKs together are
+  // already a natural composite key candidate, but we still add a synthetic id for
+  // consistency with every other generated table.
+  for (const assoc of pim.associations ?? []) {
+    const [end0, end1] = assoc.memberEnds;
+    if (!(end0.upper === "*" && end1.upper === "*")) continue;
+
+    const table0 = tables.get(end0.type);
+    const table1 = tables.get(end1.type);
+    if (!table0 || !table1) continue;
+
+    const columns = [`  ${q("id")} SERIAL PRIMARY KEY`];
+    for (const [end, refTable] of [[end0, table0], [end1, table1]] as const) {
+      const fkCol = `${toSnakeCase(end.name)}_id`;
+      columns.push(`  ${q(fkCol)} INTEGER NOT NULL REFERENCES ${q(refTable.name)}(${q(refTable.pkColumn)})`);
+    }
+
+    tables.set(assoc.name, { name: toSnakeCase(assoc.name), columns, pkColumn: "id" });
+  }
+
   const createStatements = [...tables.values()].map(t => `CREATE TABLE ${q(t.name)} (\n${t.columns.join(",\n")}\n);`);
 
   const header = [
