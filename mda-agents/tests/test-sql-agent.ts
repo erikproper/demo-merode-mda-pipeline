@@ -8,18 +8,62 @@ import type { PimModel } from "../schemas/types";
 import { pimToSql } from "../pim-to-sql-agent";
 
 // S1: enumerations -> CREATE TYPE ... AS ENUM
-const pim: PimModel = {
+const enumPim: PimModel = {
   name: "S1 smoke test",
   enumerations: [
     { name: "CarGroup", literals: ["economy", "compact", "luxury"] },
   ],
 };
 
-const ddl = pimToSql(pim);
-console.log(ddl);
+const enumDdl = pimToSql(enumPim);
+console.log(enumDdl);
 
-if (!ddl.includes(`CREATE TYPE car_group_enum AS ENUM ('economy', 'compact', 'luxury');`)) {
+if (!enumDdl.includes(`CREATE TYPE car_group_enum AS ENUM ('economy', 'compact', 'luxury');`)) {
   console.error("FAIL: expected CREATE TYPE statement not found");
   process.exit(1);
 }
 console.log("S1 OK");
+
+// S4: classes -> CREATE TABLE with attribute columns.
+// "group" is a reserved SQL word - regression test for identifier quoting.
+const classPim: PimModel = {
+  name: "S4 smoke test",
+  enumerations: [{ name: "CarGroup", literals: ["economy", "compact", "luxury"] }],
+  classes: [
+    {
+      name: "Car",
+      ownedAttributes: [
+        { name: "CarID", type: "Integer", isID: true },
+        { name: "group", type: "CarGroup" },
+        { name: "licensePlate", type: "String" },
+      ],
+    },
+    {
+      name: "Rental",
+      ownedAttributes: [
+        { name: "rentalStarted", type: "Boolean", defaultValue: "false" },
+      ],
+    },
+  ],
+};
+
+const classDdl = pimToSql(classPim);
+console.log(classDdl);
+
+if (!classDdl.includes(`"car_id" INTEGER PRIMARY KEY`)) {
+  console.error("FAIL: expected ID column not found");
+  process.exit(1);
+}
+if (!classDdl.includes(`"group" car_group_enum`)) {
+  console.error("FAIL: reserved-word column \"group\" not quoted correctly");
+  process.exit(1);
+}
+if (!classDdl.includes(`"id" SERIAL PRIMARY KEY`)) {
+  console.error("FAIL: expected synthetic id column for class without isID attribute");
+  process.exit(1);
+}
+if (!classDdl.includes(`DEFAULT false`)) {
+  console.error("FAIL: expected boolean default value");
+  process.exit(1);
+}
+console.log("S4 OK");
