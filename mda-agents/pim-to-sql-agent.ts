@@ -98,6 +98,26 @@ export function pimToSql(pim: PimModel): string {
     tables.set(cls.name, { name: toSnakeCase(cls.name), columns, pkColumn });
   }
 
+  // S3: association classes -> junction table (own synthetic id + two FKs) + own attributes.
+  // Analogous to B8 (entity + two associations); unlike a plain n:m association (S9) an
+  // association class can carry its own attributes, so it always needs a real table.
+  for (const ac of pim.associationClasses ?? []) {
+    const columns: string[] = [`  ${q("id")} SERIAL PRIMARY KEY`];
+
+    for (const end of ac.memberEnds) {
+      const refTable = tables.get(end.type);
+      if (!refTable) continue;
+      const fkCol = `${toSnakeCase(end.name)}_id`;
+      columns.push(`  ${q(fkCol)} INTEGER NOT NULL REFERENCES ${q(refTable.name)}(${q(refTable.pkColumn)})`);
+    }
+    for (const prop of ac.ownedAttributes ?? []) {
+      if (prop.isDerived) continue;
+      columns.push(`  ${q(toSnakeCase(prop.name))} ${sqlType(prop.type, enumNames)}`);
+    }
+
+    tables.set(ac.name, { name: toSnakeCase(ac.name), columns, pkColumn: "id" });
+  }
+
   const createStatements = [...tables.values()].map(t => `CREATE TABLE ${q(t.name)} (\n${t.columns.join(",\n")}\n);`);
 
   const header = [

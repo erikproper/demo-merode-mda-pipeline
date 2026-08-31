@@ -135,3 +135,43 @@ if (!dtFkDdl.includes(`"deposit_amount_id" INTEGER REFERENCES "money_amount"("id
   process.exit(1);
 }
 console.log("S6 OK");
+
+// S3: association classes -> junction table with two FKs + own attributes
+const acPim: PimModel = {
+  name: "S3 smoke test",
+  classes: [
+    { name: "Rental", ownedAttributes: [{ name: "RentalID", type: "Integer", isID: true }] },
+    { name: "Car",     ownedAttributes: [{ name: "CarID",    type: "Integer", isID: true }] },
+  ],
+  associationClasses: [
+    {
+      name: "BookingDetail",
+      triggerEvent: "rentalStarted",
+      memberEnds: [
+        { name: "rental", type: "Rental", lower: 0, upper: "*" },
+        { name: "car",    type: "Car",    lower: 0, upper: "*" },
+      ],
+      ownedAttributes: [
+        { name: "pricePerDay", type: "Integer" },
+        { name: "notes",       type: "String" },
+      ],
+    },
+  ],
+};
+
+const acDdl = pimToSql(acPim);
+console.log(acDdl);
+
+if (!acDdl.includes(`"rental_id" INTEGER NOT NULL REFERENCES "rental"("rental_id")`)) {
+  console.error("FAIL: expected rental FK in association class table not found");
+  process.exit(1);
+}
+if (!acDdl.includes(`"car_id" INTEGER NOT NULL REFERENCES "car"("car_id")`)) {
+  console.error("FAIL: expected car FK in association class table not found");
+  process.exit(1);
+}
+if (!acDdl.includes(`"price_per_day" INTEGER`)) {
+  console.error("FAIL: expected association class attribute not found");
+  process.exit(1);
+}
+console.log("S3 OK");
