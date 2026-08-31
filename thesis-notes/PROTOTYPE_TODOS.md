@@ -25,15 +25,14 @@ Stand: 2026-07-28. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
 
 ---
 
-## Priorität 3 - Tool-Anbindung (erst nach Marien-Meeting am 20.08.)
-
-- [ ] **YADM-Export analysieren** - Marien schickt Export-Format, ggf. Konverter von YADM-JSON nach `demo-schema.json` bauen.
-- [ ] **Sparx XMI** - Social Housing und Desperados als zusätzliche Testfälle, Marienschen Rekonstruktionsskript prüfen.
-- [ ] **Merlin .mxp** - Format analysieren, ggf. Konverter nach `merode-schema.json` bauen.
-
 ---
 
 ## Future Work (kein Scope mehr für diese Thesis)
+
+- [ ] **Tool-Anbindung** - Konverter von realen Tool-Exporten nach `demo-schema.json` / `merode-schema.json`:
+  - **YADM-Export** - Marien schickt Export-Format, ggf. Konverter von YADM-JSON nach `demo-schema.json` bauen.
+  - **Sparx XMI** - Social Housing und Desperados als zusätzliche Testfälle, Marienschen Rekonstruktionsskript prüfen.
+  - **Merlin .mxp** - Format analysieren, ggf. Konverter nach `merode-schema.json` bauen.
 
 - [ ] **Dritter CIM-Agent (ER-Diagramm)** - ursprünglich als formaler Extensibilitätsnachweis E1-E2 geplant, aber durch den tatsächlich gebauten `pim-to-sql-agent` (siehe oben, Priorität 2) als realen PSM-seitigen Extensibilitätsnachweis ersetzt (`thesis-notes/EXTENSIBILITY_EVIDENCE.md` Abschnitt 5). Ein zusätzlicher dritter CIM-Agent bliebe als natürlicher nächster Schritt, ist aber kein Scope mehr für diese Thesis.
 
