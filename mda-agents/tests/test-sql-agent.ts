@@ -175,3 +175,22 @@ if (!acDdl.includes(`"price_per_day" INTEGER`)) {
   process.exit(1);
 }
 console.log("S3 OK");
+
+// S7: generalizations -> child gets an extra mandatory FK column to the parent, cascading delete
+const genPim: PimModel = {
+  name: "S7 smoke test",
+  classes: [
+    { name: "Vehicle", ownedAttributes: [{ name: "VehicleID", type: "Integer", isID: true }, { name: "licensePlate", type: "String" }] },
+    { name: "Car",      ownedAttributes: [{ name: "CarID",     type: "Integer", isID: true }] },
+  ],
+  generalizations: [{ child: "Car", parent: "Vehicle" }],
+};
+
+const genDdl = pimToSql(genPim);
+console.log(genDdl);
+
+if (!genDdl.includes(`"vehicle_id" INTEGER NOT NULL REFERENCES "vehicle"("vehicle_id") ON DELETE CASCADE`)) {
+  console.error("FAIL: expected generalization FK column not found");
+  process.exit(1);
+}
+console.log("S7 OK");

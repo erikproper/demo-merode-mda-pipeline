@@ -118,6 +118,18 @@ export function pimToSql(pim: PimModel): string {
     tables.set(ac.name, { name: toSnakeCase(ac.name), columns, pkColumn: "id" });
   }
 
+  // S7: generalizations -> child gets an extra mandatory FK column to the parent table.
+  // Deliberate simplification: pimUML gives every class (including generalization
+  // children) its own independent id property rather than a shared/inherited PK, so
+  // there is no natural PK-sharing convention to mirror here (see LIMITATIONS.md).
+  for (const gen of pim.generalizations ?? []) {
+    const child  = tables.get(gen.child);
+    const parent = tables.get(gen.parent);
+    if (!child || !parent) continue;
+    const fkCol = `${toSnakeCase(gen.parent)}_id`;
+    child.columns.push(`  ${q(fkCol)} INTEGER NOT NULL REFERENCES ${q(parent.name)}(${q(parent.pkColumn)}) ON DELETE CASCADE`);
+  }
+
   const createStatements = [...tables.values()].map(t => `CREATE TABLE ${q(t.name)} (\n${t.columns.join(",\n")}\n);`);
 
   const header = [
