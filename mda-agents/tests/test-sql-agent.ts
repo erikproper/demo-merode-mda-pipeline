@@ -257,3 +257,42 @@ if (!n2mDdl.includes(`"rental_id" INTEGER NOT NULL REFERENCES "rental"("rental_i
   process.exit(1);
 }
 console.log("S9 OK");
+
+// S10: MERODE sequential FSM -> status column + <entity>_status_enum type
+const fsmPim: PimModel = {
+  name: "S10 smoke test",
+  classes: [
+    { name: "Rental", ownedAttributes: [{ name: "RentalID", type: "Integer", isID: true }] },
+  ],
+  stateMachines: [
+    {
+      name: "RentalLifecycle",
+      entityType: "Rental",
+      regions: [
+        {
+          name: "lifecycle",
+          states: [
+            { name: "initial",    kind: "initial" },
+            { name: "active",     kind: "simple" },
+            { name: "returned",   kind: "simple" },
+            { name: "final",      kind: "final" },
+          ],
+          transitions: [],
+        },
+      ],
+    },
+  ],
+};
+
+const fsmDdl = pimToSql(fsmPim);
+console.log(fsmDdl);
+
+if (!fsmDdl.includes(`CREATE TYPE rental_status_enum AS ENUM ('active', 'returned');`)) {
+  console.error("FAIL: expected status enum type not found");
+  process.exit(1);
+}
+if (!fsmDdl.includes(`"status" rental_status_enum`)) {
+  console.error("FAIL: expected status column not found");
+  process.exit(1);
+}
+console.log("S10 OK");

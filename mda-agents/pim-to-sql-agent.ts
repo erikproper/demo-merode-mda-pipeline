@@ -5,6 +5,12 @@
 
 import type { PimModel } from "./schemas/types";
 
+// Same discriminator as pim-to-mendix-agent.ts:66 - distinguishes a MERODE sequential
+// lifecycle (one region, no forEvent) from a DEMO orthogonal FSM (one region per event).
+function isMerodeFSM(sm: PimModel["stateMachines"] extends Array<infer S> ? S : never): boolean {
+  return sm.regions.length > 0 && sm.regions.every(r => !r.forEvent);
+}
+
 function toSnakeCase(name: string): string {
   return name
     .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
@@ -166,6 +172,24 @@ export function pimToSql(pim: PimModel): string {
     }
 
     tables.set(assoc.name, { name: toSnakeCase(assoc.name), columns, pkColumn: "id" });
+  }
+
+  // S10: MERODE sequential FSM -> status column + <entity>_status_enum type, mirroring
+  // B13's <Entity>_Status enum. S11: DEMO orthogonal FSMs need no rule here - their states
+  // are already plain boolean attributes on the class and flow through S4 automatically.
+  for (const sm of pim.stateMachines ?? []) {
+    if (!isMerodeFSM(sm)) continue;
+    const table = tables.get(sm.entityType);
+    if (!table) continue;
+
+    const lcStates = sm.regions[0].states.filter(s => s.kind === "simple").map(s => s.name);
+    if (lcStates.length === 0) continue;
+
+    const statusEnumName = `${toSnakeCase(sm.entityType)}_status_enum`;
+    const literals = lcStates.map(s => `'${s.replace(/'/g, "''")}'`).join(", ");
+    typeStatements.push(`CREATE TYPE ${statusEnumName} AS ENUM (${literals});`);
+
+    table.columns.push(`  ${q("status")} ${statusEnumName}`);
   }
 
   const createStatements = [...tables.values()].map(t => `CREATE TABLE ${q(t.name)} (\n${t.columns.join(",\n")}\n);`);
