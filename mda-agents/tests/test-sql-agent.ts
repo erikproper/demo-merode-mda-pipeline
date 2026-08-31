@@ -67,3 +67,32 @@ if (!classDdl.includes(`DEFAULT false`)) {
   process.exit(1);
 }
 console.log("S4 OK");
+
+// S5: derived attributes are skipped - no OCL/computed-column equivalent
+const derivedPim: PimModel = {
+  name: "S5 smoke test",
+  classes: [
+    {
+      name: "Rental",
+      ownedAttributes: [
+        { name: "RentalID", type: "Integer", isID: true },
+        { name: "startingDay", type: "String" },
+        { name: "endingDay", type: "String" },
+        { name: "totalDays", type: "Integer", isDerived: true, derivationRule: "self.endingDay - self.startingDay" },
+      ],
+    },
+  ],
+};
+
+const derivedDdl = pimToSql(derivedPim);
+console.log(derivedDdl);
+
+if (derivedDdl.includes(`"total_days"`)) {
+  console.error("FAIL: derived attribute should have been skipped");
+  process.exit(1);
+}
+if (!derivedDdl.includes(`"starting_day"`)) {
+  console.error("FAIL: non-derived attribute missing");
+  process.exit(1);
+}
+console.log("S5 OK");

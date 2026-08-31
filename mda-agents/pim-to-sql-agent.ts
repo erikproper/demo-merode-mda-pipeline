@@ -66,6 +66,7 @@ export function pimToSql(pim: PimModel): string {
     let pkColumn: string | undefined;
 
     for (const prop of cls.ownedAttributes ?? []) {
+      if (prop.isDerived) continue; // S5: no OCL/computed-column equivalent, same as B-rule
       const colName = toSnakeCase(prop.name);
       const colType = sqlType(prop.type, enumNames);
       let colDef = `  ${q(colName)} ${colType}`;
