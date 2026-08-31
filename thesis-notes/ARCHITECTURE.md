@@ -57,15 +57,20 @@ flowchart TB
         PIM_STRUCT["pimUML Model (JSON)\n────────────────────────────────────────────────────\nenumerations  — named literals\ndataTypes     — opaque scalar types\nclasses       — name, ownedAttributes, isAbstract, isDerived\nassociations  — memberEnds with name, type, lower, upper\ngeneralizations — child / parent\nassociationClasses — triggerEvent, memberEnds, ownedAttributes\nstateMachines — regions · states · transitions · activities\n────────────────────────────────────────────────────\nState.kind: initial | false | true | simple | final\nActivity.kind: create | set | end\nRegion.forEvent: present (DEMO) | absent (MERODE)"]:::pim
     end
 
-    %% ── PIM → PSM Agent ─────────────────────────────────────────────────────────
-    subgraph MXA ["⑥ PIM → PSM Transformation"]
+    %% ── PIM → PSM Agents ────────────────────────────────────────────────────────
+    subgraph MXA ["⑥ PIM → PSM Transformation  (two independent PSM targets, both subscribe to the same PIM artefact)"]
+        direction LR
+
         MX_AGENT["pim-to-mendix-agent\n──────────────────────────────────────────────\nSubscribes to all CIM agents via PIM_SOURCE_AGENTS env var\nDiscriminates DEMO vs MERODE FSMs via isMerodeFSM()\n──────────────────────────────────────────────\nB1   Enumeration → Mendix Enumeration + captions\nB2   DataType → Mendix Entity\nB3   Class → Mendix Entity\nB4   Property → Mendix Attribute (typed)\nB5   Enum type → EnumerationAttributeType\nB6   Boolean type → BooleanAttributeType\nB7   String/other → StringAttributeType\nB8   Association → Mendix Association\nB10  Generalization → Mendix Entity Inheritance\nB11  AssociationClass → Entity + 2 Associations\nB12  Overview Page per entity\n──── MERODE-specific ─────────────────────────\nB13  Entity_Status Enumeration + status attribute\nB14  Create_Entity Microflow (creates + sets status)\nB15  Set_Entity_Event Microflow (updates status)\nB16  End_Entity Microflow (stub — lifecycle end)"]:::agent
         MX_SDK["Mendix Platform SDK\n(TypeScript · mendixmodelsdk)\nOnline Working Copy"]:::ext
+
+        SQL_AGENT["pim-to-sql-agent\n──────────────────────────────────────────────\nSubscribes to the same PIM_SOURCE_AGENTS topics\nSame isMerodeFSM() discriminator\n──────────────────────────────────────────────\nS1   Enumeration → CREATE TYPE ... AS ENUM\nS2   DataType → own id-only table\nS3   AssociationClass → junction table + attrs\nS4   Property → typed column\nS5   Derived attribute → skipped\nS6   DataType-typed attribute → FK column\nS7   Generalization → FK + ON DELETE CASCADE\nS8   1:1 / 1:n Association → FK column\nS9   n:m Association → junction table\nS10  MERODE FSM → status column + enum type\nS11  DEMO FSM → no rule (flows through S4)\nS12  Kahn topological sort of CREATE TABLEs"]:::agent
     end
 
     %% ── PSM Layer ───────────────────────────────────────────────────────────────
-    subgraph PSM ["⑦ PSM — Mendix Application"]
+    subgraph PSM ["⑦ PSM — Two Independent Target Platforms"]
         MX_APP["Mendix Application\n──────────────────────\nDomain Model\n  · Entities + Attributes\n  · Associations\n  · Enumerations\nMicroflows\n  · Create / Set / End\nOverview Pages\nNavigation"]:::psm
+        SQL_APP["PostgreSQL DDL Script\n──────────────────────\nCREATE TYPE ... ENUM\nCREATE TABLE ...\n  · typed columns\n  · FK constraints\n  · status enum column\nWritten to output/<model>.sql"]:::psm
     end
 
     %% ── Edges ───────────────────────────────────────────────────────────────────
@@ -81,8 +86,10 @@ flowchart TB
     MA4          -->|"publishPimState()\n+ _trace[]"| MQTT_PIM
     MQTT_PIM     --- PIM_STRUCT
     PIM_STRUCT   -->|"subscribePimState()"| MX_AGENT
+    PIM_STRUCT   -->|"subscribePimState()"| SQL_AGENT
     MX_AGENT     --> MX_SDK
     MX_SDK       --> MX_APP
+    SQL_AGENT    --> SQL_APP
 ```
 
 ---
@@ -203,6 +210,7 @@ flowchart TB
         DEMO_C["mda-transformer-agent\ndemo-to-pim-agent.ts"]:::container
         MERODE_C["mda-merode-agent\nmerode-to-pim-agent.ts"]:::container
         MX_C["mda-mendix-agent\npim-to-mendix-agent.ts\n.env: MENDIX_APP_ID\nMENDIX_MODULE_NAME"]:::container
+        SQL_C["mda-sql-agent\npim-to-sql-agent.ts\nvolume: ./mda-agents/output:/app/output"]:::container
     end
 
     INTERNET   -->|"HTTPS"| CF
@@ -213,13 +221,17 @@ flowchart TB
     DEMO_C     -->|"MQTT publish"| MQTT_C
     MERODE_C   -->|"MQTT publish"| MQTT_C
     MQTT_C     -->|"MQTT subscribe\nretained"| MX_C
+    MQTT_C     -->|"MQTT subscribe\nretained"| SQL_C
     MX_C       -->|"HTTPS\nMendix Platform SDK"| MENDIX_CLOUD
 
     MQTT_C     -.->|"healthcheck\nrestart: unless-stopped"| DEMO_C
     MQTT_C     -.->|"healthcheck\nrestart: unless-stopped"| MERODE_C
     MQTT_C     -.->|"healthcheck\nrestart: unless-stopped"| MX_C
+    MQTT_C     -.->|"healthcheck\nrestart: unless-stopped"| SQL_C
     MQTT_C     -.->|"healthcheck\nrestart: unless-stopped"| API_C
 ```
+
+No permanent PostgreSQL container runs on the Pi — `mda-sql-agent` only writes `.sql` files to a mounted host directory. Executability against a real PostgreSQL instance is verified on demand via a throwaway Docker container (procedure: `mda-agents/tests/README.md`), not via a permanently running database service.
 
 CI/CD: a GitHub Actions workflow (`deploy-pi.yml`) deploys the stack automatically on every push to `main`. It SSHes into the Pi, pulls the latest image, and runs `docker compose up -d`.
 
@@ -229,21 +241,22 @@ CI/CD: a GitHub Actions workflow (`deploy-pi.yml`) deploys the stack automatical
 
 The architecture is designed to absorb new CIM languages without touching existing components. The MERODE integration is the concrete proof of that.
 
-| Component                | Change when adding MERODE                                   |
-| ------------------------ | ----------------------------------------------------------- |
-| `demo-to-pim-agent.ts`   | No changes                                                  |
-| `bus-client.ts`          | No changes                                                  |
-| `agent-utils.ts`         | No changes                                                  |
-| `merode-to-pim-agent.ts` | New file (fully additive)                                   |
-| `merode-schema.json`     | New file (fully additive)                                   |
-| `pimuml-schema.json`     | Additive extension (new `kind` values, `forEvent` optional) |
-| `types.ts`               | New interfaces and small type extensions                    |
-| `pim-to-mendix-agent.ts` | New B13-B16 rule blocks and `isMerodeFSM()` discriminator   |
-| `docker-compose.yml`     | One new service block                                       |
+| Component                | Change when adding MERODE (new CIM agent)                   | Change when adding pim-to-sql-agent (new PSM agent) |
+| ------------------------ | ----------------------------------------------------------- | ---------------------------------------------------- |
+| `demo-to-pim-agent.ts`   | No changes                                                  | No changes                                           |
+| `merode-to-pim-agent.ts` | New file (fully additive)                                   | No changes                                           |
+| `pim-to-mendix-agent.ts` | New B13-B16 rule blocks and `isMerodeFSM()` discriminator   | No changes                                           |
+| `pim-to-sql-agent.ts`    | n/a                                                          | New file (fully additive)                            |
+| `bus-client.ts`          | No changes                                                  | No changes                                           |
+| `agent-utils.ts`         | No changes                                                  | No changes                                           |
+| `merode-schema.json`     | New file (fully additive)                                   | n/a                                                   |
+| `pimuml-schema.json`     | Additive extension (new `kind` values, `forEvent` optional) | No changes                                           |
+| `types.ts`               | New interfaces and small type extensions                    | No changes                                           |
+| `docker-compose.yml`     | One new service block                                       | One new service block (plus a volume mount for file output) |
 
-A planned third-agent experiment (ER diagram language) predicts zero changes to existing files, because ER concepts map onto existing pimUML constructs (Classes, Associations) that B1-B12 already handle.
+The SQL agent was actually built and validated (see `EXTENSIBILITY_EVIDENCE.md` §5) as the real replacement for a previously only-planned third-agent experiment (ER diagram language). It is the stronger of the two proofs: it required no schema change at all, because it consumes PIM concepts (Classes, Associations, Enumerations, StateMachines) that B1-B13 already handle — it is a pure downstream consumer, not a new source language.
 
-The extensibility boundary: adding a language with existing PIM concepts (classes, associations, attributes) only needs a new CIM agent. Adding a language with genuinely new PIM concepts (like MERODE's sequential FSMs) additionally needs a minimal additive schema extension and new PSM rules.
+The extensibility boundary, now demonstrated from both directions: adding a *language* (CIM or PSM) for already-covered PIM concepts is purely additive — zero changes to any existing agent or schema. Adding a language with genuinely new PIM *concepts* (like MERODE's sequential FSMs) additionally needs a minimal additive schema extension and new PSM rules. The boundary sits at the concept level, not the language level.
 
 ---
 
