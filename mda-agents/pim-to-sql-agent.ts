@@ -60,6 +60,14 @@ export function pimToSql(pim: PimModel): string {
 
   const tables = new Map<string, TableDef>();
 
+  // S2: non-categorical DataTypes -> own table, id-only.
+  // Mirrors the same PIM-level limitation as pim-to-mendix-agent.ts's B4/B9 (a DataType
+  // carries no structure of its own in pimUML) rather than inventing a SQL-specific
+  // inline-scalar shortcut that would break comparability between the two PSM outputs.
+  for (const dt of pim.dataTypes ?? []) {
+    tables.set(dt.name, { name: toSnakeCase(dt.name), columns: [`  ${q("id")} SERIAL PRIMARY KEY`], pkColumn: "id" });
+  }
+
   // S4: classes -> CREATE TABLE with attribute columns
   for (const cls of pim.classes ?? []) {
     const columns: string[] = [];

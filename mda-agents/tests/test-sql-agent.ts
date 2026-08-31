@@ -96,3 +96,18 @@ if (!derivedDdl.includes(`"starting_day"`)) {
   process.exit(1);
 }
 console.log("S5 OK");
+
+// S2: non-categorical DataTypes -> own id-only table
+const dataTypePim: PimModel = {
+  name: "S2 smoke test",
+  dataTypes: [{ name: "MoneyAmount" }],
+};
+
+const dataTypeDdl = pimToSql(dataTypePim);
+console.log(dataTypeDdl);
+
+if (!dataTypeDdl.includes(`CREATE TABLE "money_amount" (\n  "id" SERIAL PRIMARY KEY\n);`)) {
+  console.error("FAIL: expected id-only DataType table not found");
+  process.exit(1);
+}
+console.log("S2 OK");
