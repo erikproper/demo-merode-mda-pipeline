@@ -2,19 +2,22 @@
 
 TypeScript-Agenten für die MDA-Transformationspipeline der Masterarbeit.
 
-Implementiert die zwei Transformationsstufen:
+Implementiert zwei CIM-Sprachen und zwei PSM-Zielplattformen über eine gemeinsame,
+schema-validierte PIM-Zwischenschicht (pimUML):
 
 ```
-DEMO Fact Model (CIM)
-        |  demo-to-pim-agent.ts  (Regeln A1-A12)
-        v
-    pimUML (PIM)
-        |  [geplant: pim-to-mendix-agent.ts]  (Regeln B1-B24)
-        v
-   Mendix (PSM)
+DEMO Fact Model (CIM)  --  demo-to-pim-agent.ts    (Regeln A1-A12)  --+
+                                                                       |
+MERODE Domain Model (CIM) -- merode-to-pim-agent.ts (Regeln M1-M9) --+--> pimUML (PIM)
+                                                                       |
+                                                                       +--> pim-to-mendix-agent.ts (Regeln B1-B16) --> Mendix (PSM)
+                                                                       +--> pim-to-sql-agent.ts    (Regeln S1-S12) --> PostgreSQL-DDL (PSM)
 ```
 
-Alle Agenten kommunizieren über den **BIG Modelling Bus** (MQTT, Eclipse Mosquitto).
+Alle Agenten kommunizieren über den **BIG Modelling Bus** (MQTT, Eclipse Mosquitto/HiveMQ CE).
+Details zu den Mapping-Regeln: `thesis-notes/MAPPING_NOTES.md` (DEMO/MERODE->pimUML) und
+`thesis-notes/MAPPING_NOTES.md`-S-Regeln-Abschnitt (pimUML->SQL). Diese README hält bewusst
+keine eigene Kopie der Regeltabellen mehr, um Doku-Drift zu vermeiden.
 
 ---
 
@@ -22,25 +25,43 @@ Alle Agenten kommunizieren über den **BIG Modelling Bus** (MQTT, Eclipse Mosqui
 
 ```
 mda-agents/
-+-- bus-client.ts          # MQTT-Client (Layer 1-3, spiegelt Go-Bus-Architektur)
-+-- demo-publisher.ts      # Liest rent-a-car-demo.json -> publiziert auf Bus
-+-- demo-to-pim-agent.ts   # Abonniert DEMO-Modell -> transformiert -> publiziert PIM
++-- bus-client.ts           # MQTT-Client (Layer 1-3, spiegelt Go-Bus-Architektur)
++-- agent-utils.ts          # Gemeinsame Helfer: Bus-Config, Ajv-Validierung, Meta-Extraktion
++-- demo-publisher.ts       # Liest rent-a-car-demo.json -> publiziert auf Bus
++-- demo-to-pim-agent.ts    # Abonniert DEMO-Modell -> transformiert (A1-A12) -> publiziert PIM
++-- merode-to-pim-agent.ts  # Abonniert MERODE-Modell -> transformiert (M1-M9) -> publiziert PIM
++-- pim-to-mendix-agent.ts  # Abonniert PIM (DEMO+MERODE) -> generiert Mendix-App (B1-B16)
++-- pim-to-sql-agent.ts     # Abonniert PIM (DEMO+MERODE) -> generiert PostgreSQL-DDL (S1-S12)
++-- api-server.ts           # HTTP-Eingang: POST /api/model (X-Input-Format: demo|merode)
 |
 +-- schemas/
-|   +-- demo-schema.json   # JSON Schema (Draft-07) für das DEMO Fact Model (CIM)
-|   +-- pimuml-schema.json # JSON Schema (Draft-07) für das pimUML-Modell (PIM)
-|   +-- types.ts           # TypeScript-Interfaces, generiert aus den Schemas
+|   +-- demo-schema.json    # JSON Schema (Draft-07) für das DEMO Fact Model (CIM)
+|   +-- merode-schema.json  # JSON Schema (Draft-07) für das MERODE Domain Model (CIM)
+|   +-- pimuml-schema.json  # JSON Schema (Draft-07) für das pimUML-Modell (PIM)
+|   +-- types.ts            # TypeScript-Interfaces, generiert aus den Schemas
 |
 +-- tests/
-|   +-- rent-a-car-demo.json   # Valides DEMO-Modell (Rent-A-Car Use Case)
-|   +-- test-transform.ts      # Offline-Test: Transformation ohne MQTT-Broker
-|   +-- pim-subscriber.ts      # Bus-Subscriber: zeigt empfangenes PIM-Modell an
+|   +-- rent-a-car-demo.json    # Valides DEMO-Modell (Rent-A-Car Use Case)
+|   +-- rent-a-car-merode.json  # Valides MERODE-Modell (Rent-A-Car Use Case)
+|   +-- test-transform.ts       # Offline-Smoke-Test: Teilausschnitt A3/A5/A12, kein Broker nötig
+|   +-- smoke-m9-m3.ts          # Offline-Smoke-Test für M3/M9 (EDG-Propagation), kein Broker nötig
+|   +-- test-sql-agent.ts       # Offline-Test für pim-to-sql-agent.ts
+|   +-- pim-subscriber.ts       # Bus-Subscriber: zeigt empfangenes PIM-Modell an
+|   +-- README.md               # Details + Caveats zu den Offline-Tests
 |
-+-- docker-compose.yml     # Startet Eclipse Mosquitto (MQTT-Broker)
-+-- mosquitto.conf         # Mosquitto-Konfiguration (anonymous, kein Persist)
++-- output/                 # Generierte SQL-DDL-Dateien (pim-to-sql-agent.ts), git-ignored
++-- docker-compose.yml      # Startet MQTT-Broker + alle Agenten als Services
++-- mosquitto.conf          # Mosquitto-Konfiguration (anonymous, kein Persist)
 +-- package.json
 +-- tsconfig.json
 ```
+
+> Hinweis zu den Offline-Tests: `test-transform.ts` und `smoke-m9-m3.ts` sind eigenständige,
+> handgeschriebene Teilreimplementierungen der jeweiligen Transformationslogik (nicht die
+> echten `transform()`-Funktionen aus `demo-to-pim-agent.ts`/`merode-to-pim-agent.ts`). Sie
+> eignen sich als schneller Rauchtest ohne Broker, sind aber **kein** Ersatz für einen
+> End-to-End-Lauf über den Bus (Option B unten) oder gegen die Live-Pipeline. Details in
+> `tests/README.md` und `thesis-notes/PROTOTYPE_TODOS.md`.
 
 ---
 
@@ -64,18 +85,18 @@ npm install
 
 ### Option A - Offline (kein Broker nötig)
 
-Testet die Transformation direkt, ohne MQTT:
-
 ```bash
-npm run test:transform
+npm run test:transform              # DEMO: Teilausschnitt A3/A5/A12
+npx ts-node tests/smoke-m9-m3.ts    # MERODE: M3/M9 (EDG-Propagation)
+npx ts-node tests/test-sql-agent.ts # pim-to-sql-agent (S1-S12)
 ```
 
-Ablauf:
-1. Lädt `tests/rent-a-car-demo.json`
-2. Validiert gegen `schemas/demo-schema.json`
-3. Führt Mapping-Regeln A1-A12 aus
-4. Validiert Ergebnis gegen `schemas/pimuml-schema.json`
-5. Schreibt `tests/rent-a-car-pim.json`
+Diese drei Skripte sind eigenständige Rauchtests ohne MQTT-Broker. Wichtig: `test-transform.ts`
+und `smoke-m9-m3.ts` sind **keine** Aufrufe der echten `transform()`-Funktionen aus
+`demo-to-pim-agent.ts`/`merode-to-pim-agent.ts`, sondern separat gepflegte Teilreimplementierungen
+zur schnellen Kontrolle einzelner Regeln. Für einen Test der tatsächlichen Produktionslogik ist
+Option B (voller Bus-Durchlauf) oder ein Lauf gegen die Live-Pipeline auf dem Pi maßgeblich.
+Details, aktuelle Fixture-Kennzahlen und bekannte Einschränkungen: `tests/README.md`.
 
 ---
 
@@ -150,6 +171,9 @@ Alle Agenten lesen ihre Verbindungsparameter aus Umgebungsvariablen:
 | `BUS_ENVIRONMENT_ID` | `dev` | Environment-ID |
 | `BUS_AGENT_ID` | *(agent-spezifisch)* | Agent-ID |
 
+Für `pim-to-mendix-agent.ts` zusätzlich (Mendix Platform SDK, siehe `.env.example`):
+`MENDIX_TOKEN`, `MENDIX_APP_ID`, `MENDIX_MODULE_NAME`, `MENDIX_BRANCH`.
+
 Beispiel mit eigenem Broker:
 ```bash
 MQTT_BROKER=my-server.example.com MQTT_USER=user MQTT_PASSWORD=pw \
@@ -158,19 +182,9 @@ MQTT_BROKER=my-server.example.com MQTT_USER=user MQTT_PASSWORD=pw \
 
 ---
 
-## Mapping-Regeln (Table 10.1)
+## Mapping-Regeln
 
-| Regel | DEMO Fact Model | pimUML |
-|-------|----------------|--------|
-| A1 | ValueType, kategorisch | Enumeration |
-| A2 | ValueType, nicht-kategorisch | PrimitiveType |
-| A3 | Declared EntityType | Class + logische ID (Integer) + StateMachine |
-| A4 | Derived EntityType | Class + StateMachine |
-| A5 | AttributeType | Property |
-| A6 | EventType | Boolean-Attribut (default false) + orthogonale SM-Region + Set\<E\>.\<Evt\> Activity |
-| A7 | Spezialisierung mit EventType | ID auf Kind + Assoc Kind->Elter + Entry-Activity in trueState + Create\<Kind\> Activity |
-| A8 | Spezialisierung von ValueType mit EventType | AssociationClass |
-| A9 | Spezialisierung mit Ableitungsregel | ID auf Kind + Assoc Kind->Elter + Create\<Kind\> Activity |
-| A10 | Generalisierung | Elternklasse abstract + Generalization auf Kindklasse |
-| A11 | Aggregation | shared Association + ID-Property in Ganzes |
-| A12 | PropertyType + Kardinalitäten | Association + Multiplizitäten |
+Die vollständigen, aktuell gültigen Regeltabellen (A1-A12 für DEMO, M1-M9 für MERODE,
+B1-B16 für Mendix, S1-S12 für PostgreSQL) werden **nicht** hier dupliziert, um Doku-Drift
+zu vermeiden, sondern zentral gepflegt in `thesis-notes/MAPPING_NOTES.md`
+(siehe auch `thesis-notes/MerodeMappingRules.md` für die MERODE-spezifische Herleitung).

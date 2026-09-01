@@ -2,7 +2,7 @@
 # .gitignore  -  MDA Master Thesis Workspace (root)
 # =============================================================================
 
-# -- Claude AI / IDE context ---------------------------------------------------
+# -- Local tooling / assistant config (not part of the project) --------------
 .claude/
 CLAUDE.md
 1MToken.md

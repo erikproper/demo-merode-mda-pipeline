@@ -1,16 +1,28 @@
 # tests/
 
-Testdaten und Skripte für die DEMO->pimUML-Transformationspipeline.
+Testdaten und Offline-Skripte für die gesamte Pipeline (DEMO/MERODE -> pimUML -> Mendix/SQL).
+
+**Wichtiger Vorbehalt:** `test-transform.ts` und `smoke-m9-m3.ts` sind eigenständige,
+handgeschriebene Teilreimplementierungen der jeweiligen Mapping-Logik - sie rufen **nicht**
+die echten `transform()`-Funktionen aus `demo-to-pim-agent.ts`/`merode-to-pim-agent.ts` auf.
+`test-transform.ts` deckt nur A3, A5 und A12 ab (Klassen + Attribute + Assoziationen aus
+Entity-/Fact-Types), nicht A1/A2/A4/A6-A11. `smoke-m9-m3.ts` bildet die M3/M9-EDG-Propagation
+nach, hat aber eine bekannte Abweichung bei `markInvoicePaid` (wird fälschlich als
+Selbst-Transition gerendert statt als regulärer Übergang). Beide Skripte sind als schneller
+Rauchtest gedacht, nicht als Nachweis der Produktionslogik - der maßgebliche Nachweis ist der
+volle Bus-Durchlauf (`mda-agents/README.md`, Option B) bzw. ein Lauf gegen die Live-Pipeline.
+Siehe `thesis-notes/PROTOTYPE_TODOS.md` für den aktuellen Stand dieser Einschränkung.
 
 ## Dateien
 
 | Datei | Beschreibung |
 |-------|-------------|
-| `rent-a-car-demo.json` | **Eingabe** - valides DEMO Fact Model (Rent-A-Car, Thesis Abschnitt 6.4 + Appendix G) |
-| `test-transform.ts` | **Offline-Test** - Transformation ohne MQTT-Broker, schreibt `rent-a-car-pim.json` |
+| `rent-a-car-demo.json` | **Eingabe** - valides DEMO Fact Model (Rent-A-Car Use Case) |
+| `rent-a-car-merode.json` | **Eingabe** - valides MERODE Domain Model (Rent-A-Car Use Case) |
+| `test-transform.ts` | **Offline-Smoke-Test** - Teilausschnitt A3/A5/A12 ohne MQTT-Broker, schreibt `rent-a-car-pim-from-bus.json` |
+| `smoke-m9-m3.ts` | **Offline-Smoke-Test** - M3/M9-EDG-Propagation ohne MQTT-Broker (bekannte `markInvoicePaid`-Abweichung, s. o.) |
 | `pim-subscriber.ts` | **Bus-Utility** - abonniert `model.pim.created`, schreibt `rent-a-car-pim-from-bus.json` |
-| `rent-a-car-pim.json` | *Generiert* durch `test:transform` - nicht versioniert (.gitignore) |
-| `rent-a-car-pim-from-bus.json` | *Generiert* durch `pim-subscriber` - nicht versioniert (.gitignore) |
+| `rent-a-car-pim-from-bus.json` | *Generiert* durch `test-transform.ts` bzw. `pim-subscriber` - nicht versioniert (.gitignore) |
 | `rent-a-car-pim-full.json` | **Eingabe** - vollständige pimUML-Fixture für `test-sql-agent.ts` (Enums, DataTypes, AssociationClass, Generalisierung, Assoziationen, orthogonale FSM) |
 | `test-sql-agent.ts` | **Offline-Test** - `pim-to-sql-agent`, ein Fall pro S-Regel + End-to-End-Lauf, schreibt `../output/rent-a-car.sql` |
 | `../output/*.sql` | *Generiert* durch `test-sql-agent.ts` bzw. `pim-to-sql-agent` im Live-Betrieb - nicht versioniert (.gitignore) |
@@ -49,33 +61,33 @@ damit nicht in jeder Umgebung (z. B. CI ohne Docker) lauffähig wäre.
 
 ---
 
-## rent-a-car-demo.json - Abdeckung
+## rent-a-car-demo.json / rent-a-car-merode.json - aktuelle Abdeckung
 
-| Element | Anzahl | Quelle |
-|---------|--------|--------|
-| EntityTypes (declared) | 8 | Table G.1 |
-| EntityTypes (derived) | 7 | Table G.1 |
-| ValueTypes | 3 | Table G.2 |
-| EventTypes | 7 | Table G.3 (KT01-KT07) |
-| Generalizations | 5 | Table G.3 |
-| Aggregations | 1 | Table G.1 (YearlyCarGroup) |
-| PropertyTypes | 14 | Table G.5 |
+Beide Fixtures wurden gezielt so aufgebaut, dass jede A-Regel (DEMO) bzw. M-Regel (MERODE)
+mindestens einmal ausgelöst wird (siehe `thesis-notes/EVAL/FRAMEWORK.md` für den vollständigen,
+gegen den echten Transform-Output verifizierten Nachweis). Stand: aktueller Fixture-Inhalt.
 
----
+**rent-a-car-demo.json**
 
-## Bekannte Abweichungen vom Thesis-Modell
+| Element | Anzahl |
+|---------|--------|
+| ValueTypes | 3 (CarGroup, MoneyAmount, BookingDetail) |
+| EntityTypes gesamt (declared + derived) | 12 |
+| EventTypes | 17 |
+| FactTypes | 5 (RentalHasLines, RentalInvolvesCar, RentalMadeByPerson, RentalPickedUpAt, RentalReturnedAt) |
 
-1. **CarGroup-Literale** - Die Thesis gibt an, dass `CarGroup` zum Schema-Zeitpunkt
-   keine Literalwerte hat. `demo-schema.json` verlangt `minItems: 1` für kategorische
-   ValueTypes. Workaround: repräsentative Literale hinzugefügt.
+**rent-a-car-merode.json**
 
-2. **Year als EntityType** - `Year` ist in DEMO ein nicht-kategorischer ValueType,
-   hat aber Attribute als Domäne. Das Schema erlaubt Attribute nur auf EntityTypes.
-   Workaround: `RentalYear` als declared EntityType, `Year` bleibt als ValueType.
+| Element | Anzahl |
+|---------|--------|
+| ObjectTypes | 6 (Car, Branch, Person, Rental, RentalLine, Invoice) |
+| DomainTypes | 2 (CarGroup, MoneyAmount) |
+| ExistenceDependencies | 5 |
+| BusinessEventTypes | 20 |
 
-3. **ManagingDay (Regel A8)** - Namenlose Ableitung vom ValueType `Day`.
-   Das Schema verlangt EntityType-Namen als Generalization-Eltern.
-   Workaround: `ManagingDay` als derived EntityType mit `derivationRule`.
-
-4. **Money / Number** - In DEMO vordefinierte ValueTypes, werden als Strings
-   in Attributen referenziert, aber nicht in `valueTypes` deklariert.
+Frühere Versionen dieser Datei beschrieben eine strukturell andere, kleinere DEMO-Fixture
+(u. a. mit den inzwischen nicht mehr existierenden Entities `Year`, `RentalYear`,
+`ManagingDay`, `YearlyCarGroup`). Diese Iteration wurde durch die aktuelle, breiter
+abdeckende Rent-A-Car-Fixture ersetzt - die o.g. Workarounds sind damit gegenstandslos
+(z. B. hat `CarGroup` inzwischen reguläre, fachlich sinnvolle Literale statt eines
+Platzhalter-Workarounds).

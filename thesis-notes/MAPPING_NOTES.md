@@ -244,10 +244,13 @@ for (const ot of merode.objectTypes) {
 }
 ```
 
-Für das Rent-A-Car-Fixture (4 OTs) bedeutet das:
-- Car und Person erhalten **5** propagierte Self-Transitionen: `startRental`, `completeRental` (von Rental, 1-hop) und `addRentalLine`, `updateRentalLine`, `removeRentalLine` (von RentalLine via Rental, 2-hop).
-- Rental erhält **3** propagierte Self-Transitionen: `addRentalLine`, `updateRentalLine`, `removeRentalLine` (von RentalLine, 1-hop).
-- RentalLine hat keine Master-Rolle, erhält keine propagierten Transitionen.
+Für das aktuelle Rent-A-Car-Fixture (6 OTs, 3-Hop-EDG-Kette Invoice -> RentalLine -> Rental -> {Car, Branch, Person}) bedeutet das:
+- Car, Branch und Person erhalten je **12** propagierte Self-Transitionen (die 6 Rental-Ereignisse, 1-hop; die 3 RentalLine-Ereignisse, 2-hop; die 3 Invoice-Ereignisse, 3-hop) - da alle drei nur einen Lebenszykluszustand haben, ist das je Objekttyp genau eine Self-Transition pro propagiertem Ereignis.
+- Rental erhält 6 propagierte Ereignisse (3 von RentalLine, 3 von Invoice), aber weil Rental 4 Lebenszykluszustände hat (active, depositPaid, returned, invoicePaid), materialisiert jedes Ereignis auf jedem Zustand als eigene Self-Transition - macht **24** Self-Transitionen in SM_Rental.
+- RentalLine erhält **3** propagierte Self-Transitionen von Invoice (1-hop, ein Lebenszykluszustand).
+- Invoice hat keine Master-Rolle, erhält keine propagierten Transitionen.
+
+Insgesamt sind das 45 atomare (Ereignis x Master)-Propagierungsobligationen, die 63 Self-Transitionen im realen, schemagültigen Transform-Output erzeugen (12+12+12+24+3). Vollständige Klassifikationstabelle: `EVAL/FRAMEWORK.md` Abschnitt 2.
 
 B15 im Mendix-Agenten erzeugt daraus Change-Microflows, die den Status des Masters auf den aktuellen Zustand setzen (semantisch ein Participated-Marker).
 
@@ -362,4 +365,4 @@ Der FSM-Vergleich (orthogonale Regionen vs. sequenziell) ist der zentrale konzep
 
 Die pimUML-Schema-Änderungen (State.kind-Erweiterung, Activity.kind-Erweiterung, Region.forEvent optional) sollten als kleine Diff-Tabelle präsentiert werden, nicht als vollständiges Schema-Listing.
 
-Für M9: die formale Regel präsentieren, auch wenn die Implementierung unvollständig ist. M9 ist die akademisch interessanteste Regel und rechtfertigt eine vollständige formale Spezifikation in der Thesis.
+Für M9: die formale Regel vollständig präsentieren - die Implementierung ist inzwischen vollständig und gegen echten, schemagültigen Transform-Output verifiziert (3-Hop-EDG-Kette, siehe oben). M9 ist die akademisch interessanteste Regel und rechtfertigt eine vollständige formale Spezifikation in der Thesis.
