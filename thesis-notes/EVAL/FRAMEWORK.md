@@ -30,7 +30,7 @@ In der dritten Phase werden die Ausgabeelemente klassifiziert. Für jede Ground-
 
 Daraus ergeben sich die Metriken: Completeness = C / (C + M + I), Validity = C / (C + I + Added_unjustified), Schema Validation Rate = immer 100% oder die Pipeline bricht ab, Traceability Coverage = Elemente mit Trace-Links / (alle Elemente ausgenommen explizit NotMapped).
 
-**Verifikationsstatus:** Die Klassifikationen in Abschnitt 2 und 3 basieren nicht mehr auf statischer Code-Analyse, sondern auf einem tatsächlichen Aufruf der Produktionsfunktionen `demo-to-pim-agent.ts::transform()` und `merode-to-pim-agent.ts::transform()` gegen die aktuellen Fixtures, mit anschließender Ajv-Validierung des Outputs gegen `pimuml-schema.json` (beide Outputs schemagültig, DEMO: 108 Trace-Einträge, MERODE: 100 Trace-Einträge). Offen bleiben zwei Schritte, die einen laufenden Bus/Pi bzw. Mendix Studio Pro voraussetzen: der Live-Mendix-Check (Abschnitt 4) und die Extraktion des `_trace`-Arrays aus einer echten MQTT-Nachricht für die formale Traceability-Coverage-Berechnung (Abschnitt 5).
+**Verifikationsstatus:** Die Klassifikationen in Abschnitt 2 und 3 basieren nicht mehr auf statischer Code-Analyse, sondern auf einem tatsächlichen Aufruf der Produktionsfunktionen `demo-to-pim-agent.ts::transform()` und `merode-to-pim-agent.ts::transform()` gegen die aktuellen Fixtures, mit anschließender Ajv-Validierung des Outputs gegen `pimuml-schema.json` (beide Outputs schemagültig, DEMO: 108 Trace-Einträge, MERODE: 100 Trace-Einträge). Diese Zahlen wurden am 2026-09-07 durch einen echten End-to-End-Lauf über die Live-Pipeline bestätigt (`curl`-POST an `https://mda.tlolab.com/api/model` vom Mac, PIM-Payload per `mosquitto_sub` vom retained MQTT-Topic direkt auf dem Pi gelesen; Rohdaten in `EVAL/demo-pim-output.json` und `EVAL/merode-pim-output.json` archiviert): identische Trace-Anzahl (108/100), identische Struktur (12/6 Klassen, 11/5 Assoziationen, 12/6 State Machines, 45 M9-propagierte Self-Transitionen bei MERODE). Damit ist auch die formale Traceability-Coverage-Berechnung (Abschnitt 5) nicht mehr offen. Offen bleibt nur noch der Live-Mendix-Studio-Pro-Check (Abschnitt 4, QR3), der zwingend manuell erfolgen muss.
 
 ---
 
@@ -330,7 +330,10 @@ Das `_trace`-Array in jeder veröffentlichten PIM-Nachricht enthält Trace-Eintr
 
 M9 ist implementiert (transitive Propagierung). Alle propagierten Ereignisse erhalten einen Trace-Eintrag (`targetType: "Transition"`, `targetName: "<OT>.<evt> (M9 propagated)"`). Es gibt keine NotMapped-Einträge mehr für propagierte Ereignisse. NotMapped-Einträge entstehen nur noch bei explizit übersprungenen Elementen (z.B. A7-SM-Behavior im DEMO-Agenten).
 
-Referenzwerte aus dem verifizierten Testlauf (Abschnitt 1): DEMO-Trace enthält 108 Einträge, MERODE-Trace enthält 100 Einträge (davon 45 für M9-propagierte Self-Transitionen). Die formale Coverage-Berechnung (verfolgt vs. NotMapped) steht noch aus und erfordert die Extraktion des Arrays aus einer echten MQTT-Nachricht.
+Referenzwerte aus dem verifizierten Testlauf (Abschnitt 1): DEMO-Trace enthält 108 Einträge, MERODE-Trace enthält 100 Einträge (davon 45 für M9-propagierte Self-Transitionen). Die formale Coverage-Berechnung wurde am 2026-09-07 gegen die per `mosquitto_sub` aus der retained MQTT-Nachricht extrahierten `_trace`-Arrays durchgeführt (`EVAL/demo-pim-output.json`, `EVAL/merode-pim-output.json`):
+
+- **DEMO:** 108 Trace-Einträge gesamt, davon 5 `NotMapped` (alle vom Typ `StateMachineBehavior`, für die A7-Trigger-Ereignisse `carRegistered`, `rentalStarted`, `depositPaid`, `carReturned`, `invoicePaid` - semantisch gerechtfertigt, s. o.). Coverage = (108 - 5) / 108 = **95,4 %**.
+- **MERODE:** 100 Trace-Einträge gesamt, 0 `NotMapped`. Coverage = 100 / 100 = **100 %**.
 
 ---
 
@@ -350,6 +353,8 @@ Die folgenden Zahlen stammen aus einem tatsächlichen Aufruf von `demo-to-pim-ag
 
 **Schema Validation Rate:** Konstruktionsbedingt 100 % - die Pipeline bricht bei jedem Schemaverstoß ab, bevor sie publiziert. Dieser Anspruch wurde im Zuge dieser Verifikation selbst bestätigt: ein zuvor unentdeckter Fixture-Fehler (fehlendes `literals`-Array bei DEMOs `CarGroup`-ValueType) führte dazu, dass der reale Output beim ersten Testlauf tatsächlich am `pimuml-schema.json`-Constraint `Enumeration.literals minItems:1` scheiterte - ein Beleg dafür, dass die Schema-Validierung wirksam greift, nicht nur eine unbewiesene Behauptung. Nach Behebung (Ergänzung der Literale) ist der Output schemagültig.
 
-**Traceability Coverage:** Nahe 100 %. Einzige NotMapped-Einträge entstehen beim A7-Trace-Eintrag `{ targetType: "NotMapped", targetName: "StateMachineBehavior" }`, der die nicht-übersetzte SM-Trigger-Semantik explizit kennzeichnet. Diese sind semantisch gerechtfertigt.
+**Traceability Coverage:** DEMO 95,4 % (103/108, 5 gerechtfertigte NotMapped-Einträge), MERODE 100 % (100/100, keine NotMapped-Einträge). Einzige NotMapped-Einträge entstehen beim A7-Trace-Eintrag `{ targetType: "NotMapped", targetName: "StateMachineBehavior" }`, der die nicht-übersetzte SM-Trigger-Semantik explizit kennzeichnet. Diese sind semantisch gerechtfertigt (s. Abschnitt 5).
 
-**Noch offen:** der Live-Mendix-Studio-Pro-Check (Abschnitt 4) und die formale Traceability-Coverage-Berechnung aus einer echten MQTT-Nachricht (Abschnitt 5) setzen einen laufenden Bus/Pi voraus und wurden für die erweiterten Fixtures noch nicht wiederholt.
+**Live-Pipeline-Bestätigung (2026-09-07):** Beide obigen Ergebnisse wurden zusätzlich über einen echten End-to-End-Lauf verifiziert - `curl`-POST an `https://mda.tlolab.com/api/model` (Mac, öffentlicher Cloudflare Tunnel), PIM-Payload per `mosquitto_sub` vom retained Topic `model.pim.created` direkt auf dem Pi gelesen (`EVAL/demo-pim-output.json`, `EVAL/merode-pim-output.json`). Alle Struktur- und Trace-Zahlen sind identisch zum Direktaufruf-Testlauf oben; Completeness und Validity bleiben damit für beide Sprachen bei 100 %.
+
+**Noch offen:** einzig der Live-Mendix-Studio-Pro-Check (Abschnitt 4, QR3) - erfordert manuelles Öffnen der generierten App in Studio Pro und ist nicht automatisierbar.

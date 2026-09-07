@@ -6,36 +6,22 @@ Stand: 2026-09-01. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
 
 ## Priorität 1 - Evaluation (Blocker für Thesis-Kapitel 8 + 9)
 
-- [ ] **DEMO-Evaluation (QR1 Completeness, QR2 Validity)**
-  - **Was:** Ground Truth aus `mda-agents/tests/rent-a-car-demo.json` extrahieren (aktuell:
-    3 ValueTypes, 12 EntityTypes, 17 EventTypes, 5 FactTypes - Zahlen per `node -e`-Skript
-    gegen die Fixture verifiziert), Pipeline live laufen lassen (`X-Input-Format: demo`,
-    Testbefehl s. u.), jedes erzeugte pimUML-Element klassifizieren (Correct / Missing /
-    Incorrect / Added), QR1/QR2-Metriken berechnen.
-  - **Warum wichtig:** QR1/QR2 sind die zentralen quantitativen Erfolgskriterien aus
-    `REQUIREMENTS.md` §4 - ohne sie fehlt Kapitel 8 die Kernaussage "die Pipeline transformiert
-    korrekt".
-  - **Aktueller Stand:** `thesis-notes/EVAL/FRAMEWORK.md` enthält bereits eine vollständige,
-    gegen den echten Transform-Output verifizierte Vorlage/Struktur für diese Auswertung
-    (100%/100% als Zielwert dokumentiert). Was fehlt, ist der offizielle, für die Thesis
-    zitierfähige Lauf: Live-Pipeline auf dem Pi anstoßen, Output sichern, Klassifikation als
-    Tabelle in `EVAL/FRAMEWORK.md` bzw. einem `EVAL/`-Unterordner ablegen.
-  - **Nächster Schritt:** curl-Testbefehl ausführen, JSON-Antwort/MQTT-Payload archivieren,
-    Element-für-Element-Diff gegen die Ground Truth in einer Tabelle festhalten.
+- [x] **DEMO-Evaluation (QR1 Completeness, QR2 Validity)** - Live-Lauf am 2026-09-07 über
+  die echte Pipeline durchgeführt (`curl` gegen `https://mda.tlolab.com/api/model` vom Mac,
+  PIM-Payload per `mosquitto_sub` vom retained MQTT-Topic auf dem Pi gelesen, archiviert in
+  `EVAL/demo-pim-output.json`). Struktur (12 Klassen, 11 Assoziationen, 1 Enum, 1 DataType,
+  1 AssociationClass, 1 Generalisierung, 12 State Machines, 108 Trace-Einträge) und Inhalt
+  gegen Ground Truth und `EVAL/FRAMEWORK.md` Abschnitt 3 geprüft: C=66, M=0, I=0 -
+  **Completeness 100 %, Validity 100 %**. Identisch zum vorab verifizierten
+  Direktaufruf-Testlauf. Ergebnis in `EVAL/FRAMEWORK.md` Abschnitt 1 und 7 dokumentiert.
 
-- [ ] **MERODE-Evaluation (QR1 Completeness, QR2 Validity)**
-  - **Was:** Analog zur DEMO-Evaluation, aber für `rent-a-car-merode.json` (6 ObjectTypes,
-    2 DomainTypes, 5 ExistenceDependencies, 20 BusinessEventTypes). Ground-Truth-Tabelle in
-    `thesis-notes/EVAL/FRAMEWORK.md` Abschnitt 2 mit den finalen, verifizierten Zahlen füllen
-    (M9-Propagation: 45 atomare Aussagen -> 63 Selbst-Transitionen in der aktuellen
-    6-ObjectType/3-Hop-Fixture, bereits verifiziert und in `FRAMEWORK.md` dokumentiert).
-  - **Warum wichtig:** MERODE ist die zweite CIM-Sprache und damit der Beleg, dass die
-    Pipeline nicht nur für DEMO funktioniert, sondern die pimUML-Brücke tatsächlich
-    sprachunabhängig trägt (AR2/AR3 in `REQUIREMENTS.md`).
-  - **Aktueller Stand:** Rechnerisch verifiziert (`FRAMEWORK.md`), aber noch nicht als
-    offizieller Live-Pipeline-Lauf durchgeführt/dokumentiert.
-  - **Nächster Schritt:** curl-Testbefehl (MERODE) ausführen, Output klassifizieren, Ergebnis
-    in `EVAL/FRAMEWORK.md` einpflegen.
+- [x] **MERODE-Evaluation (QR1 Completeness, QR2 Validity)** - Live-Lauf am 2026-09-07
+  analog zur DEMO-Evaluation (`EVAL/merode-pim-output.json`). Struktur (6 Klassen,
+  5 Assoziationen, 1 Enum, 1 DataType, 6 State Machines, 100 Trace-Einträge, davon 45
+  M9-propagierte Self-Transitionen) und Inhalt gegen Ground Truth und `EVAL/FRAMEWORK.md`
+  Abschnitt 2 geprüft: C=104, M=0, I=0 - **Completeness 100 %, Validity 100 %**. Identisch
+  zum vorab verifizierten Direktaufruf-Testlauf. Ergebnis in `EVAL/FRAMEWORK.md` Abschnitt 1
+  und 7 dokumentiert.
 
 - [ ] **Mendix Studio Pro - Schema Validation Rate (QR3, binär, muss 100% sein)**
   - **Was:** Generiertes Mendix-Modell (aus DEMO- und aus MERODE-Lauf) in Studio Pro öffnen,
@@ -49,18 +35,10 @@ Stand: 2026-09-01. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
   - **Nächster Schritt:** Nach DEMO- und MERODE-Live-Lauf jeweils die generierte App in
     Studio Pro öffnen, Screenshot des Errors-Panels für beide Fälle anfertigen.
 
-- [ ] **Traceability Coverage (QR4)**
-  - **Was:** `_trace`-Array aus der PIM-Bus-Nachricht extrahieren (MQTT retained message
-    auf `model.pim.created`, oder Konsolenausgabe des Agenten), `NotMapped`-Einträge zählen,
-    Coverage-Prozentsatz (= (Gesamtelemente - NotMapped) / Gesamtelemente) berechnen -
-    getrennt für DEMO- und MERODE-Pfad.
-  - **Warum wichtig:** QR4 belegt, dass jede Transformationsentscheidung nachvollziehbar ist
-    (wichtig für die methodische Nachvollziehbarkeit/Reproduzierbarkeit, Kap. 9).
-  - **Aktueller Stand:** Das `_trace`-Array wird bereits von beiden Transform-Agenten befüllt
-    (Code vorhanden), aber die Auswertung/Aggregation als Prozentsatz wurde noch nicht
-    durchgeführt.
-  - **Nächster Schritt:** Nach den beiden Live-Läufen oben die jeweilige `_trace`-Ausgabe
-    sichern und auswerten.
+- [x] **Traceability Coverage (QR4)** - Aus den beiden Live-Läufen oben berechnet:
+  **DEMO 95,4 %** (103/108, 5 gerechtfertigte NotMapped-Einträge für A7-SM-Trigger-Semantik),
+  **MERODE 100 %** (100/100, keine NotMapped-Einträge). Ergebnis in `EVAL/FRAMEWORK.md`
+  Abschnitt 5 und 7 dokumentiert. Implementiert/ausgewertet 2026-09-07.
 
 - [ ] **Test-Fidelity-Lücke: Offline-Tests testen nicht die echte Produktionslogik**
   - **Was:** `mda-agents/tests/test-transform.ts` und `mda-agents/tests/smoke-m9-m3.ts` sind

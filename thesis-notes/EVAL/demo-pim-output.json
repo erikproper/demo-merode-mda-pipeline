@@ -1,0 +1,1927 @@
+{
+  "name": "Rent-A-Car (DEMO) - pimUML",
+  "enumerations": [
+    {
+      "name": "CarGroup",
+      "literals": [
+        "economy",
+        "compact",
+        "luxury"
+      ]
+    }
+  ],
+  "dataTypes": [
+    {
+      "name": "MoneyAmount"
+    }
+  ],
+  "associationClasses": [
+    {
+      "name": "BookingDetail",
+      "triggerEvent": "rentalStarted",
+      "memberEnds": [
+        {
+          "name": "rental",
+          "type": "Rental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "car",
+          "type": "Car",
+          "lower": 0,
+          "upper": "*"
+        }
+      ],
+      "ownedAttributes": [
+        {
+          "name": "pricePerDay",
+          "type": "Integer"
+        },
+        {
+          "name": "notes",
+          "type": "String"
+        }
+      ]
+    }
+  ],
+  "classes": [
+    {
+      "name": "Vehicle",
+      "isAbstract": true,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "VehicleID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "licensePlate",
+          "type": "String",
+          "isDerived": false
+        }
+      ]
+    },
+    {
+      "name": "Car",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "CarID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "group",
+          "type": "CarGroup",
+          "isDerived": false
+        },
+        {
+          "name": "mileage",
+          "type": "Integer",
+          "isDerived": false
+        },
+        {
+          "name": "carRegistered",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "mileageUpdated",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "carDeregistered",
+          "type": "Boolean",
+          "defaultValue": "false"
+        }
+      ]
+    },
+    {
+      "name": "SpecialCar",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "SpecialCarID",
+          "type": "Integer",
+          "isID": true
+        }
+      ]
+    },
+    {
+      "name": "Branch",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "BranchID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "isDerived": false
+        },
+        {
+          "name": "city",
+          "type": "String",
+          "isDerived": false
+        },
+        {
+          "name": "branchOpened",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "branchClosed",
+          "type": "Boolean",
+          "defaultValue": "false"
+        }
+      ]
+    },
+    {
+      "name": "Person",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "PersonID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "fullName",
+          "type": "String",
+          "isDerived": false
+        },
+        {
+          "name": "email",
+          "type": "String",
+          "isDerived": false
+        },
+        {
+          "name": "personRegistered",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "personUpdated",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "personRemoved",
+          "type": "Boolean",
+          "defaultValue": "false"
+        }
+      ]
+    },
+    {
+      "name": "PremiumCustomer",
+      "isAbstract": false,
+      "isDerived": true,
+      "derivationExpression": "Person.rentals->size() > 10",
+      "ownedAttributes": [
+        {
+          "name": "PremiumCustomerID",
+          "type": "Integer",
+          "isID": true
+        }
+      ]
+    },
+    {
+      "name": "Rental",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "RentalID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "startingDay",
+          "type": "String",
+          "isDerived": false
+        },
+        {
+          "name": "endingDay",
+          "type": "String",
+          "isDerived": false
+        },
+        {
+          "name": "carGroup",
+          "type": "CarGroup",
+          "isDerived": false
+        },
+        {
+          "name": "totalDays",
+          "type": "Integer",
+          "isDerived": true,
+          "derivationRule": "endingDay - startingDay"
+        },
+        {
+          "name": "rentalStarted",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "rentalExtended",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "depositPaid",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "carReturned",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "invoicePaid",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "rentalCompleted",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "rentalLineID",
+          "type": "Integer"
+        }
+      ]
+    },
+    {
+      "name": "ActiveRental",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "ActiveRentalID",
+          "type": "Integer",
+          "isID": true
+        }
+      ]
+    },
+    {
+      "name": "DepositPaidRental",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "DepositPaidRentalID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "depositAmount",
+          "type": "MoneyAmount",
+          "isDerived": false
+        }
+      ]
+    },
+    {
+      "name": "ReturnedRental",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "ReturnedRentalID",
+          "type": "Integer",
+          "isID": true
+        }
+      ]
+    },
+    {
+      "name": "InvoicePaidRental",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "InvoicePaidRentalID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "invoiceAmount",
+          "type": "MoneyAmount",
+          "isDerived": false
+        }
+      ]
+    },
+    {
+      "name": "RentalLine",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "RentalLineID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "quantity",
+          "type": "Integer",
+          "isDerived": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "isDerived": false
+        },
+        {
+          "name": "rentalLineAdded",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "rentalLineUpdated",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "rentalLineRemoved",
+          "type": "Boolean",
+          "defaultValue": "false"
+        }
+      ]
+    }
+  ],
+  "associations": [
+    {
+      "name": "RentalHasLines",
+      "isAggregation": true,
+      "memberEnds": [
+        {
+          "name": "rental",
+          "type": "Rental",
+          "lower": 1,
+          "upper": 1
+        },
+        {
+          "name": "rentalLine",
+          "type": "RentalLine",
+          "lower": 0,
+          "upper": "*"
+        }
+      ]
+    },
+    {
+      "name": "RentalInvolvesCar",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "rental",
+          "type": "Rental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "car",
+          "type": "Car",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "RentalMadeByPerson",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "rental",
+          "type": "Rental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "renter",
+          "type": "Person",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "RentalPickedUpAt",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "rental",
+          "type": "Rental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "branch",
+          "type": "Branch",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "RentalReturnedAt",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "rental",
+          "type": "Rental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "branch",
+          "type": "Branch",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "PremiumCustomerIsAPerson",
+      "isDerived": true,
+      "derivationExpression": "Person.rentals->size() > 10",
+      "memberEnds": [
+        {
+          "name": "derived",
+          "type": "PremiumCustomer",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "parent",
+          "type": "Person",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "SpecialCarIsACar",
+      "triggerEvent": "carRegistered",
+      "memberEnds": [
+        {
+          "name": "specialization",
+          "type": "SpecialCar",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "parent",
+          "type": "Car",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "ActiveRentalIsARental",
+      "triggerEvent": "rentalStarted",
+      "memberEnds": [
+        {
+          "name": "specialization",
+          "type": "ActiveRental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "parent",
+          "type": "Rental",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "DepositPaidRentalIsARental",
+      "triggerEvent": "depositPaid",
+      "memberEnds": [
+        {
+          "name": "specialization",
+          "type": "DepositPaidRental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "parent",
+          "type": "Rental",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "ReturnedRentalIsARental",
+      "triggerEvent": "carReturned",
+      "memberEnds": [
+        {
+          "name": "specialization",
+          "type": "ReturnedRental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "parent",
+          "type": "Rental",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "InvoicePaidRentalIsARental",
+      "triggerEvent": "invoicePaid",
+      "memberEnds": [
+        {
+          "name": "specialization",
+          "type": "InvoicePaidRental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "parent",
+          "type": "Rental",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    }
+  ],
+  "generalizations": [
+    {
+      "child": "Car",
+      "parent": "Vehicle"
+    }
+  ],
+  "stateMachines": [
+    {
+      "name": "SM_Vehicle",
+      "entityType": "Vehicle",
+      "regions": []
+    },
+    {
+      "name": "SM_Car",
+      "entityType": "Car",
+      "regions": [
+        {
+          "name": "carRegistered",
+          "forEvent": "carRegistered",
+          "states": [
+            {
+              "name": "carRegistered_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "carRegistered_false",
+              "kind": "false"
+            },
+            {
+              "name": "carRegistered_true",
+              "kind": "true",
+              "entryActivity": "CreateSpecialCar"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "carRegistered_initial",
+              "to": "carRegistered_false"
+            },
+            {
+              "from": "carRegistered_false",
+              "to": "carRegistered_true",
+              "trigger": "carRegistered",
+              "alfExpression": "self.carRegistered = true"
+            }
+          ]
+        },
+        {
+          "name": "mileageUpdated",
+          "forEvent": "mileageUpdated",
+          "states": [
+            {
+              "name": "mileageUpdated_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "mileageUpdated_false",
+              "kind": "false"
+            },
+            {
+              "name": "mileageUpdated_true",
+              "kind": "true"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "mileageUpdated_initial",
+              "to": "mileageUpdated_false"
+            },
+            {
+              "from": "mileageUpdated_false",
+              "to": "mileageUpdated_true",
+              "trigger": "mileageUpdated",
+              "alfExpression": "self.mileageUpdated = true"
+            }
+          ]
+        },
+        {
+          "name": "carDeregistered",
+          "forEvent": "carDeregistered",
+          "states": [
+            {
+              "name": "carDeregistered_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "carDeregistered_false",
+              "kind": "false"
+            },
+            {
+              "name": "carDeregistered_true",
+              "kind": "true"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "carDeregistered_initial",
+              "to": "carDeregistered_false"
+            },
+            {
+              "from": "carDeregistered_false",
+              "to": "carDeregistered_true",
+              "trigger": "carDeregistered",
+              "alfExpression": "self.carDeregistered = true"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "SetCar_carRegistered",
+          "kind": "set",
+          "targetType": "Car"
+        },
+        {
+          "name": "SetCar_mileageUpdated",
+          "kind": "set",
+          "targetType": "Car"
+        },
+        {
+          "name": "SetCar_carDeregistered",
+          "kind": "set",
+          "targetType": "Car"
+        },
+        {
+          "name": "CreateSpecialCar",
+          "kind": "create",
+          "targetType": "SpecialCar"
+        }
+      ]
+    },
+    {
+      "name": "SM_SpecialCar",
+      "entityType": "SpecialCar",
+      "regions": []
+    },
+    {
+      "name": "SM_Branch",
+      "entityType": "Branch",
+      "regions": [
+        {
+          "name": "branchOpened",
+          "forEvent": "branchOpened",
+          "states": [
+            {
+              "name": "branchOpened_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "branchOpened_false",
+              "kind": "false"
+            },
+            {
+              "name": "branchOpened_true",
+              "kind": "true"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "branchOpened_initial",
+              "to": "branchOpened_false"
+            },
+            {
+              "from": "branchOpened_false",
+              "to": "branchOpened_true",
+              "trigger": "branchOpened",
+              "alfExpression": "self.branchOpened = true"
+            }
+          ]
+        },
+        {
+          "name": "branchClosed",
+          "forEvent": "branchClosed",
+          "states": [
+            {
+              "name": "branchClosed_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "branchClosed_false",
+              "kind": "false"
+            },
+            {
+              "name": "branchClosed_true",
+              "kind": "true"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "branchClosed_initial",
+              "to": "branchClosed_false"
+            },
+            {
+              "from": "branchClosed_false",
+              "to": "branchClosed_true",
+              "trigger": "branchClosed",
+              "alfExpression": "self.branchClosed = true"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "SetBranch_branchOpened",
+          "kind": "set",
+          "targetType": "Branch"
+        },
+        {
+          "name": "SetBranch_branchClosed",
+          "kind": "set",
+          "targetType": "Branch"
+        }
+      ]
+    },
+    {
+      "name": "SM_Person",
+      "entityType": "Person",
+      "regions": [
+        {
+          "name": "personRegistered",
+          "forEvent": "personRegistered",
+          "states": [
+            {
+              "name": "personRegistered_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "personRegistered_false",
+              "kind": "false"
+            },
+            {
+              "name": "personRegistered_true",
+              "kind": "true"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "personRegistered_initial",
+              "to": "personRegistered_false"
+            },
+            {
+              "from": "personRegistered_false",
+              "to": "personRegistered_true",
+              "trigger": "personRegistered",
+              "alfExpression": "self.personRegistered = true"
+            }
+          ]
+        },
+        {
+          "name": "personUpdated",
+          "forEvent": "personUpdated",
+          "states": [
+            {
+              "name": "personUpdated_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "personUpdated_false",
+              "kind": "false"
+            },
+            {
+              "name": "personUpdated_true",
+              "kind": "true"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "personUpdated_initial",
+              "to": "personUpdated_false"
+            },
+            {
+              "from": "personUpdated_false",
+              "to": "personUpdated_true",
+              "trigger": "personUpdated",
+              "alfExpression": "self.personUpdated = true"
+            }
+          ]
+        },
+        {
+          "name": "personRemoved",
+          "forEvent": "personRemoved",
+          "states": [
+            {
+              "name": "personRemoved_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "personRemoved_false",
+              "kind": "false"
+            },
+            {
+              "name": "personRemoved_true",
+              "kind": "true"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "personRemoved_initial",
+              "to": "personRemoved_false"
+            },
+            {
+              "from": "personRemoved_false",
+              "to": "personRemoved_true",
+              "trigger": "personRemoved",
+              "alfExpression": "self.personRemoved = true"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "SetPerson_personRegistered",
+          "kind": "set",
+          "targetType": "Person"
+        },
+        {
+          "name": "SetPerson_personUpdated",
+          "kind": "set",
+          "targetType": "Person"
+        },
+        {
+          "name": "SetPerson_personRemoved",
+          "kind": "set",
+          "targetType": "Person"
+        },
+        {
+          "name": "CreatePremiumCustomer",
+          "kind": "create",
+          "targetType": "PremiumCustomer"
+        }
+      ]
+    },
+    {
+      "name": "SM_PremiumCustomer",
+      "entityType": "PremiumCustomer",
+      "regions": []
+    },
+    {
+      "name": "SM_Rental",
+      "entityType": "Rental",
+      "regions": [
+        {
+          "name": "rentalStarted",
+          "forEvent": "rentalStarted",
+          "states": [
+            {
+              "name": "rentalStarted_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "rentalStarted_false",
+              "kind": "false"
+            },
+            {
+              "name": "rentalStarted_true",
+              "kind": "true",
+              "entryActivity": "CreateActiveRental"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "rentalStarted_initial",
+              "to": "rentalStarted_false"
+            },
+            {
+              "from": "rentalStarted_false",
+              "to": "rentalStarted_true",
+              "trigger": "rentalStarted",
+              "alfExpression": "self.rentalStarted = true"
+            }
+          ]
+        },
+        {
+          "name": "rentalExtended",
+          "forEvent": "rentalExtended",
+          "states": [
+            {
+              "name": "rentalExtended_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "rentalExtended_false",
+              "kind": "false"
+            },
+            {
+              "name": "rentalExtended_true",
+              "kind": "true"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "rentalExtended_initial",
+              "to": "rentalExtended_false"
+            },
+            {
+              "from": "rentalExtended_false",
+              "to": "rentalExtended_true",
+              "trigger": "rentalExtended",
+              "alfExpression": "self.rentalExtended = true"
+            }
+          ]
+        },
+        {
+          "name": "depositPaid",
+          "forEvent": "depositPaid",
+          "states": [
+            {
+              "name": "depositPaid_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "depositPaid_false",
+              "kind": "false"
+            },
+            {
+              "name": "depositPaid_true",
+              "kind": "true",
+              "entryActivity": "CreateDepositPaidRental"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "depositPaid_initial",
+              "to": "depositPaid_false"
+            },
+            {
+              "from": "depositPaid_false",
+              "to": "depositPaid_true",
+              "trigger": "depositPaid",
+              "alfExpression": "self.depositPaid = true"
+            }
+          ]
+        },
+        {
+          "name": "carReturned",
+          "forEvent": "carReturned",
+          "states": [
+            {
+              "name": "carReturned_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "carReturned_false",
+              "kind": "false"
+            },
+            {
+              "name": "carReturned_true",
+              "kind": "true",
+              "entryActivity": "CreateReturnedRental"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "carReturned_initial",
+              "to": "carReturned_false"
+            },
+            {
+              "from": "carReturned_false",
+              "to": "carReturned_true",
+              "trigger": "carReturned",
+              "alfExpression": "self.carReturned = true"
+            }
+          ]
+        },
+        {
+          "name": "invoicePaid",
+          "forEvent": "invoicePaid",
+          "states": [
+            {
+              "name": "invoicePaid_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "invoicePaid_false",
+              "kind": "false"
+            },
+            {
+              "name": "invoicePaid_true",
+              "kind": "true",
+              "entryActivity": "CreateInvoicePaidRental"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "invoicePaid_initial",
+              "to": "invoicePaid_false"
+            },
+            {
+              "from": "invoicePaid_false",
+              "to": "invoicePaid_true",
+              "trigger": "invoicePaid",
+              "alfExpression": "self.invoicePaid = true"
+            }
+          ]
+        },
+        {
+          "name": "rentalCompleted",
+          "forEvent": "rentalCompleted",
+          "states": [
+            {
+              "name": "rentalCompleted_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "rentalCompleted_false",
+              "kind": "false"
+            },
+            {
+              "name": "rentalCompleted_true",
+              "kind": "true"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "rentalCompleted_initial",
+              "to": "rentalCompleted_false"
+            },
+            {
+              "from": "rentalCompleted_false",
+              "to": "rentalCompleted_true",
+              "trigger": "rentalCompleted",
+              "alfExpression": "self.rentalCompleted = true"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "SetRental_rentalStarted",
+          "kind": "set",
+          "targetType": "Rental"
+        },
+        {
+          "name": "SetRental_rentalExtended",
+          "kind": "set",
+          "targetType": "Rental"
+        },
+        {
+          "name": "SetRental_depositPaid",
+          "kind": "set",
+          "targetType": "Rental"
+        },
+        {
+          "name": "SetRental_carReturned",
+          "kind": "set",
+          "targetType": "Rental"
+        },
+        {
+          "name": "SetRental_invoicePaid",
+          "kind": "set",
+          "targetType": "Rental"
+        },
+        {
+          "name": "SetRental_rentalCompleted",
+          "kind": "set",
+          "targetType": "Rental"
+        },
+        {
+          "name": "CreateActiveRental",
+          "kind": "create",
+          "targetType": "ActiveRental"
+        },
+        {
+          "name": "CreateDepositPaidRental",
+          "kind": "create",
+          "targetType": "DepositPaidRental"
+        },
+        {
+          "name": "CreateReturnedRental",
+          "kind": "create",
+          "targetType": "ReturnedRental"
+        },
+        {
+          "name": "CreateInvoicePaidRental",
+          "kind": "create",
+          "targetType": "InvoicePaidRental"
+        }
+      ]
+    },
+    {
+      "name": "SM_ActiveRental",
+      "entityType": "ActiveRental",
+      "regions": []
+    },
+    {
+      "name": "SM_DepositPaidRental",
+      "entityType": "DepositPaidRental",
+      "regions": []
+    },
+    {
+      "name": "SM_ReturnedRental",
+      "entityType": "ReturnedRental",
+      "regions": []
+    },
+    {
+      "name": "SM_InvoicePaidRental",
+      "entityType": "InvoicePaidRental",
+      "regions": []
+    },
+    {
+      "name": "SM_RentalLine",
+      "entityType": "RentalLine",
+      "regions": [
+        {
+          "name": "rentalLineAdded",
+          "forEvent": "rentalLineAdded",
+          "states": [
+            {
+              "name": "rentalLineAdded_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "rentalLineAdded_false",
+              "kind": "false"
+            },
+            {
+              "name": "rentalLineAdded_true",
+              "kind": "true"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "rentalLineAdded_initial",
+              "to": "rentalLineAdded_false"
+            },
+            {
+              "from": "rentalLineAdded_false",
+              "to": "rentalLineAdded_true",
+              "trigger": "rentalLineAdded",
+              "alfExpression": "self.rentalLineAdded = true"
+            }
+          ]
+        },
+        {
+          "name": "rentalLineUpdated",
+          "forEvent": "rentalLineUpdated",
+          "states": [
+            {
+              "name": "rentalLineUpdated_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "rentalLineUpdated_false",
+              "kind": "false"
+            },
+            {
+              "name": "rentalLineUpdated_true",
+              "kind": "true"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "rentalLineUpdated_initial",
+              "to": "rentalLineUpdated_false"
+            },
+            {
+              "from": "rentalLineUpdated_false",
+              "to": "rentalLineUpdated_true",
+              "trigger": "rentalLineUpdated",
+              "alfExpression": "self.rentalLineUpdated = true"
+            }
+          ]
+        },
+        {
+          "name": "rentalLineRemoved",
+          "forEvent": "rentalLineRemoved",
+          "states": [
+            {
+              "name": "rentalLineRemoved_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "rentalLineRemoved_false",
+              "kind": "false"
+            },
+            {
+              "name": "rentalLineRemoved_true",
+              "kind": "true"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "rentalLineRemoved_initial",
+              "to": "rentalLineRemoved_false"
+            },
+            {
+              "from": "rentalLineRemoved_false",
+              "to": "rentalLineRemoved_true",
+              "trigger": "rentalLineRemoved",
+              "alfExpression": "self.rentalLineRemoved = true"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "SetRentalLine_rentalLineAdded",
+          "kind": "set",
+          "targetType": "RentalLine"
+        },
+        {
+          "name": "SetRentalLine_rentalLineUpdated",
+          "kind": "set",
+          "targetType": "RentalLine"
+        },
+        {
+          "name": "SetRentalLine_rentalLineRemoved",
+          "kind": "set",
+          "targetType": "RentalLine"
+        }
+      ]
+    }
+  ],
+  "_source": {
+    "format": "demo"
+  },
+  "_trace": [
+    {
+      "sourceType": "ValueType",
+      "sourceName": "CarGroup",
+      "targetType": "Enumeration",
+      "targetName": "CarGroup"
+    },
+    {
+      "sourceType": "ValueType",
+      "sourceName": "BookingDetail",
+      "targetType": "AssociationClass",
+      "targetName": "BookingDetail"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "BookingDetail.pricePerDay",
+      "targetType": "Property",
+      "targetName": "BookingDetail.pricePerDay"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "BookingDetail.notes",
+      "targetType": "Property",
+      "targetName": "BookingDetail.notes"
+    },
+    {
+      "sourceType": "ValueType",
+      "sourceName": "MoneyAmount",
+      "targetType": "DataType",
+      "targetName": "MoneyAmount"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Vehicle",
+      "targetType": "Class",
+      "targetName": "Vehicle"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Vehicle",
+      "targetType": "Property",
+      "targetName": "Vehicle.VehicleID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Vehicle.licensePlate",
+      "targetType": "Property",
+      "targetName": "Vehicle.licensePlate"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Car",
+      "targetType": "Class",
+      "targetName": "Car"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Car",
+      "targetType": "Property",
+      "targetName": "Car.CarID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Car.group",
+      "targetType": "Property",
+      "targetName": "Car.group"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Car.mileage",
+      "targetType": "Property",
+      "targetName": "Car.mileage"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "SpecialCar",
+      "targetType": "Class",
+      "targetName": "SpecialCar"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "SpecialCar",
+      "targetType": "Property",
+      "targetName": "SpecialCar.SpecialCarID"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Branch",
+      "targetType": "Class",
+      "targetName": "Branch"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Branch",
+      "targetType": "Property",
+      "targetName": "Branch.BranchID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Branch.name",
+      "targetType": "Property",
+      "targetName": "Branch.name"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Branch.city",
+      "targetType": "Property",
+      "targetName": "Branch.city"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Person",
+      "targetType": "Class",
+      "targetName": "Person"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Person",
+      "targetType": "Property",
+      "targetName": "Person.PersonID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Person.fullName",
+      "targetType": "Property",
+      "targetName": "Person.fullName"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Person.email",
+      "targetType": "Property",
+      "targetName": "Person.email"
+    },
+    {
+      "sourceType": "DerivedEntityType",
+      "sourceName": "PremiumCustomer",
+      "targetType": "Class",
+      "targetName": "PremiumCustomer"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Rental",
+      "targetType": "Class",
+      "targetName": "Rental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Rental",
+      "targetType": "Property",
+      "targetName": "Rental.RentalID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Rental.startingDay",
+      "targetType": "Property",
+      "targetName": "Rental.startingDay"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Rental.endingDay",
+      "targetType": "Property",
+      "targetName": "Rental.endingDay"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Rental.carGroup",
+      "targetType": "Property",
+      "targetName": "Rental.carGroup"
+    },
+    {
+      "sourceType": "DerivedAttributeType",
+      "sourceName": "Rental.totalDays",
+      "targetType": "DerivedProperty",
+      "targetName": "Rental.totalDays"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "ActiveRental",
+      "targetType": "Class",
+      "targetName": "ActiveRental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "ActiveRental",
+      "targetType": "Property",
+      "targetName": "ActiveRental.ActiveRentalID"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "DepositPaidRental",
+      "targetType": "Class",
+      "targetName": "DepositPaidRental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "DepositPaidRental",
+      "targetType": "Property",
+      "targetName": "DepositPaidRental.DepositPaidRentalID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "DepositPaidRental.depositAmount",
+      "targetType": "Property",
+      "targetName": "DepositPaidRental.depositAmount"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "ReturnedRental",
+      "targetType": "Class",
+      "targetName": "ReturnedRental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "ReturnedRental",
+      "targetType": "Property",
+      "targetName": "ReturnedRental.ReturnedRentalID"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "InvoicePaidRental",
+      "targetType": "Class",
+      "targetName": "InvoicePaidRental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "InvoicePaidRental",
+      "targetType": "Property",
+      "targetName": "InvoicePaidRental.InvoicePaidRentalID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "InvoicePaidRental.invoiceAmount",
+      "targetType": "Property",
+      "targetName": "InvoicePaidRental.invoiceAmount"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "RentalLine",
+      "targetType": "Class",
+      "targetName": "RentalLine"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "RentalLine",
+      "targetType": "Property",
+      "targetName": "RentalLine.RentalLineID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "RentalLine.quantity",
+      "targetType": "Property",
+      "targetName": "RentalLine.quantity"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "RentalLine.description",
+      "targetType": "Property",
+      "targetName": "RentalLine.description"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Car",
+      "targetType": "Generalization",
+      "targetName": "Vehicle -> Car"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "carRegistered",
+      "targetType": "Property",
+      "targetName": "Car.carRegistered"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "mileageUpdated",
+      "targetType": "Property",
+      "targetName": "Car.mileageUpdated"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "carDeregistered",
+      "targetType": "Property",
+      "targetName": "Car.carDeregistered"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "branchOpened",
+      "targetType": "Property",
+      "targetName": "Branch.branchOpened"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "branchClosed",
+      "targetType": "Property",
+      "targetName": "Branch.branchClosed"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "personRegistered",
+      "targetType": "Property",
+      "targetName": "Person.personRegistered"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "personUpdated",
+      "targetType": "Property",
+      "targetName": "Person.personUpdated"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "personRemoved",
+      "targetType": "Property",
+      "targetName": "Person.personRemoved"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalStarted",
+      "targetType": "Property",
+      "targetName": "Rental.rentalStarted"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalExtended",
+      "targetType": "Property",
+      "targetName": "Rental.rentalExtended"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "depositPaid",
+      "targetType": "Property",
+      "targetName": "Rental.depositPaid"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "carReturned",
+      "targetType": "Property",
+      "targetName": "Rental.carReturned"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "invoicePaid",
+      "targetType": "Property",
+      "targetName": "Rental.invoicePaid"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalCompleted",
+      "targetType": "Property",
+      "targetName": "Rental.rentalCompleted"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalLineAdded",
+      "targetType": "Property",
+      "targetName": "RentalLine.rentalLineAdded"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalLineUpdated",
+      "targetType": "Property",
+      "targetName": "RentalLine.rentalLineUpdated"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalLineRemoved",
+      "targetType": "Property",
+      "targetName": "RentalLine.rentalLineRemoved"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "SpecialCar",
+      "targetType": "EventTriggeredAssociation",
+      "targetName": "SpecialCarIsACar"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "carRegistered",
+      "targetType": "NotMapped",
+      "targetName": "StateMachineBehavior"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "ActiveRental",
+      "targetType": "EventTriggeredAssociation",
+      "targetName": "ActiveRentalIsARental"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalStarted",
+      "targetType": "NotMapped",
+      "targetName": "StateMachineBehavior"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "DepositPaidRental",
+      "targetType": "EventTriggeredAssociation",
+      "targetName": "DepositPaidRentalIsARental"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "depositPaid",
+      "targetType": "NotMapped",
+      "targetName": "StateMachineBehavior"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "ReturnedRental",
+      "targetType": "EventTriggeredAssociation",
+      "targetName": "ReturnedRentalIsARental"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "carReturned",
+      "targetType": "NotMapped",
+      "targetName": "StateMachineBehavior"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "InvoicePaidRental",
+      "targetType": "EventTriggeredAssociation",
+      "targetName": "InvoicePaidRentalIsARental"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "invoicePaid",
+      "targetType": "NotMapped",
+      "targetName": "StateMachineBehavior"
+    },
+    {
+      "sourceType": "DerivedEntityType",
+      "sourceName": "PremiumCustomer",
+      "targetType": "Property",
+      "targetName": "PremiumCustomer.PremiumCustomerID"
+    },
+    {
+      "sourceType": "DerivedEntityType",
+      "sourceName": "PremiumCustomer",
+      "targetType": "DerivedAssociation",
+      "targetName": "PremiumCustomerIsAPerson"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "RentalHasLines",
+      "targetType": "Aggregation",
+      "targetName": "RentalHasLines"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "RentalHasLines",
+      "targetType": "Property",
+      "targetName": "Rental.rentalLineID"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "RentalInvolvesCar",
+      "targetType": "Association",
+      "targetName": "RentalInvolvesCar"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "RentalMadeByPerson",
+      "targetType": "Association",
+      "targetName": "RentalMadeByPerson"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "RentalPickedUpAt",
+      "targetType": "Association",
+      "targetName": "RentalPickedUpAt"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "RentalReturnedAt",
+      "targetType": "Association",
+      "targetName": "RentalReturnedAt"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Vehicle",
+      "targetType": "StateMachine",
+      "targetName": "SM_Vehicle"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "carRegistered",
+      "targetType": "Region",
+      "targetName": "Car.carRegistered"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "mileageUpdated",
+      "targetType": "Region",
+      "targetName": "Car.mileageUpdated"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "carDeregistered",
+      "targetType": "Region",
+      "targetName": "Car.carDeregistered"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Car",
+      "targetType": "StateMachine",
+      "targetName": "SM_Car"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "SpecialCar",
+      "targetType": "StateMachine",
+      "targetName": "SM_SpecialCar"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "branchOpened",
+      "targetType": "Region",
+      "targetName": "Branch.branchOpened"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "branchClosed",
+      "targetType": "Region",
+      "targetName": "Branch.branchClosed"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Branch",
+      "targetType": "StateMachine",
+      "targetName": "SM_Branch"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "personRegistered",
+      "targetType": "Region",
+      "targetName": "Person.personRegistered"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "personUpdated",
+      "targetType": "Region",
+      "targetName": "Person.personUpdated"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "personRemoved",
+      "targetType": "Region",
+      "targetName": "Person.personRemoved"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Person",
+      "targetType": "StateMachine",
+      "targetName": "SM_Person"
+    },
+    {
+      "sourceType": "DerivedEntityType",
+      "sourceName": "PremiumCustomer",
+      "targetType": "StateMachine",
+      "targetName": "SM_PremiumCustomer"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalStarted",
+      "targetType": "Region",
+      "targetName": "Rental.rentalStarted"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalExtended",
+      "targetType": "Region",
+      "targetName": "Rental.rentalExtended"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "depositPaid",
+      "targetType": "Region",
+      "targetName": "Rental.depositPaid"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "carReturned",
+      "targetType": "Region",
+      "targetName": "Rental.carReturned"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "invoicePaid",
+      "targetType": "Region",
+      "targetName": "Rental.invoicePaid"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalCompleted",
+      "targetType": "Region",
+      "targetName": "Rental.rentalCompleted"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Rental",
+      "targetType": "StateMachine",
+      "targetName": "SM_Rental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "ActiveRental",
+      "targetType": "StateMachine",
+      "targetName": "SM_ActiveRental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "DepositPaidRental",
+      "targetType": "StateMachine",
+      "targetName": "SM_DepositPaidRental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "ReturnedRental",
+      "targetType": "StateMachine",
+      "targetName": "SM_ReturnedRental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "InvoicePaidRental",
+      "targetType": "StateMachine",
+      "targetName": "SM_InvoicePaidRental"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalLineAdded",
+      "targetType": "Region",
+      "targetName": "RentalLine.rentalLineAdded"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalLineUpdated",
+      "targetType": "Region",
+      "targetName": "RentalLine.rentalLineUpdated"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalLineRemoved",
+      "targetType": "Region",
+      "targetName": "RentalLine.rentalLineRemoved"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "RentalLine",
+      "targetType": "StateMachine",
+      "targetName": "SM_RentalLine"
+    }
+  ]
+}
