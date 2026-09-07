@@ -173,7 +173,7 @@ The bus follows the BIG Modelling Bus naming convention (layer 1 of the Go refer
 | `prefix`        | `big`                                                                           |
 | `bus-version`   | `bus-version-1.0`                                                               |
 | `environmentID` | `dev`                                                                           |
-| `agentID`       | `api-server`, `demo-to-pim-agent`, `merode-to-pim-agent`, `pim-to-mendix-agent` |
+| `agentID`       | `api-server`, `demo-to-pim-agent`, `merode-to-pim-agent`, `pim-to-mendix-agent`, `pim-to-sql-agent` |
 | `artefactID`    | `model.cim.raw`, `model.pim.created`                                            |
 | `jsonVersion`   | `cim-v1.0-v1.0`, `pimuml-v1.0-v1.0`                                             |
 | `state`         | retained - newly connected agents immediately get the last known model          |
@@ -232,6 +232,8 @@ flowchart TB
 ```
 
 No permanent PostgreSQL container runs on the Pi - `mda-sql-agent` only writes `.sql` files to a mounted host directory. Executability against a real PostgreSQL instance is verified on demand via a throwaway Docker container (procedure: `mda-agents/tests/README.md`), not via a permanently running database service.
+
+A `demo-publisher` service (profile `publisher`, run on demand via `docker compose --profile publisher run --rm demo-publisher`) publishes a fixture DEMO model directly onto `model.cim.raw`, bypassing `api-server`/HTTP entirely. It exists purely for local pipeline testing and is not part of the production message flow.
 
 CI/CD: a GitHub Actions workflow (`deploy-pi.yml`) deploys the stack automatically on every push to `main`. It SSHes into the Pi, pulls the latest image, and runs `docker compose up -d`.
 
