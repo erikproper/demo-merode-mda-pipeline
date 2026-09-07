@@ -62,6 +62,37 @@ Stand: 2026-09-01. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
     Fixtures aufruft und gegen `pimuml-schema.json` validiert - als Ersatz/Ergänzung zu den
     bestehenden Smoke-Tests. Umfang und Zeitpunkt (jetzt vs. erst nach den Live-Evaluationen
     oben) noch nicht entschieden.
+  - **Nachtrag (2026-09-07, Diskussion):** Der Live-Pipeline-Lauf (Abschnitt oben, DEMO/MERODE-
+    Evaluation) ist der stärkere *Korrektheits*-Nachweis, weil er den echten deployten
+    `transform()`-Code über den echten Bus testet, nicht einen Nachbau. Die eigentliche Lücke
+    ist *Reproduzierbarkeit für Dritte*: ein Gutachter kann den Live-Lauf ohne Zugriff auf den
+    Pi/Docker-Stack nicht selbst wiederholen, ein committeter Test schon. Zweiter Aspekt:
+    Regressionssicherheit bei künftigen Änderungen an den Agenten (zeigt sofort, welche
+    einzelne Regel kaputtgeht, statt nur "Gesamtergebnis jetzt anders"). Abwägung: lohnt sich
+    nur, wenn an den Agenten noch weitergearbeitet wird - noch zu entscheiden.
+
+- [ ] **QR1/QR2-Scoping für den pim-to-sql-agent klären und dokumentieren**
+  - **Was:** `EVAL/FRAMEWORK.md` erwähnt `pim-to-sql-agent`/SQL-Output bisher an keiner Stelle
+    (geprüft per grep, 2026-09-07). QR1 (Completeness) und QR2 (Validity) sind laut
+    `REQUIREMENTS.md` §4 als Quellaussage-Klassifikation für den CIM->PIM-Schritt definiert
+    (DEMO/MERODE -> pimUML), nicht für PSM-Outputs - das gilt für Mendix genauso, dessen
+    Korrektheitsnachweis stattdessen über QR3 (Schema Validation Rate / Studio-Pro-Check)
+    läuft, nicht über C/M/I-Klassifikation. Für SQL existiert mit dem
+    Postgres-Ausführbarkeitsnachweis (`tests/README.md`, Wegwerf-Docker-Container) bereits ein
+    strukturelles Analogon zu QR3 - aber dieser Nachweis lief bislang gegen die synthetische
+    Vollständigkeits-Fixture `rent-a-car-pim-full.json`, nicht gegen die tatsächlichen
+    Live-Pipeline-PIM-Outputs (`EVAL/demo-pim-output.json` / `merode-pim-output.json`), die für
+    die DEMO/MERODE-Evaluation oben verwendet wurden.
+  - **Warum wichtig:** Ohne eine explizite Scoping-Aussage in `FRAMEWORK.md` wirkt es wie eine
+    Lücke, wenn ein Gutachter fragt, warum der zweite PSM-Agent nicht mit denselben Metriken
+    wie DEMO/MERODE bewertet wurde - dabei ist die Antwort methodisch sauber (andere
+    Pipeline-Stufe, andere passende Metrik), sie steht nur noch nirgends geschrieben.
+  - **Nächster Schritt (Entscheidung offen):** (a) minimal: kurzen Scoping-Absatz in
+    `FRAMEWORK.md` ergänzen, der erklärt warum QR1/QR2 auf PIM->PSM nicht angewendet werden und
+    stattdessen auf den Postgres-Ausführbarkeitsnachweis verweist; (b) optional zusätzlich: den
+    SQL-Agent explizit gegen die bereits archivierten Live-PIM-Outputs laufen lassen (er läuft
+    als `sql-agent`-Service auf dem Pi ohnehin mit und hat bei den DEMO/MERODE-`curl`-Testläufen
+    vermutlich bereits `.sql`-Dateien erzeugt - prüfen, ob diese auf dem Pi noch vorliegen).
 
 ---
 
