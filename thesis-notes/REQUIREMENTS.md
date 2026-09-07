@@ -24,7 +24,7 @@ Im aktuellen Prototyp sind beide Sprachen über separate Agenten realisiert: `de
 
 Die Transformationslogik für jede CIM-Sprache muss in genau einem Agenten gekapselt sein. Kein CIM-spezifisches Wissen darf außerhalb dieses Agenten auftauchen. Konkret bedeutet das: der MQTT-Bus trägt ausschließlich schema-validierte PIM-Nachrichten, niemals rohe CIM-Daten. Der `pim-to-mendix-agent` darf keine Parsing-Logik für DEMO oder MERODE enthalten. Und der `demo-to-pim-agent` ist vollständig ignorant gegenüber MERODE, und umgekehrt.
 
-Das Extensibilitätsexperiment (E1-E2) wird diese Anforderung empirisch prüfen. Wenn ein dritter Agent eingebunden werden kann, ohne bestehende Agenten oder die Bus-Infrastruktur zu ändern, ist AR2 erfüllt.
+Das Extensibilitätsexperiment prüft diese Anforderung empirisch: der `pim-to-sql-agent` (S1-S12) wurde als dritter, unabhängiger PSM-Agent gebaut, ohne dass `demo-to-pim-agent.ts`, `merode-to-pim-agent.ts`, `pim-to-mendix-agent.ts`, `bus-client.ts`, `agent-utils.ts` oder die Bus-Infrastruktur geändert werden mussten (Nachweis mit Diff-Tabelle in `EXTENSIBILITY_EVIDENCE.md` §5). Damit ist AR2 erfüllt.
 
 ### AR3 - Additive Erweiterbarkeit
 

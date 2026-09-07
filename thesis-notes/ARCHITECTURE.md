@@ -46,7 +46,7 @@ flowchart TB
         subgraph MA ["merode-to-pim-agent"]
             MA1["Filter: _source.format === 'merode'"]:::agent
             MA2["Validate input\n(merode-schema.json · AJV)"]:::agent
-            MA3["Transform: M1-M8\n----------------\nM1  ObjectType -> Class + Integer ID\nM2  Attribute -> Property\nM4  ExistenceDependency -> Association\nM5  lifecycleStates -> sequential StateMachine\n    { __initial, s1, ..., sN, __final }\nM6  C-Event -> transition __initial -> s1\nM7  M-Event -> transition si -> sj\nM8  E-Event -> transition sN -> __final"]:::agent
+            MA3["Transform: M1-M9\n----------------\nM1  ObjectType -> Class + Integer ID\nM2  Attribute -> Property\nM3  Enum/custom-domain Attribute -> Enumeration / DataType\nM4  ExistenceDependency -> Association\nM5  lifecycleStates -> sequential StateMachine\n    { __initial, s1, ..., sN, __final }\nM6  C-Event -> transition __initial -> s1\nM7  M-Event -> transition si -> sj\nM8  E-Event -> transition sN -> __final\nM9  Shared participation -> propagated transitions in owner FSMs"]:::agent
             MA4["Validate output\n(pimuml-schema.json · AJV)"]:::agent
         end
     end
@@ -61,10 +61,10 @@ flowchart TB
     subgraph MXA ["(6) PIM -> PSM Transformation  (two independent PSM targets, both subscribe to the same PIM artefact)"]
         direction LR
 
-        MX_AGENT["pim-to-mendix-agent\n----------------------------------------------\nSubscribes to all CIM agents via PIM_SOURCE_AGENTS env var\nDiscriminates DEMO vs MERODE FSMs via isMerodeFSM()\n----------------------------------------------\nB1   Enumeration -> Mendix Enumeration + captions\nB2   DataType -> Mendix Entity\nB3   Class -> Mendix Entity\nB4   Property -> Mendix Attribute (typed)\nB5   Enum type -> EnumerationAttributeType\nB6   Boolean type -> BooleanAttributeType\nB7   String/other -> StringAttributeType\nB8   Association -> Mendix Association\nB10  Generalization -> Mendix Entity Inheritance\nB11  AssociationClass -> Entity + 2 Associations\nB12  Overview Page per entity\n---- MERODE-specific -------------------------\nB13  Entity_Status Enumeration + status attribute\nB14  Create_Entity Microflow (creates + sets status)\nB15  Set_Entity_Event Microflow (updates status)\nB16  End_Entity Microflow (stub - lifecycle end)"]:::agent
+        MX_AGENT["pim-to-mendix-agent\n----------------------------------------------\nSubscribes to all CIM agents via PIM_PUBLISHER_AGENT_IDS env var\nDiscriminates DEMO vs MERODE FSMs via isMerodeFSM()\n----------------------------------------------\nApplies B1-B16 (Mendix mapping rules)\nFull table: thesis-notes/MAPPING_NOTES.md\n---- MERODE-specific (B13-B16) ----------------\nStatus Enum · Create/Set/End Microflows"]:::agent
         MX_SDK["Mendix Platform SDK\n(TypeScript · mendixmodelsdk)\nOnline Working Copy"]:::ext
 
-        SQL_AGENT["pim-to-sql-agent\n----------------------------------------------\nSubscribes to the same PIM_SOURCE_AGENTS topics\nSame isMerodeFSM() discriminator\n----------------------------------------------\nS1   Enumeration -> CREATE TYPE ... AS ENUM\nS2   DataType -> own id-only table\nS3   AssociationClass -> junction table + attrs\nS4   Property -> typed column\nS5   Derived attribute -> skipped\nS6   DataType-typed attribute -> FK column\nS7   Generalization -> FK + ON DELETE CASCADE\nS8   1:1 / 1:n Association -> FK column\nS9   n:m Association -> junction table\nS10  MERODE FSM -> status column + enum type\nS11  DEMO FSM -> no rule (flows through S4)\nS12  Kahn topological sort of CREATE TABLEs"]:::agent
+        SQL_AGENT["pim-to-sql-agent\n----------------------------------------------\nSubscribes to the same PIM_PUBLISHER_AGENT_IDS topics\nSame isMerodeFSM() discriminator\n----------------------------------------------\nS1   Enumeration -> CREATE TYPE ... AS ENUM\nS2   DataType -> own id-only table\nS3   AssociationClass -> junction table + attrs\nS4   Property -> typed column\nS5   Derived attribute -> skipped\nS6   DataType-typed attribute -> FK column\nS7   Generalization -> FK + ON DELETE CASCADE\nS8   1:1 / 1:n Association -> FK column\nS9   n:m Association -> junction table\nS10  MERODE FSM -> status column + enum type\nS11  DEMO FSM -> no rule (flows through S4)\nS12  Kahn topological sort of CREATE TABLEs"]:::agent
     end
 
     %% -- PSM Layer ---------------------------------------------------------------
@@ -112,7 +112,7 @@ flowchart LR
 
     VAL_IN["(4) Validate Input\nassertValid(schema, model)\nAJV · JSON Schema Draft-07\nadditionalProperties: false\n-----------------\nPipeline aborts on error"]:::step
 
-    TRANSFORM["(5) Transform\nApply mapping rules\n(A1-A12 / M1-M8 / B1-B16)\nBuild output model\nRecord TraceEntry[] per rule"]:::step
+    TRANSFORM["(5) Transform\nApply mapping rules\n(A1-A12 / M1-M9 / B1-B16)\nBuild output model\nRecord TraceEntry[] per rule"]:::step
 
     VAL_OUT["(6) Validate Output\nassertValid(pimuml-schema, pimModel)\nPipeline aborts on error"]:::step
 
