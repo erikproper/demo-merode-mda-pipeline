@@ -262,7 +262,7 @@ Implementiert in `merode-to-pim-agent.ts`. Formale Spezifikation: `MerodeMapping
 
 Bzowskis B-Regeln [4], Tabelle 11.1, mit MERODE-spezifischen Erweiterungen (B13-B16 in der Nummerierung dieses Prototyps, entsprechend neuen Regeln, die nicht in Bzowski enthalten sind).
 
-Hinweis zur Nummerierung: Bzowskis Tabelle geht bis B24. Der Prototyp implementiert nicht alle 24 Regeln (einige werden nur für abgeleitete Typen, Constraints usw. benötigt). Die Prototyp-Nummerierung B1-B16 spiegelt wider, was tatsächlich implementiert ist, nicht eine 1:1-Abbildung auf Bzowskis Nummerierung. Für die Thesis muss das abgeglichen werden.
+Hinweis zur Nummerierung: Bzowskis Tabelle geht bis B24. Der Prototyp implementiert nicht alle 24 Regeln (einige werden nur für abgeleitete Typen, Constraints usw. benötigt). Die Prototyp-Nummerierung B1-B16 spiegelt wider, was tatsächlich implementiert ist, nicht eine 1:1-Abbildung auf Bzowskis Nummerierung. Die Thesis (Abschnitt 6.4) verwendet diese Nummerierung und gibt je Regel die entsprechenden Bzowski-Regeln an. Die Code-Kommentare in `pim-to-mendix-agent.ts` folgen seit 2026-09-14 derselben Nummerierung und nennen Bzowskis Nummern als "Bzowski Bn".
 
 | ID  | pimUML Quellkonzept | Mendix Ziel | Status |
 |-----|---------------------|-------------|--------|

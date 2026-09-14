@@ -104,7 +104,7 @@ Stand: 2026-09-01. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
 - [x] **B16 - End-Microflow** - Hard-Delete via `DeleteObjectAction`: Parameter (Entität) -> DeleteAction -> End. Design-Entscheidung: physische Löschung als bewusste Vereinfachung für den Prototyp (DD12 in DESIGN_DECISIONS.md). Implementiert 2026-08-03.
 - [x] **M3 - Attributdomänen** - `merode-schema.json` um `domainTypes`-Array erweitert, `MerodeDomainType`-Interface in `types.ts`, kategorische Domänen -> Enumeration, nicht-kategorische -> DataType. `CarGroup`-Beispiel im Rent-A-Car-Fixture. Implementiert 2026-08-03.
 - [x] **Bug: doppelte Create_OT/End_OT-Aktivitäten** - Dedup-Guard in M6/M8 (`smActivities.some(...)`) verhindert Mehrfacheinträge wenn ein OT mehrere C- oder E-Ereignisse hat. Behoben 2026-08-03.
-- [x] **Bug: nicht-kategorischer DataType -> String-Fallback** - DataType-typisierte Attribute werden jetzt als Associations statt als String-Attribute umgesetzt (B4+B9). Behoben 2026-08-03.
+- [x] **Bug: nicht-kategorischer DataType -> String-Fallback** - DataType-typisierte Attribute werden jetzt als Associations statt als String-Attribute umgesetzt (B5). Behoben 2026-08-03.
 - [x] **DEMO/MERODE-Fixtures angereichert** - `rent-a-car-demo.json`/`rent-a-car-merode.json` so erweitert, dass jede A-/M-Regel mindestens einmal ausgelöst wird (Grundlage für die Priorität-1-Evaluationsläufe oben). Implementiert 2026-08-31.
 
 ---

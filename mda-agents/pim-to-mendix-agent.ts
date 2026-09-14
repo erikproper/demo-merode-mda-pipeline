@@ -1,5 +1,8 @@
 // pim-to-mendix-agent
 // Listens on the bus for pimUML models and writes them into a Mendix app via the Platform SDK.
+//
+// Rule IDs B1-B16 follow the prototype numbering in thesis-notes/MAPPING_NOTES.md (Section 5).
+// Where a rule bundles several rules of Bzowski's Table 11.1 (B1-B24), those are named as "Bzowski Bn".
 
 import { IModel, domainmodels, enumerations, microflows, workflows, datatypes, pages, navigation, menus, texts } from "mendixmodelsdk";
 import { MendixPlatformClient, OnlineWorkingCopy } from "mendixplatformsdk";
@@ -112,7 +115,7 @@ async function applyPimToMendix(
 
   const domainModel = await mxModule.domainModel.load();
 
-  // Delete everything from a previous run.
+  // B1: the model becomes the content of an existing module - delete everything from a previous run.
   const prefix = moduleName + ".";
   [...domainModel.associations].forEach(a => a.delete());
   [...domainModel.entities].forEach(e => e.delete());
@@ -122,7 +125,7 @@ async function applyPimToMendix(
   model.allPages().filter(p => (p.qualifiedName ?? "").startsWith(prefix) && (p.name ?? "").endsWith("_Overview")).forEach(p => p.delete());
   console.log("[pim-to-mendix] cleared previous model");
 
-  // enumerations -> Mendix enumerations (A1)
+  // B4: enumerations -> Mendix enumerations
   const enumMap = new Map<string, enumerations.Enumeration>();
   for (const enumDef of pimModel.enumerations ?? []) {
     const mxEnum = enumerations.Enumeration.createIn(mxModule);
@@ -135,16 +138,16 @@ async function applyPimToMendix(
     console.log(`  + enumeration "${enumDef.name}" [${enumDef.literals.join(", ")}]`);
   }
 
-  // classes -> Mendix entities with attributes
+  // B2/B3/B6/B7: classes -> Mendix entities with attributes
   const entityMap    = new Map<string, domainmodels.Entity>();
   const attributeMap = new Map<string, domainmodels.Attribute>(); // key: "EntityName.attrName"
   let x = 0;
 
-  // DataType names (non-categorical domain types) - their attributes become Associations (B4+B9)
+  // DataType names (non-categorical domain types) - their attributes become Associations (B5)
   const dataTypeNames = new Set((pimModel.dataTypes ?? []).map(dt => dt.name));
   const deferredDTAssocs: { clsName: string; propName: string; dtName: string }[] = [];
 
-  // non-categorical data types -> Entity in Mendix (B4)
+  // B5: non-categorical data types -> Entity in Mendix
   for (const dt of pimModel.dataTypes ?? []) {
     const entity    = domainmodels.Entity.createIn(domainModel);
     entity.name     = dt.name;
@@ -168,10 +171,10 @@ async function applyPimToMendix(
         console.log(`  ~ derived attribute "${cls.name}.${prop.name}" not mapped - Mendix has no OCL; rule: ${prop.derivationRule}`);
         continue;
       }
-      // Non-categorical DataType as attribute type -> deferred Association (B4+B9)
+      // B5: non-categorical DataType as attribute type -> deferred Association
       if (prop.type && dataTypeNames.has(prop.type)) {
         deferredDTAssocs.push({ clsName: cls.name, propName: prop.name, dtName: prop.type });
-        console.log(`  ~ "${cls.name}.${prop.name}: ${prop.type}" deferred as DataType association (B4+B9)`);
+        console.log(`  ~ "${cls.name}.${prop.name}: ${prop.type}" deferred as DataType association (B5)`);
         continue;
       }
       const attr = domainmodels.Attribute.createIn(entity);
@@ -188,7 +191,7 @@ async function applyPimToMendix(
     console.log(`  + entity "${cls.name}"`);
   }
 
-  // B4+B9: create Associations for DataType-typed attributes (all entities now exist in entityMap)
+  // B5: create Associations for DataType-typed attributes (all entities now exist in entityMap)
   for (const dt of deferredDTAssocs) {
     const clsEntity = entityMap.get(dt.clsName);
     const dtEntity  = entityMap.get(dt.dtName);
@@ -204,7 +207,7 @@ async function applyPimToMendix(
     console.log(`  + DataType association "${dt.clsName}_${dt.propName}": ${dt.clsName} -> ${dt.dtName}`);
   }
 
-  // association classes -> approximated as Entity + two Associations (A8)
+  // B8: association classes -> approximated as Entity + two Associations
   for (const ac of pimModel.associationClasses ?? []) {
     const acEntity    = domainmodels.Entity.createIn(domainModel);
     acEntity.name     = ac.name;
@@ -232,7 +235,7 @@ async function applyPimToMendix(
     console.log(`  + association class "${ac.name}" [trigger: ${ac.triggerEvent}] approximated as entity + associations (Mendix has no association class concept)`);
   }
 
-  // generalizations -> Mendix entity inheritance (A10)
+  // B10: generalizations -> Mendix entity inheritance
   for (const gen of pimModel.generalizations ?? []) {
     const childEntity  = entityMap.get(gen.child);
     const parentEntity = entityMap.get(gen.parent);
@@ -245,7 +248,7 @@ async function applyPimToMendix(
     console.log(`  + generalization "${gen.child}" extends "${gen.parent}"`);
   }
 
-  // associations -> Mendix associations
+  // B9: associations -> Mendix associations
   const associationMap = new Map<string, domainmodels.Association>();
   for (const assoc of pimModel.associations ?? []) {
     const end0 = assoc.memberEnds[0];
@@ -353,7 +356,7 @@ async function applyPimToMendix(
         }
       }
 
-      // B20+B21+B18+B19: DEMO create - child entity created and linked to parent
+      // B12 (Bzowski B16, B18-B21): DEMO create - child entity created and linked to parent
       if (activity.kind === "create" && activity.targetType) {
         const childName    = activity.targetType;
         const parentName   = sm.entityType;
@@ -373,7 +376,7 @@ async function applyPimToMendix(
         const childVar  = childName.charAt(0).toLowerCase() + childName.slice(1);
 
         if (childEntity && parentEntity) {
-          // B16: parameter - parent entity object
+          // parameter - parent entity object (Bzowski B16)
           const mfParam = microflows.MicroflowParameterObject.createIn(objCol);
           mfParam.name  = parentVar;
           mfParam.relativeMiddlePoint = { x: -80, y: 0 };
@@ -381,7 +384,7 @@ async function applyPimToMendix(
           paramType.entity = parentEntity;
           mfParam.variableType = paramType;
 
-          // B20: CreateObjectAction - instantiate child; B18+B19 inlined as MemberChanges
+          // CreateObjectAction - instantiate child (Bzowski B20); B18+B19 inlined as MemberChanges
           // (CreateVariableAction skipped: SDK cannot set variable type -> defaults to Boolean.
           //  Expressions are inlined directly to avoid CE0117.)
           const createAct = microflows.ActionActivity.createIn(objCol);
@@ -391,14 +394,14 @@ async function applyPimToMendix(
           createObj.outputVariableName = childVar;
           createObj.commit = microflows.CommitEnum.Yes;
 
-          // B18: copy parent's logical ID into child's ID attribute
+          // copy parent's logical ID into child's ID attribute (Bzowski B18, B21 as expression)
           if (childIDAttr) {
             const mc1 = microflows.MemberChange.createIn(createObj);
             mc1.attribute = childIDAttr;
             mc1.value = `$${parentVar}/${parentName}ID`;
           }
 
-          // B19: set association link to parent
+          // set association link to parent (Bzowski B19)
           if (mxAssoc) {
             const mc2 = microflows.MemberChange.createIn(createObj);
             mc2.association = mxAssoc;
@@ -415,7 +418,7 @@ async function applyPimToMendix(
         }
       }
 
-      // B16/B18: set-kind -> MicroflowParameterObject + ChangeObjectAction (sets boolean event attribute)
+      // B12 (Bzowski B16-B18): DEMO set - MicroflowParameterObject + ChangeObjectAction (sets boolean event attribute)
       // CE0049 caveat: logical MicroflowParameter cannot be created via SDK (same limitation as ACR).
       // The MicroflowParameterObject makes the variable visible in Studio Pro; one OK-click fixes CE0049.
       if (activity.kind === "set" && activity.targetType) {
@@ -522,7 +525,7 @@ async function applyPimToMendix(
         }
       }
 
-      // B16: MERODE end - delete the entity object (M8: object ceases to exist in the business domain)
+      // B16: MERODE end - delete the entity object (M8, hard delete per DD12)
       if (activity.kind === "end" && activity.targetType) {
         const entityName   = activity.targetType;
         const targetEntity = entityMap.get(entityName);
@@ -557,7 +560,7 @@ async function applyPimToMendix(
     }
   }
 
-  // B11/B12/B23/B24: per DEMO state machine - one Workflow per region + ACR Microflow
+  // B11/B12 (Bzowski B11, B12, B23, B24): per DEMO state machine - one Workflow per region + ACR Microflow
   // that starts all of them (MERODE FSMs are handled by B13-B16)
   for (const sm of pimModel.stateMachines ?? []) {
     if (sm.regions.length === 0) continue;
@@ -589,7 +592,7 @@ async function applyPimToMendix(
       startAct.caption = "Start";
       let prevAct: workflows.WorkflowActivity = startAct;
 
-      // B23: trigger -> WaitForNotification
+      // trigger -> WaitForNotification (Bzowski B23)
       const waitAct    = workflows.WaitForNotificationActivity.createInFlowUnderActivities(flow);
       waitAct.name     = plan.waitName;
       waitAct.caption  = plan.waitName.replace("_", ": ");
@@ -598,7 +601,7 @@ async function applyPimToMendix(
       waitLine.destination = waitAct;
       prevAct = waitAct;
 
-      // B23: transition effect -> CallMicroflowTask(Set), B24: entry activity -> CallMicroflowTask(Create)
+      // transition effect -> CallMicroflowTask(Set) (Bzowski B23), entry activity -> CallMicroflowTask(Create) (Bzowski B24)
       for (const mfName of [plan.setMicroflow, plan.entryActivity]) {
         const mf = mfName ? microflowMap.get(mfName) : undefined;
         if (!mfName || !mf) continue;
