@@ -660,10 +660,22 @@ async function applyPimToMendix(
     objType.entity   = entity;
     acrParam.variableType = objType;
 
-    let acrPrev: microflows.MicroflowObject = acrStart;
+    // Commit first: Mendix only starts workflows for committed objects, but an
+    // After Create handler runs before the first commit (DD13)
+    const acrCommitAct = microflows.ActionActivity.createIn(acrObjCol);
+    acrCommitAct.relativeMiddlePoint = { x: 150, y: 0 };
+    const commitAct = microflows.CommitAction.createIn(acrCommitAct);
+    commitAct.commitVariableName = entityVarName;
+    commitAct.withEvents         = true;
+    commitAct.refreshInClient    = true;
+    const acrFlowCommit       = microflows.SequenceFlow.createIn(acrMf);
+    acrFlowCommit.origin      = acrStart;
+    acrFlowCommit.destination = acrCommitAct;
+
+    let acrPrev: microflows.MicroflowObject = acrCommitAct;
     regionWorkflows.forEach((wf, i) => {
       const acrActionAct = microflows.ActionActivity.createIn(acrObjCol);
-      acrActionAct.relativeMiddlePoint = { x: 150 * (i + 1), y: 0 };
+      acrActionAct.relativeMiddlePoint = { x: 150 * (i + 2), y: 0 };
       const wfCallAct = microflows.WorkflowCallAction.createIn(acrActionAct);
       wfCallAct.workflow                = wf;
       wfCallAct.workflowContextVariable = entityVarName;
@@ -675,13 +687,22 @@ async function applyPimToMendix(
     });
 
     const acrEnd = microflows.EndEvent.createIn(acrObjCol);
-    acrEnd.relativeMiddlePoint = { x: 150 * (regionWorkflows.length + 1), y: 0 };
+    acrEnd.relativeMiddlePoint = { x: 150 * (regionWorkflows.length + 2), y: 0 };
     const acrFlowEnd       = microflows.SequenceFlow.createIn(acrMf);
     acrFlowEnd.origin      = acrPrev;
     acrFlowEnd.destination = acrEnd;
 
+    // B11: register ACR as After Create event handler, so the state machine starts
+    // when the object is instantiated (Bzowski 2025, Sec. 11.2.3)
+    const acrHandler = domainmodels.EventHandler.createIn(entity);
+    acrHandler.moment            = domainmodels.ActionMoment.After;
+    acrHandler.event             = domainmodels.EventType.Create;
+    acrHandler.microflow         = acrMf;
+    acrHandler.passEventObject   = true;
+    acrHandler.raiseErrorOnFalse = false;
+
     microflowMap.set(`ACR_${entityName}`, acrMf);
-    console.log(`  + ACR microflow "ACR_${entityName}" -> ${regionWorkflows.length} workflow(s) WF_${entityName}_*`);
+    console.log(`  + ACR microflow "ACR_${entityName}" [after create] -> commit + ${regionWorkflows.length} workflow(s) WF_${entityName}_*`);
   }
 
   // -- Pages + Navigation --------------------------------------------------------
@@ -865,7 +886,7 @@ async function applyPimToMendix(
       // The generated ACR_<Entity> microflow and WF_<Entity>_<event> workflows remain in the module.
       const hasSM = pimModel.stateMachines?.some(sm => sm.entityType === cls.name && sm.regions.length > 0) ?? false;
       if (hasSM) {
-        console.log(`    [info] ACR_${cls.name} + WF_${cls.name}_* generated - add trigger button inside DataView in Studio Pro`);
+        console.log(`    [info] ACR_${cls.name} (after create) + WF_${cls.name}_* generated - workflows start when a ${cls.name} is created`);
       }
 
       pageMap.set(cls.name, page);

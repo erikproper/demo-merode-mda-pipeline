@@ -142,7 +142,7 @@ Stand: 2026-09-01. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
 
   - **Overview-Page je Entity:** DataGrid mit allen nicht-abgeleiteten Attributen als Spalten. Kein manueller Aufbau nötig.
   - **Detail-Page je Entity:** DataView (Datenquelle: Objekt aus Navigation-Kontext) mit einem Input-Widget pro Attribut (TextBox für String/Integer, DatePicker für Date, Dropdown für Enum-Attribute). Save-Button der ein Commit ausführt.
-  - **Workflow-Trigger-Button je Entity mit FSM:** Auf der Detail-Page einen Button "Start [EntityName] Workflow" generieren, der:
+  - ~~**Workflow-Trigger-Button je Entity mit FSM**~~ - entfällt seit 2026-09-14: `ACR_<EntityName>` ist als After-Create-Handler registriert und committet selbst (DD13). Ein zusätzlicher Button würde die Region-Workflows doppelt starten. Ursprünglicher Plan: Auf der Detail-Page einen Button "Start [EntityName] Workflow" generieren, der:
     1. Zuerst ein `CommitObjectAction` ausführt (Fix für "Only committed persistent objects can be used to start a workflow")
     2. Dann den generierten `ACR_<EntityName>`-Microflow aufruft
     Der Button soll nur generiert werden wenn für die Entity Region-Workflows (`WF_<EntityName>_<forEvent>`) existieren - also bei DEMO-Entities mit `stateMachines`-Eintrag. Kein Button für Entities ohne FSM.

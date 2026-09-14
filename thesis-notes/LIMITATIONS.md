@@ -45,7 +45,7 @@ Vorher wurden alle Regionen einer DEMO-StateMachine in einem einzigen Workflow `
 Verbleibende Einschränkungen:
 - CE0049 betrifft jetzt jede `WorkflowCallAction` im ACR-Microflow. Für Rental muss der Aufrufdialog in Studio Pro sechsmal statt einmal mit OK bestätigt werden.
 - Ob Mendix mehrere parallel laufende Workflows mit demselben Context-Objekt ohne Warnung zulässt, ist im QR3-Check zu prüfen.
-- `ACR_<Entity>` ist noch nicht als After-Create-Event-Handler am Entity registriert und muss manuell aufgerufen werden.
+- `ACR_<Entity>` ist seit 2026-09-14 als After-Create-Handler registriert und committet das Objekt vor dem Workflow-Start (DD13). Folge: ein neu angelegtes Objekt steht sofort in der Datenbank, auch wenn der Nutzer das Formular abbricht. Behebung: Workflows erst beim ersten regulären Commit starten, geschützt durch ein Kennzeichen am Objekt.
 
 ### Workflow-Generierung für MERODE entfällt
 

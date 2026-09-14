@@ -276,7 +276,7 @@ Hinweis zur Nummerierung: Bzowskis Tabelle geht bis B24. Der Prototyp implementi
 | B8  | AssociationClass | Entity + zwei Associations | implementiert |
 | B9  | Association + Multiplizitäten | Mendix Association mit Owner/Reference-Einstellungen | implementiert |
 | B10 | Generalization | Mendix Generalization/Specialization | implementiert |
-| B11 | StateMachine (DEMO) | `ACR_<Entity>`-Microflow mit einer WorkflowCallAction je Region | implementiert |
+| B11 | StateMachine (DEMO) | `ACR_<Entity>`-Microflow (After-Create-Handler): Commit + eine WorkflowCallAction je Region | implementiert |
 | B12 | DEMO-Region + false/true-Zustände | ein Workflow `WF_<Entity>_<forEvent>` je Region: WaitForNotification + CallMicroflowTask (Set, ggf. Create) | implementiert |
 | B13 | MERODE StateMachine (Lebenszykluszustände) | `<Entity>_Status`-Enumeration | implementiert |
 | B14 | MERODE Create-Aktivität | `Create_<Entity>`-Microflow: CreateObject + Status auf ersten Zustand | implementiert |
@@ -286,7 +286,7 @@ Hinweis zur Nummerierung: Bzowskis Tabelle geht bis B24. Der Prototyp implementi
 
 ### B11/B12 - DEMO-StateMachine nach ACR-Microflow und Workflows je Region
 
-Jede Region einer DEMO-StateMachine (A6) wird ein eigener Mendix-Workflow `WF_<Entity>_<forEvent>` mit dem Entity als `WorkflowContext`. Er besteht aus Start, `WaitForNotification` `Wait_<forEvent>` (Trigger, B23 bei Bzowski), `CallMicroflowTask` auf `Set<Entity>_<forEvent>` (Transitionseffekt), optional einem `CallMicroflowTask` auf die Entry-Activity des true-Zustands, z. B. `CreateDepositPaidRental` (B24 bei Bzowski), und End. Der Microflow `ACR_<Entity>` nimmt das Entity als Parameter und startet alle Region-Workflows nacheinander mit je einer `WorkflowCallAction`. Für Rental entstehen sechs Workflows und ein ACR-Microflow mit sechs Aufrufen.
+Jede Region einer DEMO-StateMachine (A6) wird ein eigener Mendix-Workflow `WF_<Entity>_<forEvent>` mit dem Entity als `WorkflowContext`. Er besteht aus Start, `WaitForNotification` `Wait_<forEvent>` (Trigger, B23 bei Bzowski), `CallMicroflowTask` auf `Set<Entity>_<forEvent>` (Transitionseffekt), optional einem `CallMicroflowTask` auf die Entry-Activity des true-Zustands, z. B. `CreateDepositPaidRental` (B24 bei Bzowski), und End. Der Microflow `ACR_<Entity>` nimmt das Entity als Parameter, committet es und startet danach alle Region-Workflows nacheinander mit je einer `WorkflowCallAction`. Er ist als After-Create-`EventHandler` am Entity registriert, sodass die Workflows beim Anlegen eines Objekts automatisch starten. Der Commit ist nötig, weil Mendix Workflows nur für committete Objekte startet (DD13). Für Rental entstehen sechs Workflows und ein ACR-Microflow mit Commit und sechs Aufrufen.
 
 Das folgt Bzowski [4], Abschnitt 11.2.2-11.2.3 (ein Workflow je Region, `ACR_Rental` mit einer CallWorkflowActivity je Region). Weil alle Workflows gleichzeitig warten, bleiben die Regionen orthogonal: `depositPaid` kann vor `rentalExtended` eintreten. Die Aufteilung in Workflow-Pläne ist als reine Funktion `planRegionWorkflows()` ausgelagert und offline getestet (`mda-agents/tests/test-mendix-workflows.ts`).
 

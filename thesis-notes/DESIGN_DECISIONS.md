@@ -114,6 +114,18 @@ Hard-Delete über `DeleteObjectAction` wurde gewählt, weil es Snoecks Semantik 
 
 Für eine produktive Applikation wäre Soft-Delete oder Archivierung die bessere Wahl. Die Einschränkung ist in LIMITATIONS.md dokumentiert.
 
+### DD13 - ACR-Microflow als After-Create-Handler mit vorgezogenem Commit
+
+Nach pimUML-Semantik startet eine StateMachine, sobald die Klasse instanziiert wird. Bzowski [4] (Abschnitt 11.2.3) setzt das mit einem After-Create-Event-Handler `ACR_<Entity>` um, der die Region-Workflows startet. Der Agent registriert `ACR_<Entity>` deshalb seit 2026-09-14 als `EventHandler` (Moment After, Event Create, Objekt wird übergeben) am Entity.
+
+Problem: After Create läuft, bevor das Objekt zum ersten Mal committet ist. Mendix startet Workflows aber nur für committete Objekte ("Only committed persistent objects can be used to start a workflow", beobachtet am 2026-08-21). Drei Varianten wurden erwogen.
+
+After Create ohne Commit: formal identisch mit Bzowski, scheitert aber zur Laufzeit beim ersten Workflow-Aufruf.
+
+After Commit: das Objekt ist sicher committet, aber der Handler läuft bei jedem Commit und würde die Region-Workflows mehrfach starten. Ein Schutz dagegen bräuchte ein zusätzliches Attribut, das im PIM nicht vorkommt.
+
+After Create mit Commit als erster Aktion im ACR-Microflow wurde gewählt. Es hält Bzowskis Zeitpunkt (Instanziierung) ein und startet die Workflows genau einmal. Der Preis: ein neu angelegtes Objekt steht sofort in der Datenbank, auch wenn der Nutzer das Formular danach abbricht. Die Einschränkung ist in LIMITATIONS.md dokumentiert.
+
 ---
 
 ## 3. Implementierungsdetails ohne Architekturcharakter
