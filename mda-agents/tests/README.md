@@ -26,6 +26,7 @@ Siehe `thesis-notes/PROTOTYPE_TODOS.md` für den aktuellen Stand dieser Einschr�
 | `rent-a-car-pim-full.json` | **Eingabe** - vollständige pimUML-Fixture für `test-sql-agent.ts` (Enums, DataTypes, AssociationClass, Generalisierung, Assoziationen, orthogonale FSM) |
 | `test-sql-agent.ts` | **Offline-Test** - `pim-to-sql-agent`, ein Fall pro S-Regel + End-to-End-Lauf, schreibt `../output/rent-a-car.sql` |
 | `test-mendix-status.ts` | **Offline-Test** - `resolveStatusTarget()` aus `pim-to-mendix-agent` (B15-Zielzustand, Self-Transitionen lassen den Status unverändert), inline-Fixture + `thesis-notes/EVAL/merode-pim-output.json` |
+| `test-mendix-workflows.ts` | **Offline-Test** - `planRegionWorkflows()` aus `pim-to-mendix-agent` (B11/B12, ein Workflow je DEMO-Region), gegen `thesis-notes/EVAL/demo-pim-output.json` |
 | `../output/*.sql` | *Generiert* durch `test-sql-agent.ts` bzw. `pim-to-sql-agent` im Live-Betrieb - nicht versioniert (.gitignore) |
 
 ---

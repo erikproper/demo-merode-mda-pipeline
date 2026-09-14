@@ -4,7 +4,7 @@
 import { IModel, domainmodels, enumerations, microflows, workflows, datatypes, pages, navigation, menus, texts } from "mendixmodelsdk";
 import { MendixPlatformClient, OnlineWorkingCopy } from "mendixplatformsdk";
 import { BusClient } from "./bus-client";
-import type { PimModel, PimRegion } from "./schemas/types";
+import type { PimModel, PimRegion, PimStateMachine } from "./schemas/types";
 import { getBusConfig, makeValidator, assertValid, extractMeta } from "./agent-utils";
 
 const config = getBusConfig("pim-to-mendix-agent");
@@ -78,6 +78,26 @@ export function resolveStatusTarget(region: PimRegion, trigger: string): string 
     console.warn(`  [B15] trigger "${trigger}" leads to several states [${targets.join(", ")}] - using "${targets[0]}"`);
   }
   return targets[0];
+}
+
+// B11/B12: one Mendix workflow per orthogonal DEMO region, so the regions stay
+// independent (Bzowski 2025, Sec. 11.2.2-11.2.3). ACR_<Entity> starts all of them.
+export interface RegionWorkflowPlan {
+  workflowName:   string;   // WF_<Entity>_<forEvent>
+  waitName:       string;   // WaitForNotification activity
+  setMicroflow:   string;   // transition effect, Set<Entity>_<forEvent>
+  entryActivity?: string;   // entry activity of the true state, e.g. Create<Child>
+}
+
+export function planRegionWorkflows(sm: PimStateMachine): RegionWorkflowPlan[] {
+  return sm.regions
+    .filter(r => r.forEvent)
+    .map(r => ({
+      workflowName:  `WF_${sm.entityType}_${r.forEvent}`,
+      waitName:      `Wait_${r.forEvent}`,
+      setMicroflow:  `Set${sm.entityType}_${r.forEvent}`,
+      entryActivity: r.states.find(s => s.kind === "true")?.entryActivity,
+    }));
 }
 
 async function applyPimToMendix(
@@ -537,7 +557,8 @@ async function applyPimToMendix(
     }
   }
 
-  // B11/B12/B23/B24: per entity type - Workflow + ACR Microflow (DEMO FSMs only)
+  // B11/B12/B23/B24: per DEMO state machine - one Workflow per region + ACR Microflow
+  // that starts all of them (MERODE FSMs are handled by B13-B16)
   for (const sm of pimModel.stateMachines ?? []) {
     if (sm.regions.length === 0) continue;
     if (isMerodeFSM(sm)) continue;
@@ -545,135 +566,122 @@ async function applyPimToMendix(
     const entity     = entityMap.get(entityName);
     if (!entity) continue;
 
-    // B12: Workflow document with one flow per entity type
-    const wf    = workflows.Workflow.createIn(mxModule);
-    wf.name     = `WF_${entityName}`;
-    wf.title    = `WF ${entityName}`;
-
-    // CE1850 fix: workflow context parameter (required)
-    const wfParam    = workflows.Parameter.createIn(wf);
-    wfParam.name     = "WorkflowContext";
-    wfParam.entity   = entity;
-
-    const wfMeta = workflows.WorkflowMetaData.createIn(wf);
-    const flow   = workflows.Flow.createInWorkflowUnderFlow(wf);
-
-    // CE7247 fix: activities need both name and caption
-    const startAct   = workflows.StartWorkflowActivity.createInFlowUnderActivities(flow);
-    startAct.name    = "Start";
-    startAct.caption = "Start";
-    let prevAct: workflows.WorkflowActivity = startAct;
     const entityVarName = entityName.charAt(0).toLowerCase() + entityName.slice(1);
+    const regionWorkflows: workflows.Workflow[] = [];
 
-    // B23/B24: one WaitForNotification + CallMicroflowTask(Set) per region, plus CallMicroflowTask(Create) for entry activities
-    for (const region of sm.regions) {
+    // B12: one Workflow document per region, so orthogonal regions progress independently
+    for (const plan of planRegionWorkflows(sm)) {
+      const wf    = workflows.Workflow.createIn(mxModule);
+      wf.name     = plan.workflowName;
+      wf.title    = plan.workflowName.replace(/_/g, " ");
+
+      // CE1850 fix: workflow context parameter (required)
+      const wfParam    = workflows.Parameter.createIn(wf);
+      wfParam.name     = "WorkflowContext";
+      wfParam.entity   = entity;
+
+      const wfMeta = workflows.WorkflowMetaData.createIn(wf);
+      const flow   = workflows.Flow.createInWorkflowUnderFlow(wf);
+
+      // CE7247 fix: activities need both name and caption
+      const startAct   = workflows.StartWorkflowActivity.createInFlowUnderActivities(flow);
+      startAct.name    = "Start";
+      startAct.caption = "Start";
+      let prevAct: workflows.WorkflowActivity = startAct;
+
+      // B23: trigger -> WaitForNotification
       const waitAct    = workflows.WaitForNotificationActivity.createInFlowUnderActivities(flow);
-      waitAct.name     = `Wait_${region.forEvent}`;
-      waitAct.caption  = `Wait: ${region.forEvent}`;
+      waitAct.name     = plan.waitName;
+      waitAct.caption  = plan.waitName.replace("_", ": ");
       const waitLine   = workflows.FlowLine.createIn(wfMeta);
       waitLine.origin      = prevAct;
       waitLine.destination = waitAct;
       prevAct = waitAct;
 
-      const setMfName = `Set${entityName}_${region.forEvent}`;
-      const setMf     = microflowMap.get(setMfName);
-      if (setMf) {
-        const callSetTask    = workflows.CallMicroflowTask.createInFlowUnderActivities(flow);
-        callSetTask.name     = `Call_${setMfName}`;
-        callSetTask.caption  = `Call: ${setMfName}`;
-        callSetTask.microflow = setMf;
+      // B23: transition effect -> CallMicroflowTask(Set), B24: entry activity -> CallMicroflowTask(Create)
+      for (const mfName of [plan.setMicroflow, plan.entryActivity]) {
+        const mf = mfName ? microflowMap.get(mfName) : undefined;
+        if (!mfName || !mf) continue;
+        const callTask     = workflows.CallMicroflowTask.createInFlowUnderActivities(flow);
+        callTask.name      = `Call_${mfName}`;
+        callTask.caption   = `Call: ${mfName}`;
+        callTask.microflow = mf;
         // CE6686 fix: add VoidConditionOutcome so outcomes match
-        workflows.VoidConditionOutcome.createIn(callSetTask);
-        // Parameter mapping: $WorkflowContext -> Set microflow's entity parameter (CE6685 fix attempt)
+        workflows.VoidConditionOutcome.createIn(callTask);
+        // Parameter mapping: $WorkflowContext -> microflow's entity parameter (CE6685 fix attempt)
         // MicroflowParameter is not directly creatable via SDK; we set the reference by qualified name.
         // Works if the server auto-creates MicroflowParameter from MicroflowParameterObject on flush.
-        const setMapping = workflows.MicroflowCallParameterMapping.create(model);
-        setMapping.expression = `$WorkflowContext`;
-        try { (setMapping as any).__parameter.updateWithRawValue(`${moduleName}.${setMfName}.${entityVarName}`); } catch (_) {}
-        callSetTask.parameterMappings.push(setMapping);
-        const callSetLine        = workflows.FlowLine.createIn(wfMeta);
-        callSetLine.origin       = prevAct;
-        callSetLine.destination  = callSetTask;
-        prevAct = callSetTask;
+        const mapping = workflows.MicroflowCallParameterMapping.create(model);
+        mapping.expression = `$WorkflowContext`;
+        try { (mapping as any).__parameter.updateWithRawValue(`${moduleName}.${mfName}.${entityVarName}`); } catch (_) {}
+        callTask.parameterMappings.push(mapping);
+        const callLine       = workflows.FlowLine.createIn(wfMeta);
+        callLine.origin      = prevAct;
+        callLine.destination = callTask;
+        prevAct = callTask;
       }
 
-      // B24: entry activity (Create<Child>) in true state
-      const trueState = region.states.find(s => s.kind === "true");
-      if (trueState?.entryActivity) {
-        const createMf = microflowMap.get(trueState.entryActivity);
-        if (createMf) {
-          const callCreateTask    = workflows.CallMicroflowTask.createInFlowUnderActivities(flow);
-          callCreateTask.name     = `Call_${trueState.entryActivity}`;
-          callCreateTask.caption  = `Call: ${trueState.entryActivity}`;
-          callCreateTask.microflow = createMf;
-          workflows.VoidConditionOutcome.createIn(callCreateTask);
-          // Same parameter mapping approach as callSetTask above
-          const createMapping = workflows.MicroflowCallParameterMapping.create(model);
-          createMapping.expression = `$WorkflowContext`;
-          try { (createMapping as any).__parameter.updateWithRawValue(`${moduleName}.${trueState.entryActivity}.${entityVarName}`); } catch (_) {}
-          callCreateTask.parameterMappings.push(createMapping);
-          const callCreateLine       = workflows.FlowLine.createIn(wfMeta);
-          callCreateLine.origin      = prevAct;
-          callCreateLine.destination = callCreateTask;
-          prevAct = callCreateTask;
-        }
-      }
+      const endAct    = workflows.EndWorkflowActivity.createInFlowUnderActivities(flow);
+      endAct.name     = "End";
+      endAct.caption  = "End";
+      const endLine   = workflows.FlowLine.createIn(wfMeta);
+      endLine.origin      = prevAct;
+      endLine.destination = endAct;
+
+      regionWorkflows.push(wf);
+      console.log(`  + workflow "${plan.workflowName}"`);
     }
+    if (regionWorkflows.length === 0) continue;
 
-    const endAct    = workflows.EndWorkflowActivity.createInFlowUnderActivities(flow);
-    endAct.name     = "End";
-    endAct.caption  = "End";
-    const endLine   = workflows.FlowLine.createIn(wfMeta);
-    endLine.origin      = prevAct;
-    endLine.destination = endAct;
-
-    // B11: ACR Microflow that triggers the Workflow
+    // B11: ACR Microflow that starts one Workflow per region
     //
     // KNOWN LIMITATION (CE0049 - "No variable name specified"):
     // The Mendix SDK does not expose MicroflowParameter (the logical scope variable
     // that the CE checker requires for WorkflowCallAction.workflowContextVariable).
     // MicroflowParameterObject (the visual canvas element) is created and populated
     // correctly so the Studio Pro dropdown works, but the CE0049 error persists until
-    // the user opens the WorkflowCallAction dialog in Studio Pro and clicks OK once.
+    // the user opens each WorkflowCallAction dialog in Studio Pro and clicks OK once.
     // All SDK-level workarounds attempted (CREATE_ELEMENT_TREE delta injection,
     // CREATE_UNIT_TREE interception, hasVariableNameBeenChanged flag) were rejected
     // or silently ignored by the Mendix model server.
-    const varName = entityName.charAt(0).toLowerCase() + entityName.slice(1);
-
     const acrMf  = microflows.Microflow.createIn(mxModule);
     acrMf.name   = `ACR_${entityName}`;
 
     const acrObjCol  = acrMf.objectCollection;
     const acrStart   = microflows.StartEvent.createIn(acrObjCol);
-    const acrEnd     = microflows.EndEvent.createIn(acrObjCol);
-    acrStart.relativeMiddlePoint = { x: 0,   y: 0 };
-    acrEnd.relativeMiddlePoint   = { x: 300, y: 0 };
+    acrStart.relativeMiddlePoint = { x: 0, y: 0 };
 
     // MicroflowParameterObject: visual canvas element - populates the Object dropdown
     // in the WorkflowCallAction dialog so the user can confirm the selection manually.
     const acrParam   = microflows.MicroflowParameterObject.createIn(acrObjCol);
-    acrParam.name    = varName;
+    acrParam.name    = entityVarName;
     acrParam.relativeMiddlePoint = { x: -80, y: 0 };
     const objType    = datatypes.ObjectType.create(model);
     objType.entity   = entity;
     acrParam.variableType = objType;
 
-    const acrActionAct = microflows.ActionActivity.createIn(acrObjCol);
-    acrActionAct.relativeMiddlePoint = { x: 150, y: 0 };
-    const wfCallAct = microflows.WorkflowCallAction.createIn(acrActionAct);
-    wfCallAct.workflow                = wf;
-    wfCallAct.workflowContextVariable = varName;
-    wfCallAct.useReturnVariable       = false;
+    let acrPrev: microflows.MicroflowObject = acrStart;
+    regionWorkflows.forEach((wf, i) => {
+      const acrActionAct = microflows.ActionActivity.createIn(acrObjCol);
+      acrActionAct.relativeMiddlePoint = { x: 150 * (i + 1), y: 0 };
+      const wfCallAct = microflows.WorkflowCallAction.createIn(acrActionAct);
+      wfCallAct.workflow                = wf;
+      wfCallAct.workflowContextVariable = entityVarName;
+      wfCallAct.useReturnVariable       = false;
+      const acrFlow       = microflows.SequenceFlow.createIn(acrMf);
+      acrFlow.origin      = acrPrev;
+      acrFlow.destination = acrActionAct;
+      acrPrev = acrActionAct;
+    });
 
-    const acrFlow1       = microflows.SequenceFlow.createIn(acrMf);
-    acrFlow1.origin      = acrStart;
-    acrFlow1.destination = acrActionAct;
-    const acrFlow2       = microflows.SequenceFlow.createIn(acrMf);
-    acrFlow2.origin      = acrActionAct;
-    acrFlow2.destination = acrEnd;
+    const acrEnd = microflows.EndEvent.createIn(acrObjCol);
+    acrEnd.relativeMiddlePoint = { x: 150 * (regionWorkflows.length + 1), y: 0 };
+    const acrFlowEnd       = microflows.SequenceFlow.createIn(acrMf);
+    acrFlowEnd.origin      = acrPrev;
+    acrFlowEnd.destination = acrEnd;
 
     microflowMap.set(`ACR_${entityName}`, acrMf);
-    console.log(`  + ACR microflow "ACR_${entityName}" -> workflow "WF_${entityName}" [${sm.regions.length} region(s)]`);
+    console.log(`  + ACR microflow "ACR_${entityName}" -> ${regionWorkflows.length} workflow(s) WF_${entityName}_*`);
   }
 
   // -- Pages + Navigation --------------------------------------------------------
@@ -854,10 +862,10 @@ async function applyPimToMendix(
         (lca as any).__parameter.updateWithRawValue(borrowedParamQN);
       }
 
-      // The generated ACR_<Entity> microflow and WF_<Entity> workflow remain in the module.
+      // The generated ACR_<Entity> microflow and WF_<Entity>_<event> workflows remain in the module.
       const hasSM = pimModel.stateMachines?.some(sm => sm.entityType === cls.name && sm.regions.length > 0) ?? false;
       if (hasSM) {
-        console.log(`    [info] ACR_${cls.name} + WF_${cls.name} generated - add trigger button inside DataView in Studio Pro`);
+        console.log(`    [info] ACR_${cls.name} + WF_${cls.name}_* generated - add trigger button inside DataView in Studio Pro`);
       }
 
       pageMap.set(cls.name, page);

@@ -38,9 +38,18 @@ Verbleibende Einschränkungen:
 - Effects auf DataType-typisierte Attribute (`Set_Rental_payDeposit.depositAmount`, `Set_Rental_payInvoice.invoiceAmount`, beide `MoneyAmount`) werden nicht gesetzt. Der Parameter `new<Attr>` entsteht als String, das Attribut existiert in Mendix aber nur als Association auf die DataType-Entity (B5), daher loggt der Agent `effect attribute ... not found` und erzeugt keinen `MemberChange`. Behebung: DataType-Werte inline als Attribut abbilden oder im Microflow ein DataType-Objekt anlegen und verknüpfen.
 - Ob Studio Pro eine `ChangeObjectAction` ohne `MemberChange` (propagierter Microflow ohne Effects) ohne Warnung akzeptiert, ist im QR3-Check zu prüfen.
 
+### B11/B12 - Ein Workflow je DEMO-Region OK behoben (2026-09-14)
+
+Vorher wurden alle Regionen einer DEMO-StateMachine in einem einzigen Workflow `WF_<Entity>` hintereinander verkettet. Damit mussten die Ereignisse in Regionsreihenfolge eintreten, was der Orthogonalität der Regionen widerspricht. Jetzt entsteht je Region ein Workflow `WF_<Entity>_<forEvent>`, und `ACR_<Entity>` startet alle (wie bei Bzowski [4], Abschnitt 11.2.3). Test: `mda-agents/tests/test-mendix-workflows.ts`.
+
+Verbleibende Einschränkungen:
+- CE0049 betrifft jetzt jede `WorkflowCallAction` im ACR-Microflow. Für Rental muss der Aufrufdialog in Studio Pro sechsmal statt einmal mit OK bestätigt werden.
+- Ob Mendix mehrere parallel laufende Workflows mit demselben Context-Objekt ohne Warnung zulässt, ist im QR3-Check zu prüfen.
+- `ACR_<Entity>` ist noch nicht als After-Create-Event-Handler am Entity registriert und muss manuell aufgerufen werden.
+
 ### Workflow-Generierung für MERODE entfällt
 
-Die DEMO-Pipeline erzeugt für jeden Entitytyp-FSM einen Mendix-Workflow mit WaitForNotification-Aktivitäten. Die MERODE-Pipeline tut das nicht. Der `isMerodeFSM()`-Check im `pim-to-mendix-agent` überspringt die Workflow-Generierung für MERODE-Zustandsmaschinen.
+Die DEMO-Pipeline erzeugt für jede Region einer Entitytyp-FSM einen Mendix-Workflow mit einer WaitForNotification-Aktivität (B12). Die MERODE-Pipeline tut das nicht. Der `isMerodeFSM()`-Check im `pim-to-mendix-agent` überspringt die Workflow-Generierung für MERODE-Zustandsmaschinen.
 
 Mendix-Workflows sind für langläufige Prozesse mit menschlichen Interaktionspunkten konzipiert. Sie passen gut zu DEMOs booleschen Regionen, weil jede Region eine Workflow-Warteaktivität werden kann. MERODEs sequenzielle FSMs lassen sich nicht so direkt auf Mendix-Workflows abbilden: die Lebenszykluszustände würden zu Workflow-Aktivitäten, aber die Trigger-und-Übergangs-Struktur ist grundlegend anders.
 

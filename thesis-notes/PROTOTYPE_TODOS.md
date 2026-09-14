@@ -145,7 +145,7 @@ Stand: 2026-09-01. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
   - **Workflow-Trigger-Button je Entity mit FSM:** Auf der Detail-Page einen Button "Start [EntityName] Workflow" generieren, der:
     1. Zuerst ein `CommitObjectAction` ausführt (Fix für "Only committed persistent objects can be used to start a workflow")
     2. Dann den generierten `ACR_<EntityName>`-Microflow aufruft
-    Der Button soll nur generiert werden wenn für die Entity ein Workflow (`WF_<EntityName>`) existiert - also bei DEMO-Entities mit `stateMachines`-Eintrag. Kein Button für Entities ohne FSM.
+    Der Button soll nur generiert werden wenn für die Entity Region-Workflows (`WF_<EntityName>_<forEvent>`) existieren - also bei DEMO-Entities mit `stateMachines`-Eintrag. Kein Button für Entities ohne FSM.
   - **Neue-Objekt-Button auf Overview-Page:** "New [EntityName]"-Button der ein leeres Objekt erstellt, committed und zur Detail-Page navigiert.
 
   **Warum:** Getestet am 2026-08-21. Pages waren zwar technisch korrekt im Modell vorhanden, aber vollständig leer - kein Inhalt, keine Interaktion möglich ohne manuellen Aufbau in Studio Pro.
