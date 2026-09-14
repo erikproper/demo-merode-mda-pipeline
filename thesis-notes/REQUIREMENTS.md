@@ -30,7 +30,7 @@ Das Extensibilitätsexperiment prüft diese Anforderung empirisch: der `pim-to-s
 
 Das Hinzufügen einer neuen CIM-Sprache darf keine Änderungen an bestehenden Komponenten erfordern. Das ist der zentrale Anspruch der Thesis und wird in Abschnitt 2.3 des Proposals als binäres Kriterium nach ISO/IEC 25010 [8] operationalisiert.
 
-"Bestehende Komponenten" sind konkret: `bus-client.ts`, `agent-utils.ts`, `demo-to-pim-agent.ts`, `pim-to-mendix-agent.ts` in seiner Kernlogik und `pimuml-schema.json` insofern bestehende DEMO-erzeugte Felder weiterhin valide sind. Beim Hinzufügen von MERODE wurde kein bestehender Agent in seiner Transformationslogik geändert. Der `pim-to-mendix-agent.ts` hat zusätzliche B-Regeln (B13-B16) bekommen, aber der DEMO-Pfad durch diesen Agenten blieb verhaltensidentisch. Die genaue Diskussion dieser Grenzziehung findet sich in EXTENSIBILITY_EVIDENCE.md.
+"Bestehende Komponenten" sind konkret: `bus-client.ts`, `agent-utils.ts`, `demo-to-pim-agent.ts`, `pim-to-mendix-agent.ts` in seiner Kernlogik und `pimuml-schema.json` insofern bestehende DEMO-erzeugte Felder weiterhin valide sind. Beim Hinzufügen von MERODE wurde kein bestehender Agent in seiner Transformationslogik geändert. Der `pim-to-mendix-agent.ts` hat zusätzliche B-Regeln (B13-B16) bekommen, aber der DEMO-Pfad durch diesen Agenten blieb verhaltensidentisch. Spätere Fehlerbehebungen am DEMO-Pfad (B11/B12, 2026-09-14) sind davon getrennt und keine Folge der MERODE-Integration. Die genaue Diskussion dieser Grenzziehung findet sich in EXTENSIBILITY_EVIDENCE.md.
 
 ### AR4 - Schema-validiertes Zwischenformat
 

@@ -15,7 +15,7 @@ CIM (MERODE Domänenmodell)    |
                           (JSON Schema, strikt)
 ```
 
-Das pimUML-PIM ist der Knotenpunkt. Die A-Regeln und M-Regeln definieren die beiden vorgelagerten Pfade (CIM nach PIM). Die B-Regeln definieren den einzelnen nachgelagerten Pfad (PIM nach PSM). Das Designziel ist, dass die B-Regeln sprachagnostisch sind: sie operieren auf pimUML-Konstrukten, nicht auf DEMO- oder MERODE-Konstrukten direkt. Ob eine gegebene pimUML-Klasse aus einem DEMO-EntityType oder einem MERODE-ObjectType entstammt, sollte für die B-Regeln keine Rolle spielen. In der Praxis gibt es für FSMs eine sprachspezifische Logik (B13-B16), aber die strukturellen B-Regeln (B1-B12) sind vollständig sprachagnostisch.
+Das pimUML-PIM ist der Knotenpunkt. Die A-Regeln und M-Regeln definieren die beiden vorgelagerten Pfade (CIM nach PIM). Die B-Regeln definieren den einzelnen nachgelagerten Pfad (PIM nach PSM). Das Designziel ist, dass die B-Regeln sprachagnostisch sind: sie operieren auf pimUML-Konstrukten, nicht auf DEMO- oder MERODE-Konstrukten direkt. Ob eine gegebene pimUML-Klasse aus einem DEMO-EntityType oder einem MERODE-ObjectType entstammt, sollte für die B-Regeln keine Rolle spielen. In der Praxis gibt es für FSMs eine sprachspezifische Logik, die über `isMerodeFSM()` unterschieden wird: B11/B12 bilden DEMO-Regionen (`forEvent`) ab, B13-B16 MERODE-Lebenszyklen. Die strukturellen B-Regeln (B1-B10) sind sprachagnostisch.
 
 ---
 
@@ -204,7 +204,7 @@ Bezug zu DEMO: Analog zu den Set-Aktivitäten von A6. Der Hauptunterschied: in D
 
 Quellkonzept: BusinessEventType mit `role: "E"`. Ziel: Übergang vom letzten Lebenszykluszustand nach `__final` + `End_<Typ>`-Aktivität (kind: "end").
 
-Ein beendendes Geschäftsereignis (E) beendet das Leben des Objekts (Snoeck, S. 64). Das Objekt tritt in den finalen Zustand ein und gilt als "beendet", keine weiteren Ereignisse sind möglich. Snoeck betont (S. 53), dass ein Objekt nicht physisch gelöscht werden muss: es existiert für eine Zeitspanne und hört dann auf, Veränderungen zu unterliegen.
+Ein beendendes Geschäftsereignis (E) beendet das Leben des Objekts (Snoeck, S. 64). Das Objekt tritt in den finalen Zustand ein und gilt als "beendet", keine weiteren Ereignisse sind möglich. Snoeck betont (Abschnitt 5.2.1, S. 113), dass Beenden nicht dasselbe ist wie physisches Löschen: "ending an object is not the same as physically removing the object, but it only means that a physical removal is allowed".
 
 Der Übergang geht immer von `lcStates[lcStates.length - 1]` (dem letzten Lebenszykluszustand) nach `__final`. Das ist konsistent mit dem einfachen sequenziellen Lebenszyklusmodell. Bei einem nicht-trivialen FSM mit mehreren möglichen Endzuständen würde jeder seinen eigenen Beendigungsübergang benötigen, aber das aktuelle Schema und Testfixture setzen einen einzigen terminalen Zustand voraus.
 
@@ -268,7 +268,7 @@ Hinweis zur Nummerierung: Bzowskis Tabelle geht bis B24. Der Prototyp implementi
 |-----|---------------------|-------------|--------|
 | B1  | Modell (Top-Level) | Mendix App + Modul | implementiert |
 | B2  | Class | Entity (Domänenmodell) | implementiert |
-| B3  | Class (isAbstract) | Abstrakte Entity | implementiert |
+| B3  | Class (isAbstract) | normale Entity (Mendix kennt keine abstrakten Entities, `isAbstract` wird nur geloggt) | implementiert |
 | B4  | Enumeration + EnumerationLiteral | Mendix Enumeration + EnumerationValue (mit englischem Caption) | implementiert |
 | B5  | DataType | Entity (kein direktes Domänenmodell-Äquivalent) | implementiert |
 | B6  | Property (isID=true) | Integer-Attribut | implementiert |
@@ -282,7 +282,7 @@ Hinweis zur Nummerierung: Bzowskis Tabelle geht bis B24. Der Prototyp implementi
 | B14 | MERODE Create-Aktivität | `Create_<Entity>`-Microflow: CreateObject + Status auf ersten Zustand | implementiert |
 | B15 | MERODE Set-Aktivität | `Set_<Entity>_<Ereignis>`-Microflow: ChangeObject Status auf Zielzustand (entfällt bei reinen Self-Transitionen) | implementiert |
 | B16 | MERODE End-Aktivität | `End_<Entity>`-Microflow: DeleteAction (Objekt wird aus der DB entfernt) | implementiert |
-| | Übersichts- und Detailseiten je Entity | Mendix Pages | implementiert |
+| | leere `<Entity>_Overview`-Seite je Entity (Titel + Layout, keine Widgets, keine Detailseiten) + Navigationseintrag, erste Seite als Home Page | Mendix Pages + Navigation | implementiert |
 
 ### B11/B12 - DEMO-StateMachine nach ACR-Microflow und Workflows je Region
 
@@ -312,7 +312,9 @@ Bis 2026-09-14 nahm der Agent die erste Transition mit passendem Trigger (`trans
 
 ### B16 - MERODE End-Aktivität nach Delete-Microflow
 
-Der `End_<Entity>`-Microflow nimmt die Entity als Parameter und führt eine `DeleteAction` aus. Das entspricht direkt M8: das Objekt "hört auf zu existieren" in der Geschäftsdomäne (Snoeck, S. 53). In Mendix ist das eine permanente Entfernung aus der Datenbank. Alternativ wäre Soft-Delete möglich (Status-Attribut auf einen "ended"-Wert setzen), was aber einen zusätzlichen Enum-Wert im _Status-Enum erfordert. Hard-Delete ist der einfachere, semantisch korrekte Standardfall für die Thesis-Demonstration.
+Der `End_<Entity>`-Microflow nimmt die Entity als Parameter und führt eine `DeleteAction` aus. In Mendix ist das eine permanente Entfernung aus der Datenbank. Das ist eine Interpretation von M8, keine direkte Entsprechung: bei Snoeck bringt das beendende Ereignis das Objekt in einen finalen Zustand und erlaubt die physische Entfernung nur (Abschnitt 5.2.1, S. 113). Alternativ wäre Soft-Delete möglich (Status-Attribut auf einen "ended"-Wert setzen), was aber einen zusätzlichen Enum-Wert im _Status-Enum und Filter in allen Abfragen erfordert. Hard-Delete wurde als einfachste zulässige Variante gewählt (DD12).
+
+Der Generator setzt kein Delete-Behavior an den Assoziationen, es gilt der Mendix-Standard (`DeleteMeButKeepReferences` auf beiden Seiten). Das Löschen eines Masters wird also weder blockiert noch kaskadiert, abhängige Objekte bleiben ohne Referenz zurück. Die Existenzabhängigkeit aus dem EDG wird beim Löschen nicht durchgesetzt (LIMITATIONS.md).
 
 ---
 

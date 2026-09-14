@@ -43,6 +43,8 @@ Was geändert wurde: die Hilfsfunktion `isMerodeFSM()` wurde hinzugefügt, die B
 
 Was sich in `pim-to-mendix-agent.ts` nicht geändert hat: der DEMO-Codepfad (B1-B12) blieb unverändert, der Bus-Abonnementmechanismus wurde nur bei der Topic-Liste erweitert, die Kernstruktur der `applyPimToMendix`-Funktion wurde nicht angetastet, und die strukturellen B-Regeln (Entitäts-, Attribut-, Assoziationsgenerierung) sind vollständig unberührt.
 
+Abgrenzung: diese Aussagen beziehen sich auf den Diff der MERODE-Integration. Unabhängig davon wurde `pim-to-mendix-agent.ts` am 2026-09-14 nach einem Mapping-Review korrigiert: B11/B12 (ein Workflow je DEMO-Region statt eines sequenziellen Workflows, `ACR_<Entity>` als After-Create-Handler mit Commit, DD13) und B15 (Status bei Self-Transitionen). Diese Änderungen betreffen auch den DEMO-Pfad, sind aber Fehlerbehebungen zur Korrektheit bestehender Regeln und keine Folge einer Spracherweiterung. Sie gehen daher nicht in den Extensibilitätsnachweis ein.
+
 ### Unveränderte Kerndateien
 
 `demo-to-pim-agent.ts`, `bus-client.ts` und `agent-utils.ts` haben null Änderungen erhalten.

@@ -320,6 +320,12 @@ Nach dem Ausführen der Pipeline das generierte Mendix-Modell in Mendix Studio P
 
 Nach dem Beheben von CE7247, CE0117 und CW0263 sollte das Modell ohne Fehler öffnen. Diesen Check nach jeder Code-Änderung wiederholen. Screenshot des Mendix-Fehlerbereichs mit Anzahl und Typ möglicher Probleme erstellen, das ist der empirische Nachweis für den 100%-SVR-Anspruch.
 
+Zusätzlich nach den Korrekturen vom 2026-09-14 prüfen:
+- Rental hat sechs Workflows `WF_Rental_<forEvent>` und `ACR_Rental` ist unter Entity > Event handlers als After Create eingetragen (Commit + sechs WorkflowCallActions).
+- CE0049 tritt je WorkflowCallAction auf (für Rental sechsmal), bekannt und dokumentiert.
+- Beim Anlegen eines Rental in der laufenden App starten alle sechs Workflows parallel auf demselben Objekt ohne Fehler.
+- `Set_Rental_extendRental` und die propagierten `Set_Rental_*`-Microflows (ChangeObject ohne Status-MemberChange) erzeugen keinen Fehler.
+
 **Noch offen:** dieser Schritt setzt einen laufenden Bus/Pi und Mendix Studio Pro voraus und wurde für die erweiterten Fixtures (Vehicle/A10, Branch, mehrstufige Rental-Lebenszyklen, Invoice/3-Hop-M9) noch nicht wiederholt.
 
 ---
@@ -349,7 +355,7 @@ Die folgenden Zahlen stammen aus einem tatsächlichen Aufruf von `demo-to-pim-ag
 
 **DEMO (66 Quellaussagen):** Alle 66 Aussagen werden korrekt transformiert (C=66, M=0, I=0). Completeness = 100 %, Validity = 100 %. Alle 12 A-Regeln sind mindestens einmal real aktiviert, inklusive A10 (Vehicle/Car-Generalisierung), das in der vorherigen Fixture-Version nicht feuerte. Output ist schemagültig, 108 Trace-Einträge.
 
-**MERODE (104 Quellaussagen):** Alle 104 Aussagen werden korrekt transformiert (C=104, M=0, I=0). Completeness = 100 %, Validity = 100 %. Rental durchläuft erstmals einen echten mehrstufigen sequenziellen Lebenszyklus (4 Zwischenzustände), und M9 propagiert erstmals über eine 3-Hop-Kette (Invoice -> RentalLine -> Rental -> {Car, Person, Branch}), inklusive korrekter Vervielfachung der Self-Transitionen auf Rentals 4 Zuständen. Output ist schemagültig, 100 Trace-Einträge. Bekannte Einschränkung: M7-modifizierte Attribute (z.B. `mileage` bei `updateCarMileage`) erscheinen korrekt im PIM mit typisiertem Effect, werden aber im nachgelagerten B15-Microflow nicht auf Mendix-Attribut-Ebene gesetzt - das ist eine dokumentierte B-Regeleinschränkung, keine M-Regeleinschränkung.
+**MERODE (104 Quellaussagen):** Alle 104 Aussagen werden korrekt transformiert (C=104, M=0, I=0). Completeness = 100 %, Validity = 100 %. Rental durchläuft erstmals einen echten mehrstufigen sequenziellen Lebenszyklus (4 Zwischenzustände), und M9 propagiert erstmals über eine 3-Hop-Kette (Invoice -> RentalLine -> Rental -> {Car, Person, Branch}), inklusive korrekter Vervielfachung der Self-Transitionen auf Rentals 4 Zuständen. Output ist schemagültig, 100 Trace-Einträge. Bekannte Einschränkung: M7-Effects auf einfache Attribute (z. B. `mileage: Integer` bei `updateCarMileage`) werden im B15-Microflow als Parameter plus MemberChange gesetzt. Effects auf DataType-Attribute (`depositAmount`, `invoiceAmount` vom Typ `MoneyAmount`) erhalten nur einen String-Parameter, aber keine MemberChange, weil das Attribut nach B5 eine Assoziation ist - das ist eine dokumentierte B-Regeleinschränkung (LIMITATIONS.md, B15), keine M-Regeleinschränkung.
 
 **Schema Validation Rate:** Konstruktionsbedingt 100 % - die Pipeline bricht bei jedem Schemaverstoß ab, bevor sie publiziert. Dieser Anspruch wurde im Zuge dieser Verifikation selbst bestätigt: ein zuvor unentdeckter Fixture-Fehler (fehlendes `literals`-Array bei DEMOs `CarGroup`-ValueType) führte dazu, dass der reale Output beim ersten Testlauf tatsächlich am `pimuml-schema.json`-Constraint `Enumeration.literals minItems:1` scheiterte - ein Beleg dafür, dass die Schema-Validierung wirksam greift, nicht nur eine unbewiesene Behauptung. Nach Behebung (Ergänzung der Literale) ist der Output schemagültig.
 

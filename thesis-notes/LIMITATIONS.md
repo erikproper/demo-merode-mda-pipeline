@@ -16,7 +16,7 @@ Verbleibende Einschränkung: der Attributtyp verweist auf den Domänennamen als 
 
 Die Propagierungshülle wird aus dem EDG berechnet (`allTransitiveDependents()`). Für jedes Master-OT, dessen Dependents Ereignisse besitzen, werden Self-Transitionen auf allen aktiven Lebenszykluszuständen eingefügt (Trigger = Ereignisname). Zusätzlich wird eine `Set_<Master>_<evt>`-Aktivität erzeugt, die im PSM-Agenten zu einem ChangeObjectAction-Microflow wird.
 
-Verbleibende Einschränkung: die Propagierung erzeugt immer Self-Transitionen auf allen Zuständen des Masters, auch wenn das OET für bestimmte Zustandskombinationen keine Beteiligung vorsieht. Das ist eine Überapproximation. Für Rent-A-Car korrekt, da alle Master nur einen Lebenszykluszustand haben.
+Verbleibende Einschränkung: die Propagierung erzeugt immer Self-Transitionen auf allen Zuständen des Masters, auch wenn das OET für bestimmte Zustandskombinationen keine Beteiligung vorsieht. Das ist eine Überapproximation. Bei Car, Branch, Person und RentalLine (je ein Lebenszykluszustand) wirkt sie sich nicht aus. Rental hat vier Zustände und erhält die sechs propagierten Ereignisse auf allen vier (25 Self-Transitionen inkl. `extendRental`), z. B. `addRentalLine` auch in `invoicePaid`. Ob das OET das zulässt, prüft der Agent nicht.
 
 ---
 
@@ -24,9 +24,9 @@ Verbleibende Einschränkung: die Propagierung erzeugt immer Self-Transitionen au
 
 ### B16 - End-Microflow OK implementiert (2026-08-03)
 
-Der `End_<Entity>`-Microflow generiert: MicroflowParameterObject (Entitätsobjekt) -> `DeleteAction` -> EndEvent. Die Designentscheidung fiel auf Hard-Delete, weil Snoecks Semantik ("an object ceases to exist") physische Nicht-Existenz impliziert und eine Soft-Delete-Variante eine zusätzliche Filterlogik in allen Abfragen erfordern würde, die über den Prototyp-Scope hinausgeht (DD12 in DESIGN_DECISIONS.md).
+Der `End_<Entity>`-Microflow generiert: MicroflowParameterObject (Entitätsobjekt) -> `DeleteAction` -> EndEvent. Die Designentscheidung fiel auf Hard-Delete, weil Snoeck physisches Entfernen nach dem beendenden Ereignis zulässt (Abschnitt 5.2.1, S. 113, Beenden ist dort aber nicht gleich Löschen) und eine Soft-Delete-Variante eine zusätzliche Filterlogik in allen Abfragen erfordern würde, die über den Prototyp-Scope hinausgeht (DD12 in DESIGN_DECISIONS.md).
 
-Verbleibende Einschränkung: physische Löschung löscht auch alle abhängigen Objekte (Mendix Cascade-Delete), wenn die Associations entsprechend konfiguriert sind. Für MERODE-Modelle mit Existenzabhängigkeiten bedeutet das, dass ein Master nicht gelöscht werden kann, solange Dependents existieren - das spiegelt Snoecks Semantik korrekt wider, muss aber in der Applikation explizit gehandhabt werden.
+Verbleibende Einschränkung: der Generator setzt kein Delete-Behavior an den Assoziationen, es gilt der Mendix-Standard `DeleteMeButKeepReferences`. `End_Rental` löscht ein Rental daher auch dann, wenn noch RentalLines existieren, und diese bleiben ohne Referenz zurück. Die Existenzabhängigkeit aus dem EDG wird beim Löschen weder durch Blockieren noch durch Kaskadieren durchgesetzt. Außerdem prüft `End_<Entity>` nicht, ob sich das Objekt im letzten Lebenszykluszustand befindet (wie B15 ohne Ausgangszustands-Prüfung).
 
 ### B15 - Status bei Self-Transitionen OK behoben (2026-09-14)
 

@@ -104,13 +104,13 @@ Die Lösung war eine Umgebungsvariable `PIM_PUBLISHER_AGENT_IDS` (Standardwert: 
 
 Das pimUML-Konstrukt `activity.kind = "end"` (M8) wird auf einen Mendix-`DeleteObjectAction`-Microflow abgebildet: das Objekt wird physisch aus der Datenbank gelöscht.
 
-Snoeck (Kap. 4.4) sagt: "the END event is the last event in which an object participates. After the END event the object no longer exists in the business domain." Das legt physische Nicht-Existenz nahe. Drei Alternativen wurden erwogen.
+Snoeck verlangt das nicht. Ein beendendes Ereignis bringt das Objekt in einen finalen Zustand, "ending an object is not the same as physically removing the object, but it only means that a physical removal is allowed" (Abschnitt 5.2.1, S. 113). Physisches Löschen ist damit zulässig, aber eine Entscheidung des Generators. Drei Alternativen wurden erwogen.
 
 Soft-Delete (Status-Attribut auf `final` setzen): Das Status-Attribut aus B13 würde als "Tombstone" genutzt. Vorteil: Datenverlust durch versehentliches Löschen vermeidbar, historische Daten bleiben erhalten. Nachteil: alle Abfragen müssten um `status != final`-Filter erweitert werden; das erfordert Applikationslogik, die über den Prototyp-Scope hinausgeht.
 
 Archivierung (in Archivtabelle verschieben): In produktiven Mendix-Apps gängige Praxis. Erfordert eine Archiv-Entity pro Objekttyp - zu aufwändig für den Prototyp.
 
-Hard-Delete über `DeleteObjectAction` wurde gewählt, weil es Snoecks Semantik am direktesten abbildet und keine zusätzliche Infrastruktur erfordert. Der Preis ist, dass Mendix Cascade-Delete greift: wenn Dependents noch existieren, schlägt die Löschung fehl. Das ist kein Fehler, sondern die korrekte Enforcemet der Existenzabhängigkeit (ein Rental kann nicht gelöscht werden, solange RentalLines existieren).
+Hard-Delete über `DeleteAction` wurde gewählt, weil Snoeck es zulässt und es keine zusätzliche Infrastruktur erfordert. Der Preis: der Generator setzt kein Delete-Behavior an den Assoziationen, es gilt der Mendix-Standard `DeleteMeButKeepReferences`. Das Löschen eines Masters wird weder blockiert noch kaskadiert, abhängige Objekte (z. B. RentalLines eines gelöschten Rental) bleiben ohne Referenz zurück. Die Existenzabhängigkeit wird beim Löschen also nicht durchgesetzt. Eine Durchsetzung wäre über `DeleteMeIfNoReferences` auf der Master-Seite möglich, ist aber nicht implementiert.
 
 Für eine produktive Applikation wäre Soft-Delete oder Archivierung die bessere Wahl. Die Einschränkung ist in LIMITATIONS.md dokumentiert.
 

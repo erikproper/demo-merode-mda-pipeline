@@ -258,6 +258,8 @@ The architecture is designed to absorb new CIM languages without touching existi
 
 The SQL agent was actually built and validated (see `EXTENSIBILITY_EVIDENCE.md` §5) as the real replacement for a previously only-planned third-agent experiment (ER diagram language). It is the stronger of the two proofs: it required no schema change at all, because it consumes PIM concepts (Classes, Associations, Enumerations, StateMachines) that B1-B13 already handle - it is a pure downstream consumer, not a new source language.
 
+The table records the changes caused by each extension. The later bug fixes in `pim-to-mendix-agent.ts` (B11/B12 per-region workflows with an after-create ACR handler, B15 status on self-transitions, 2026-09-14) changed existing rules for correctness and are not part of either extension diff.
+
 The extensibility boundary, now demonstrated from both directions: adding a *language* (CIM or PSM) for already-covered PIM concepts is purely additive - zero changes to any existing agent or schema. Adding a language with genuinely new PIM *concepts* (like MERODE's sequential FSMs) additionally needs a minimal additive schema extension and new PSM rules. The boundary sits at the concept level, not the language level.
 
 ---
