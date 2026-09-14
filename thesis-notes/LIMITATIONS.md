@@ -136,6 +136,10 @@ Wie bereits für den Mendix-Pfad dokumentiert (Abschnitt 4, "pimUML-Schema appro
 
 `sqlType()` mappt einen unbekannten oder nicht deklarierten `Property.type`-String stillschweigend auf `TEXT`, statt einen Fehler zu werfen. Das verhindert, dass ein Tippfehler oder ein noch nicht unterstützter PIM-Typ die gesamte DDL-Erzeugung blockiert, kann aber echte Modellierungsfehler maskieren (ein falsch geschriebener Enum-Name würde z. B. zu einer `TEXT`-Spalte statt zu einem Enum-Typ führen, ohne Warnung). Dieselbe Fallback-Strategie nutzt auch der Mendix-Agent (B7) für den analogen Fall.
 
+### S8/S9 - keine UNIQUE-Constraints, Spaltennamen teils aus der Association
+
+S8 setzt bei 1:1-Assoziationen kein `UNIQUE` auf die FK-Spalte, und S9 setzt kein `UNIQUE` auf das FK-Paar der Junction-Tabelle. Die Datenbank erzwingt daher weder die Obergrenze 1 auf der zweiten Seite einer 1:1-Beziehung noch die Mengensemantik einer n:m-Beziehung. Kollidieren Rollennamen innerhalb einer Tabelle, heißt die FK-Spalte nach der Association (`rental_depends_on_car_id`), sonst nach der Rolle (`master_id`). Innerhalb eines MERODE-PIMs entstehen dadurch zwei Namensschemata nebeneinander. Nicht behandelt ist eine n:m-Selbstassoziation mit gleichem Rollennamen an beiden Enden, bei der S9 dieselbe Spalte zweimal in die Junction-Tabelle schreiben würde. Keines der beiden EVAL-PIMs enthält einen solchen Fall.
+
 ---
 
 ## 5. Behobene Implementierungsfehler
@@ -153,5 +157,7 @@ Diese werden dokumentiert, falls Gutachter danach fragen.
 **Falsche Association-Kardinalität** (Rental(1)->Person(\*) statt Rental(\*)->Person(1)): `mxAssoc.parent` und `mxAssoc.child` waren vertauscht. Im Mendix SDK gilt: `parent` = Many-Seite (FK-Halter, zeigt als \*), `child` = One-Seite (Referenz, zeigt als 1) - entgegen der intuitiven relational-ORM-Konvention. Behoben (2026-08-25) an allen drei Stellen im Agenten (reguläre Associations, DataType-Associations, AssociationClass-Approximationen).
 
 **Wait_undefined im Workflow-Generator:** Der Workflow-Generator versuchte eine WaitForNotification-Aktivität namens `Wait_${region.forEvent}` anzulegen. Für MERODE-Regionen, wo `forEvent` undefined ist, ergab das `Wait_undefined`. Behoben durch den `isMerodeFSM()`-Check, der die Workflow-Generierung für MERODE-FSMs überspringt.
+
+**S8 - doppelte FK-Spalten bei gleichen Rollennamen** (behoben 2026-09-14): S8 benannte jede FK-Spalte `<Rolle>_id`. Das DEMO-PIM erzeugte dadurch `branch_id` zweimal auf `rental`, das MERODE-PIM `master_id` dreimal. PostgreSQL lehnt beide Skripte ab. Der Ausführungsnachweis lief bis dahin nur gegen die Fixture `rent-a-car-pim-full.json`, die keinen solchen Fall enthält. Behoben durch eine Kollisionsregel (kollidierende Spalten heißen `<Association>_id`) und einen Test gegen beide EVAL-PIMs (`SqlMappingRules.md` Abschnitt 5a).
 
 **MERODE-PIM erreichte den Mendix-Agenten nicht:** Der `pim-to-mendix-agent` war darauf hardcodiert, nur das MQTT-Topic des DEMO-Agenten zu abonnieren. MERODE-PIM-Nachrichten wurden stillschweigend ignoriert. Behoben durch Umstellung auf den `PIM_SOURCE_AGENTS`-Mehrfach-Abonnement-Ansatz.

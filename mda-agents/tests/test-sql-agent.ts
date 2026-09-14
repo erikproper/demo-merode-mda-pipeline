@@ -225,6 +225,37 @@ if (!assocDdl.includes(`"rental_id" INTEGER NOT NULL REFERENCES "rental"("rental
 }
 console.log("S8 OK");
 
+// S8: colliding role names (MERODE "master", DEMO two associations to Branch) must not
+// produce the same column twice - colliding FK columns are named after the association
+const collidePim: PimModel = {
+  name: "S8 collision test",
+  classes: [
+    { name: "Branch", ownedAttributes: [{ name: "BranchID", type: "Integer", isID: true }] },
+    { name: "Car",    ownedAttributes: [{ name: "CarID",    type: "Integer", isID: true }] },
+    { name: "Rental", ownedAttributes: [{ name: "RentalID", type: "Integer", isID: true }] },
+  ],
+  associations: [
+    { name: "RentalPickedUpAt", memberEnds: [{ name: "rental", type: "Rental", lower: 0, upper: "*" }, { name: "branch", type: "Branch", lower: 1, upper: 1 }] },
+    { name: "RentalReturnedAt", memberEnds: [{ name: "rental", type: "Rental", lower: 0, upper: "*" }, { name: "branch", type: "Branch", lower: 1, upper: 1 }] },
+    { name: "RentalInvolvesCar", memberEnds: [{ name: "rental", type: "Rental", lower: 0, upper: "*" }, { name: "car", type: "Car", lower: 1, upper: 1 }] },
+  ],
+};
+
+const collideDdl = pimToSql(collidePim);
+console.log(collideDdl);
+
+for (const expected of [
+  `"rental_picked_up_at_id" INTEGER NOT NULL REFERENCES "branch"("branch_id")`,
+  `"rental_returned_at_id" INTEGER NOT NULL REFERENCES "branch"("branch_id")`,
+  `"car_id" INTEGER NOT NULL REFERENCES "car"("car_id")`,
+]) {
+  if (!collideDdl.includes(expected)) {
+    console.error(`FAIL: expected column not found: ${expected}`);
+    process.exit(1);
+  }
+}
+console.log("S8 collision OK");
+
 // S9: many-to-many association -> junction table with two NOT NULL FKs, no attributes
 const n2mPim: PimModel = {
   name: "S9 smoke test",
@@ -368,3 +399,23 @@ fs.writeFileSync(path.join(outputDir, "rent-a-car.sql"), fullDdl);
 
 console.log(`End-to-end: wrote ${fullDdl.split("\n").length} lines to output/rent-a-car.sql`);
 console.log("END-TO-END OK");
+
+// Real pipeline outputs: the PIMs published by demo-to-pim-agent and merode-to-pim-agent
+// (thesis-notes/EVAL) must yield DDL without duplicate column names in any table.
+// Also writes output/rent-a-car-demo.sql and output/rent-a-car-merode.sql for the Postgres proof.
+for (const lang of ["demo", "merode"]) {
+  const pim: PimModel = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "thesis-notes", "EVAL", `${lang}-pim-output.json`), "utf-8"));
+  const ddl = pimToSql(pim);
+  for (const block of ddl.split("CREATE TABLE ").slice(1)) {
+    const table = block.slice(0, block.indexOf(" "));
+    const cols  = [...block.matchAll(/^\s+"([^"]+)" /gm)].map(m => m[1]);
+    const dupes = cols.filter((c, i) => cols.indexOf(c) !== i);
+    if (dupes.length > 0) {
+      console.error(`FAIL: ${lang} table ${table} has duplicate columns: ${dupes.join(", ")}`);
+      process.exit(1);
+    }
+  }
+  fs.writeFileSync(path.join(outputDir, `rent-a-car-${lang}.sql`), ddl);
+  console.log(`OK   ${lang}-pim-output.json -> no duplicate columns, wrote output/rent-a-car-${lang}.sql`);
+}
+console.log("PIPELINE PIMs OK");

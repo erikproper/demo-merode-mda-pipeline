@@ -19,13 +19,13 @@ Proposals als "eher Future Work" eingestufte ER-Diagramm-Agent wurde dafür nich
 | S5  | `ownedAttributes[].isDerived === true` | Spalte wird ausgelassen | analog zu B7 (kein OCL-Äquivalent) |
 | S6  | Attribut mit `type` = Name eines `dataTypes[]`-Eintrags | FK-Spalte auf die DataType-Tabelle (S2) statt Inline-Spalte | analog zu B5 |
 | S7  | `generalizations[]` | Kind-Tabelle bekommt zusätzliche `<parent>_id`-FK-Spalte, `ON DELETE CASCADE` | analog zu B10 |
-| S8  | `associations[]` (1:1, 1:n) | FK-Spalte auf der Seite mit `upper !== "*"`, `NOT NULL` wenn die Gegenseite `lower >= 1` hat | analog zu B9 |
+| S8  | `associations[]` (1:1, 1:n) | FK-Spalte `<Rolle>_id` auf der Tabelle des Viele-Endes, verweist auf die Tabelle des Eins-Endes, `NOT NULL` wenn das Eins-Ende `lower >= 1` hat. Kollidiert der Spaltenname in der Tabelle, heißt die Spalte `<Association>_id` | analog zu B9 |
 | S9  | `associations[]` (n:m, beide Enden `upper === "*"`) | eigene Junction-Tabelle mit zwei NOT-NULL-FKs | analog zu B9 (Owner/Reference wird bei n:m zu zwei FKs) |
 | S10 | `stateMachines[]` mit sequenzieller Region (`isMerodeFSM`-Diskriminator) | `status`-Spalte vom Typ `<Entity>_status_enum` + `CREATE TYPE` aus den `simple`-State-Namen | analog zu B13 |
 | S11 | DEMO-orthogonale FSMs (`forEvent` gesetzt) | keine Sonderregel - boolesche Attribute laufen bereits über S4 | kein B-Pendant nötig (B11/B12 sind Workflow-spezifisch, DDL kennt keine Workflows) |
 | S12 | Tabellenreihenfolge im Ausgabeskript | topologischer Sort (Kahn) über den FK-Abhängigkeitsgraphen | kein B-Pendant (Mendix-SDK ist reihenfolgeunabhängig, ein SQL-Skript nicht) |
 
-Implementierungsort: `mda-agents/pim-to-sql-agent.ts`, exportierte reine Funktion `pimToSql(pim: PimModel): string`. Alle 12 Regeln sind implementiert und gegen die vollständige pimUML-Fixture `tests/rent-a-car-pim-full.json` validiert (`tests/test-sql-agent.ts`, ein Testfall pro Regel plus ein End-to-End-Lauf).
+Implementierungsort: `mda-agents/pim-to-sql-agent.ts`, exportierte reine Funktion `pimToSql(pim: PimModel): string`. Alle 12 Regeln sind implementiert und gegen die vollständige pimUML-Fixture `tests/rent-a-car-pim-full.json` validiert (`tests/test-sql-agent.ts`, ein Testfall pro Regel plus ein End-to-End-Lauf). Seit 2026-09-14 läuft derselbe Test zusätzlich gegen die beiden echten Pipeline-PIMs `thesis-notes/EVAL/demo-pim-output.json` und `merode-pim-output.json` (Abschnitt 5a).
 
 ---
 
@@ -53,7 +53,7 @@ Verweist der `type`-String eines Attributs auf einen Namen in `pim.dataTypes[]`,
 Für jeden Eintrag in `pim.generalizations[]` bekommt die Kind-Tabelle eine zusätzliche `<parent>_id INTEGER NOT NULL REFERENCES <parent_tabelle>(...) ON DELETE CASCADE`-Spalte. Das ist eine bewusste Vereinfachung: pimUML vergibt jeder Klasse - auch einer Generalisierungs-Kind-Klasse - ein eigenes, unabhängiges `isID`-Attribut statt einer geteilten Primärschlüssel-Konvention (klassisches Table-per-Type ohne PK-Sharing). Eine PK-geteilte Variante (Kind-PK = Eltern-PK) wäre relational eleganter, hätte aber eine PIM-seitige Konvention vorausgesetzt, die es nicht gibt. Dokumentiert in `LIMITATIONS.md`. Bezug: analog zu B10 (Mendix-Generalization/Specialization, wo Mendix intern dieselbe Art von Fremdschlüssel verwaltet).
 
 **S8 - Binäre 1:1/1:n-Assoziation nach FK auf der "Eins"-Seite.**
-Für jede Assoziation, bei der nicht beide Enden `upper === "*"` haben, bestimmt dieselbe Eins-/Viele-Logik wie in `pim-to-mendix-agent.ts:222` (`end0.upper === "*" ? [end1, end0] : [end0, end1]`), welches Ende die FK-Spalte trägt: die Seite mit `upper !== "*"` erhält eine `<oneEnd.name>_id`-Spalte auf der "Viele"-Tabelle. Ob diese Spalte `NOT NULL` wird, hängt von `oneEnd.lower` ab - eine untere Schranke `>= 1` auf der "Eins"-Seite bedeutet, jede Instanz der "Viele"-Seite muss immer mit genau einer Instanz assoziiert sein. Bemerkenswert: die Spaltennamen entstehen direkt aus dem PIM-Rollennamen des `memberEnd` - eine A9/A7-artige Spezialisierungsassoziation mit der Rolle `"parent"` erzeugt automatisch eine `parent_id`-Spalte, ohne dass S8 selbst etwas über Generalisierung "weiß" (siehe Validierungsbeispiel in Abschnitt 5). Bezug: analog zu B9.
+Für jede Assoziation, bei der nicht beide Enden `upper === "*"` haben, bestimmt dieselbe Eins-/Viele-Logik wie in `pim-to-mendix-agent.ts:222` (`end0.upper === "*" ? [end1, end0] : [end0, end1]`), wohin die FK-Spalte kommt: die Tabelle des Viele-Endes erhält eine Spalte `<oneEnd.name>_id`, die auf die Tabelle des Eins-Endes verweist (bei 1:1 trägt die Tabelle von `end1` die Spalte). Rollennamen sind im pimUML nur innerhalb einer Assoziation eindeutig, nicht innerhalb einer Klasse. M4 nennt jedes Master-Ende `master`, und das DEMO-PIM hat mit `RentalPickedUpAt` und `RentalReturnedAt` zwei Assoziationen von Rental zu Branch mit der Rolle `branch`. Würde derselbe Spaltenname in einer Tabelle mehrfach entstehen oder mit einer Attributspalte kollidieren, heißt die FK-Spalte stattdessen `<assoc.name>_id` (z. B. `rental_picked_up_at_id`, `rental_depends_on_car_id`). Die Umbenennung betrifft alle kollidierenden Spalten gleichermaßen, nicht erst die zweite, damit der Name nicht von der Reihenfolge in `associations[]` abhängt. Die Spalte hat keine `ON DELETE`-Klausel, es gilt also das PostgreSQL-Default `NO ACTION`: ein Master mit abhängigen Zeilen kann nicht gelöscht werden. Ob diese Spalte `NOT NULL` wird, hängt von `oneEnd.lower` ab - eine untere Schranke `>= 1` auf der "Eins"-Seite bedeutet, jede Instanz der "Viele"-Seite muss immer mit genau einer Instanz assoziiert sein. Bemerkenswert: die Spaltennamen entstehen direkt aus dem PIM-Rollennamen des `memberEnd` - eine A9/A7-artige Spezialisierungsassoziation mit der Rolle `"parent"` erzeugt automatisch eine `parent_id`-Spalte, ohne dass S8 selbst etwas über Generalisierung "weiß" (siehe Validierungsbeispiel in Abschnitt 5). Bezug: analog zu B9.
 
 **S9 - n:m-Assoziation nach Junction-Tabelle ohne Attributspalten.**
 Haben beide `memberEnds` `upper === "*"`, reicht eine einzelne FK-Spalte auf keiner Seite aus - die Regel erzeugt stattdessen eine neue Tabelle mit synthetischem `id`, benannt nach der Assoziation selbst, und zwei NOT-NULL-FK-Spalten. Der Unterschied zu S3 (AssociationClass): eine reine n:m-Assoziation trägt keine eigenen Attribute, daher entfällt der Attributspalten-Teil. Bezug: analog zu B9 (Mendix löst n:m intern über eine verdeckte Zwischentabelle, DDL macht dieselbe Auflösung explizit sichtbar).
@@ -163,3 +163,22 @@ Validierungsbeobachtungen:
 - **S12** - `money_amount`, `vehicle`, `person` erscheinen vor `car` (hängt von `vehicle` ab) und `rental` (hängt von `car`, `person` ab); `rental_line`, `active_rental`, `booking_detail` erscheinen zuletzt, da sie von `rental` abhängen. Diese Reihenfolge entsteht rein aus dem topologischen Sort, unabhängig von der Deklarationsreihenfolge in `pim.classes[]` (siehe `test-sql-agent.ts`, S12-Testfall mit absichtlich vertauschter Deklarationsreihenfolge).
 
 Ausführbarkeitsnachweis gegen echtes PostgreSQL: reproduzierbares Docker-Kommando in `mda-agents/tests/README.md`.
+
+## 5a. Validierung gegen die echten Pipeline-PIMs
+
+Die Fixture aus Abschnitt 5 enthält pro Klassenpaar höchstens eine Assoziation mit eindeutigem Rollennamen. Die von `demo-to-pim-agent` und `merode-to-pim-agent` tatsächlich publizierten PIMs (`thesis-notes/EVAL/demo-pim-output.json`, `merode-pim-output.json`) tun das nicht. Bis 2026-09-14 erzeugte S8 daraus doppelte Spalten, die PostgreSQL mit "column specified more than once" ablehnt:
+
+- DEMO: `rental` erhielt `branch_id` zweimal (`RentalPickedUpAt`, `RentalReturnedAt`).
+- MERODE: `rental` erhielt `master_id` dreimal (`RentalDependsOnCar`, `...Person`, `...Branch`).
+
+Nach dem Fix (Kollisionsregel in S8) entsteht:
+
+| PIM | Tabelle | FK-Spalten |
+|-----|---------|-----------|
+| DEMO | `rental` | `car_id`, `renter_id`, `rental_picked_up_at_id`, `rental_returned_at_id` |
+| DEMO | `rental_line` | `rental_id` |
+| MERODE | `rental` | `rental_depends_on_car_id`, `rental_depends_on_person_id`, `rental_depends_on_branch_id` |
+| MERODE | `rental_line` | `master_id` (keine Kollision, bleibt beim Rollennamen) |
+| MERODE | `invoice` | `master_id` (keine Kollision) |
+
+`tests/test-sql-agent.ts` prüft für beide PIMs, dass keine Tabelle einen Spaltennamen doppelt enthält, und schreibt `output/rent-a-car-demo.sql` und `output/rent-a-car-merode.sql` für den Postgres-Nachweis. Ausgeführt am 2026-09-14 gegen `postgres:16-alpine` mit `ON_ERROR_STOP=1` (Kommando in `mda-agents/tests/README.md`): alle drei Skripte fehlerfrei. DEMO erzeugt 1 Typ und 14 Tabellen, MERODE 7 Typen und 7 Tabellen, die Fixture 1 Typ und 9 Tabellen. Beobachtung: in `merode-pim-output.json` ist `master_id` auf `rental_line` und `invoice` wenig sprechend, aber korrekt. Der Name stammt aus M4, nicht aus S8.

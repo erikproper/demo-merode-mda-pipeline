@@ -24,7 +24,7 @@ Siehe `thesis-notes/PROTOTYPE_TODOS.md` f체r den aktuellen Stand dieser Einschr�
 | `pim-subscriber.ts` | **Bus-Utility** - abonniert `model.pim.created`, schreibt `rent-a-car-pim-from-bus.json` |
 | `rent-a-car-pim-from-bus.json` | *Generiert* durch `test-transform.ts` bzw. `pim-subscriber` - nicht versioniert (.gitignore) |
 | `rent-a-car-pim-full.json` | **Eingabe** - vollst채ndige pimUML-Fixture f체r `test-sql-agent.ts` (Enums, DataTypes, AssociationClass, Generalisierung, Assoziationen, orthogonale FSM) |
-| `test-sql-agent.ts` | **Offline-Test** - `pim-to-sql-agent`, ein Fall pro S-Regel + End-to-End-Lauf, schreibt `../output/rent-a-car.sql` |
+| `test-sql-agent.ts` | **Offline-Test** - `pim-to-sql-agent`, ein Fall pro S-Regel + End-to-End-Lauf, schreibt `../output/rent-a-car.sql`, pr체ft zus채tzlich `thesis-notes/EVAL/{demo,merode}-pim-output.json` auf doppelte Spalten und schreibt `../output/rent-a-car-{demo,merode}.sql` |
 | `test-mendix-status.ts` | **Offline-Test** - `resolveStatusTarget()` aus `pim-to-mendix-agent` (B15-Zielzustand, Self-Transitionen lassen den Status unver채ndert), inline-Fixture + `thesis-notes/EVAL/merode-pim-output.json` |
 | `test-mendix-workflows.ts` | **Offline-Test** - `planRegionWorkflows()` aus `pim-to-mendix-agent` (B11/B12, ein Workflow je DEMO-Region), gegen `thesis-notes/EVAL/demo-pim-output.json` |
 | `../output/*.sql` | *Generiert* durch `test-sql-agent.ts` bzw. `pim-to-sql-agent` im Live-Betrieb - nicht versioniert (.gitignore) |
@@ -38,7 +38,7 @@ sondern nachweislich fehlerfrei gegen eine echte PostgreSQL-Instanz laufen. Daf�
 ein Wegwerf-Container (kein Eintrag in `docker-compose.yml`, kein persistenter State):
 
 ```bash
-# 1. DDL erzeugen (schreibt mda-agents/output/rent-a-car.sql)
+# 1. DDL erzeugen (schreibt mda-agents/output/rent-a-car.sql, rent-a-car-demo.sql, rent-a-car-merode.sql)
 cd mda-agents && npx ts-node tests/test-sql-agent.ts
 
 # 2. Wegwerf-Postgres starten
@@ -47,11 +47,15 @@ docker run -d --name sql-proof -e POSTGRES_PASSWORD=postgres -p 55432:5432 postg
 # 3. warten, bis Postgres bereit ist
 until docker exec sql-proof pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
 
-# 4. generierte DDL ausf체hren
-docker exec -i sql-proof psql -U postgres < output/rent-a-car.sql
+# 4. jede generierte DDL in einer eigenen Datenbank ausf체hren (bricht beim ersten Fehler ab)
+for f in rent-a-car rent-a-car-demo rent-a-car-merode; do
+  db=$(echo $f | tr - _)
+  docker exec sql-proof psql -U postgres -c "CREATE DATABASE $db"
+  docker exec -i sql-proof psql -U postgres -d $db -v ON_ERROR_STOP=1 < output/$f.sql || echo "FEHLER in $f.sql"
+done
 
-# 5. Ergebnis pr체fen (sollte alle CREATE-TABLE-Namen aus output/rent-a-car.sql auflisten)
-docker exec sql-proof psql -U postgres -c '\dt'
+# 5. Ergebnis pr체fen (listet die Tabellen des MERODE-Skripts)
+docker exec sql-proof psql -U postgres -d rent_a_car_merode -c '\dt'
 
 # 6. aufr채umen
 docker rm -f sql-proof

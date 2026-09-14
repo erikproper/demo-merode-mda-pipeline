@@ -142,6 +142,8 @@ Gesamter neuer Code: ca. 900 Zeilen, verteilt auf ausschließlich neue Dateien. 
 
 Anders als beim Mendix-Pfad (dessen Korrektheit sich nur indirekt über die Schema-Validierungsrate der Mendix-Studio-Pro-Öffnung zeigen lässt) lässt sich die DDL-Korrektheit des SQL-Agenten direkt und maschinell verifizieren: die generierte DDL läuft fehlerfrei gegen eine echte PostgreSQL-Instanz (reproduzierbares Docker-Kommando in `mda-agents/tests/README.md`). Das ist ein strengerer Korrektheitsnachweis als eine reine Struktur-/Schema-Validierung, weil er die tatsächliche Ausführbarkeit auf der Zielplattform demonstriert, nicht nur die syntaktische Plausibilität der Ausgabe.
 
+Korrektur 2026-09-14: der Nachweis lief ursprünglich nur gegen die Fixture `rent-a-car-pim-full.json`. Die DDL aus den echten Pipeline-PIMs (`EVAL/demo-pim-output.json`, `merode-pim-output.json`) enthielt doppelte FK-Spalten und war nicht ausführbar (`LIMITATIONS.md` Abschnitt 5, S8). Der Fix betrifft ausschließlich `pim-to-sql-agent.ts` und seinen Test, also Dateien des neuen Agenten, und ändert die Diff-Aussage oben nicht. Er ist ein nachträglicher Bugfix und nicht Teil des ursprünglichen Erweiterungs-Diffs.
+
 ---
 
 ## 6. Was "Extensibilität" in dieser Thesis bedeutet

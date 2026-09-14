@@ -185,16 +185,31 @@ export function pimToSql(pim: PimModel): string {
 
   // S8: one-to-one / one-to-many associations -> FK column on the "many" (or arbitrary
   // "1") side. Same oneEnd/manyEnd determination as pim-to-mendix-agent.ts:222.
-  for (const assoc of pim.associations ?? []) {
-    const [end0, end1] = assoc.memberEnds;
-    if (end0.upper === "*" && end1.upper === "*") continue; // n:m -> handled separately (S9)
+  // Role names are only unique within one association, not within a class: MERODE names
+  // every master end "master", DEMO has two Rental -> Branch associations with role "branch".
+  // A role-based column name that would occur more than once in the same table (or clash
+  // with an attribute column) is replaced by the association name, e.g. rental_picked_up_at_id.
+  const fkAssocs = (pim.associations ?? [])
+    .filter(assoc => !(assoc.memberEnds[0].upper === "*" && assoc.memberEnds[1].upper === "*")) // n:m -> S9
+    .map(assoc => {
+      const [end0, end1] = assoc.memberEnds;
+      const [oneEnd, manyEnd] = end0.upper === "*" ? [end1, end0] : [end0, end1];
+      return { assoc, oneEnd, manyEnd, roleCol: `${toSnakeCase(oneEnd.name)}_id` };
+    });
+  const roleColCount = new Map<string, number>();
+  for (const { manyEnd, roleCol } of fkAssocs) {
+    const key = `${manyEnd.type}.${roleCol}`;
+    roleColCount.set(key, (roleColCount.get(key) ?? 0) + 1);
+  }
+  const hasColumn = (table: TableDef, col: string) => table.columns.some(c => c.trimStart().startsWith(`${q(col)} `));
 
-    const [oneEnd, manyEnd] = end0.upper === "*" ? [end1, end0] : [end0, end1];
+  for (const { assoc, oneEnd, manyEnd, roleCol } of fkAssocs) {
     const oneTable  = tables.get(oneEnd.type);
     const manyTable = tables.get(manyEnd.type);
     if (!oneTable || !manyTable) continue;
 
-    const fkCol   = `${toSnakeCase(oneEnd.name)}_id`;
+    const collides = roleColCount.get(`${manyEnd.type}.${roleCol}`)! > 1 || hasColumn(manyTable, roleCol);
+    const fkCol   = collides ? `${toSnakeCase(assoc.name)}_id` : roleCol;
     const notNull = (oneEnd.lower ?? 0) >= 1 ? "NOT NULL " : "";
     manyTable.columns.push(`  ${q(fkCol)} INTEGER ${notNull}REFERENCES ${q(oneTable.name)}(${q(oneTable.pkColumn)})`);
     manyTable.dependsOn.push(oneEnd.type);

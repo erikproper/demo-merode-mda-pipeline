@@ -331,7 +331,7 @@ Zweiter PSM-Pfad, parallel zu den B-Regeln (Abschnitt 5). Beide Pfade konsumiere
 | S5  | `ownedAttributes[].isDerived === true` | Spalte wird ausgelassen | implementiert |
 | S6  | Attribut mit `type` = Name eines `dataTypes[]`-Eintrags | FK-Spalte auf die DataType-Tabelle (S2) | implementiert |
 | S7  | `generalizations[]` | Kind-Tabelle bekommt `<parent>_id`-FK, `ON DELETE CASCADE` | implementiert |
-| S8  | `associations[]` (1:1, 1:n) | FK-Spalte auf der Seite mit `upper !== "*"` | implementiert |
+| S8  | `associations[]` (1:1, 1:n) | FK-Spalte `<Rolle>_id` auf der Viele-Tabelle, bei Namenskollision `<Association>_id` | implementiert |
 | S9  | `associations[]` (n:m) | eigene Junction-Tabelle mit zwei NOT-NULL-FKs | implementiert |
 | S10 | `stateMachines[]`, sequenziell (`isMerodeFSM`) | `status`-Spalte + `<Entity>_status_enum` | implementiert |
 | S11 | DEMO-orthogonale FSMs | keine Sonderregel - läuft über S4 | implementiert (kein Zusatzcode nötig) |
