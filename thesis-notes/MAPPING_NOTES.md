@@ -252,7 +252,7 @@ Für das aktuelle Rent-A-Car-Fixture (6 OTs, 3-Hop-EDG-Kette Invoice -> RentalLi
 
 Insgesamt sind das 45 atomare (Ereignis x Master)-Propagierungsobligationen, die 63 Self-Transitionen im realen, schemagültigen Transform-Output erzeugen (12+12+12+24+3). Vollständige Klassifikationstabelle: `EVAL/FRAMEWORK.md` Abschnitt 2.
 
-B15 im Mendix-Agenten erzeugt daraus Change-Microflows, die den Status des Masters auf den aktuellen Zustand setzen (semantisch ein Participated-Marker).
+B15 im Mendix-Agenten erzeugt daraus Change-Microflows für den Master, die den Status unverändert lassen, weil alle Transitionen des propagierten Triggers Self-Transitionen sind (semantisch ein Participated-Marker).
 
 Implementiert in `merode-to-pim-agent.ts`. Formale Spezifikation: `MerodeMappingRules.md`.
 
@@ -280,7 +280,7 @@ Hinweis zur Nummerierung: Bzowskis Tabelle geht bis B24. Der Prototyp implementi
 | B12 | DEMO-Region + false/true-Zustände | Workflow mit WaitForNotification-Aktivitäten | implementiert |
 | B13 | MERODE StateMachine (Lebenszykluszustände) | `<Entity>_Status`-Enumeration | implementiert |
 | B14 | MERODE Create-Aktivität | `Create_<Entity>`-Microflow: CreateObject + Status auf ersten Zustand | implementiert |
-| B15 | MERODE Set-Aktivität | `Set_<Entity>_<Ereignis>`-Microflow: ChangeObject Status auf toState | implementiert |
+| B15 | MERODE Set-Aktivität | `Set_<Entity>_<Ereignis>`-Microflow: ChangeObject Status auf Zielzustand (entfällt bei reinen Self-Transitionen) | implementiert |
 | B16 | MERODE End-Aktivität | `End_<Entity>`-Microflow: DeleteAction (Objekt wird aus der DB entfernt) | implementiert |
 | | Übersichts- und Detailseiten je Entity | Mendix Pages | implementiert |
 
@@ -296,7 +296,11 @@ Der `Create_<Entity>`-Microflow erzeugt ein neues Entity-Objekt mit `CreateObjec
 
 ### B15 - MERODE Set-Aktivität nach Change-Microflow
 
-Der `Set_<Entity>_<Ereignisname>`-Microflow nimmt die Entity als Pflichtparameter und führt eine `ChangeObjectAction` aus. Diese setzt immer das `status`-Attribut auf den `toState` des Übergangs. Enthält die pimUML-Activity zusätzlich `effects`, wird für jedes Effect-Attribut ein weiterer Microflow-Parameter (mit korrektem Typ) und ein zusätzlicher `MemberChange` generiert. Für `Set_Car_updateCarMileage` entsteht damit: Parameter `car: Car`, Parameter `newMileage: Integer`, ChangeObject setzt `car.status = registered` und `car.mileage = $newMileage`.
+Der `Set_<Entity>_<Ereignisname>`-Microflow nimmt die Entity als Pflichtparameter und führt eine `ChangeObjectAction` aus. Der Zielzustand wird von `resolveStatusTarget()` bestimmt: Aus allen Transitionen der Region mit dem Ereignis als Trigger werden die Self-Transitionen (`from === to`) verworfen. Bleibt genau ein Zielzustand übrig, setzt ein `MemberChange` das `status`-Attribut darauf. Bleibt keiner übrig, weil das Ereignis im Lebenszyklus nur Self-Transitionen auslöst (M7-Ereignis ohne Zustandswechsel oder M9-propagiertes Ereignis), wird kein Status-`MemberChange` erzeugt und der Status bleibt erhalten. Mehrere verschiedene Zielzustände führen zu einer Warnung, verwendet wird der erste.
+
+Enthält die pimUML-Activity zusätzlich `effects`, wird für jedes Effect-Attribut ein weiterer Microflow-Parameter (mit korrektem Typ) und ein zusätzlicher `MemberChange` generiert. Für `Set_Rental_extendRental` entsteht damit: Parameter `rental: Rental`, Parameter `newEndingDay: String`, ChangeObject setzt `rental.endingDay = $newEndingDay` und lässt den Status unverändert (`active -> active`). `Set_Rental_payDeposit` setzt `rental.status = depositPaid`. `Set_Rental_addRentalLine` (propagiert von RentalLine) ändert kein Attribut und committet das Objekt nur. Effects auf DataType-typisierte Attribute (z. B. `depositAmount: MoneyAmount`) erhalten einen String-Parameter, aber keinen `MemberChange`, weil das Attribut nach B5 als Association umgesetzt ist (siehe `LIMITATIONS.md`).
+
+Bis 2026-09-14 nahm der Agent die erste Transition mit passendem Trigger (`transitions.find`). Für die sechs propagierten Rental-Ereignisse ist das die Self-Transition `active -> active`, sodass z. B. `Set_Rental_addRentalLine` eine bereits zurückgegebene Miete wieder auf `active` gesetzt hätte. Offline-Test: `mda-agents/tests/test-mendix-status.ts`.
 
 ### B16 - MERODE End-Aktivität nach Delete-Microflow
 

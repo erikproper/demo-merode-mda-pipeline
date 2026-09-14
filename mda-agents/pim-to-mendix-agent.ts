@@ -4,7 +4,7 @@
 import { IModel, domainmodels, enumerations, microflows, workflows, datatypes, pages, navigation, menus, texts } from "mendixmodelsdk";
 import { MendixPlatformClient, OnlineWorkingCopy } from "mendixplatformsdk";
 import { BusClient } from "./bus-client";
-import type { PimModel } from "./schemas/types";
+import type { PimModel, PimRegion } from "./schemas/types";
 import { getBusConfig, makeValidator, assertValid, extractMeta } from "./agent-utils";
 
 const config = getBusConfig("pim-to-mendix-agent");
@@ -65,6 +65,19 @@ function makeParameterType(
 
 function isMerodeFSM(sm: PimModel["stateMachines"] extends Array<infer S> ? S : never): boolean {
   return sm.regions.length > 0 && sm.regions.every(r => !r.forEvent);
+}
+
+// B15: status target of a MERODE set-activity. Self-transitions are ignored, so an
+// M9-propagated event (one self-transition per lifecycle state of the master) or an
+// M event that keeps the state yields undefined - the status must then stay unchanged.
+export function resolveStatusTarget(region: PimRegion, trigger: string): string | undefined {
+  const targets = [...new Set(region.transitions
+    .filter(t => t.trigger === trigger && t.from !== t.to)
+    .map(t => t.to))];
+  if (targets.length > 1) {
+    console.warn(`  [B15] trigger "${trigger}" leads to several states [${targets.join(", ")}] - using "${targets[0]}"`);
+  }
+  return targets[0];
 }
 
 async function applyPimToMendix(
@@ -425,15 +438,17 @@ async function applyPimToMendix(
         }
       }
 
-      // B15: MERODE set - change status to transition target + set any explicitly declared effects
+      // B15: MERODE set - change status to transition target (unless all transitions are
+      // self-transitions) + set any explicitly declared effects
       if (activity.kind === "set" && activity.targetType && isMerodeFSM(sm)) {
         const entityName   = activity.targetType;
         const eventName    = activity.name.substring(`Set_${entityName}_`.length);
         const targetEntity = entityMap.get(entityName);
-        const transition   = sm.regions[0]?.transitions.find(t => t.trigger === eventName);
-        const toState      = transition?.to;
+        const region       = sm.regions[0];
+        const hasTrigger   = region.transitions.some(t => t.trigger === eventName);
+        const toState      = resolveStatusTarget(region, eventName);
         const statusAttr   = attributeMap.get(`${entityName}.status`);
-        if (targetEntity && toState && statusAttr) {
+        if (targetEntity && hasTrigger && statusAttr) {
           const varName  = entityName.charAt(0).toLowerCase() + entityName.slice(1);
           const effects  = activity.effects ?? [];
 
@@ -461,10 +476,12 @@ async function applyPimToMendix(
           changeAct.changeVariableName = varName;
           changeAct.commit = microflows.CommitEnum.Yes;
 
-          // status change (always present)
-          const mcStatus   = microflows.MemberChange.createIn(changeAct);
-          mcStatus.attribute = statusAttr;
-          mcStatus.value   = `${moduleName}.${entityName}_Status.${toState}`;
+          // status change (omitted for self-transitions, the object keeps its current state)
+          if (toState) {
+            const mcStatus   = microflows.MemberChange.createIn(changeAct);
+            mcStatus.attribute = statusAttr;
+            mcStatus.value   = `${moduleName}.${entityName}_Status.${toState}`;
+          }
 
           // attribute changes from explicit effects
           effects.forEach(ef => {
@@ -479,7 +496,8 @@ async function applyPimToMendix(
           const f1 = microflows.SequenceFlow.createIn(mf); f1.origin = start;     f1.destination = actionAct;
           const f2 = microflows.SequenceFlow.createIn(mf); f2.origin = actionAct; f2.destination = end;
           const effectsLog = effects.length > 0 ? ` + [${effects.map(e => e.attribute).join(", ")}]` : "";
-          console.log(`  + microflow "${activity.name}" [MERODE: set ${entityName}.status = ${toState}${effectsLog}]`);
+          const statusLog  = toState ? `${entityName}.status = ${toState}` : `${entityName}.status unchanged`;
+          console.log(`  + microflow "${activity.name}" [MERODE: set ${statusLog}${effectsLog}]`);
           continue;
         }
       }

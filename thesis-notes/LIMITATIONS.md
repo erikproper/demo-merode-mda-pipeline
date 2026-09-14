@@ -28,6 +28,16 @@ Der `End_<Entity>`-Microflow generiert: MicroflowParameterObject (Entitätsobjek
 
 Verbleibende Einschränkung: physische Löschung löscht auch alle abhängigen Objekte (Mendix Cascade-Delete), wenn die Associations entsprechend konfiguriert sind. Für MERODE-Modelle mit Existenzabhängigkeiten bedeutet das, dass ein Master nicht gelöscht werden kann, solange Dependents existieren - das spiegelt Snoecks Semantik korrekt wider, muss aber in der Applikation explizit gehandhabt werden.
 
+### B15 - Status bei Self-Transitionen OK behoben (2026-09-14)
+
+Der `Set_<Entity>_<evt>`-Microflow setzte den Status auf das Ziel der ersten Transition mit passendem Trigger. Bei M9-propagierten Ereignissen ist das die Self-Transition des ersten Zustands, für Rental also immer `active`, unabhängig vom tatsächlichen Zustand. Jetzt werden Self-Transitionen ignoriert (`resolveStatusTarget()`), und der Status bleibt bei reinen Self-Transitionen unverändert. Test: `mda-agents/tests/test-mendix-status.ts`.
+
+Verbleibende Einschränkungen:
+- Der Microflow prüft den Ausgangszustand nicht. `Set_Rental_payDeposit` setzt `depositPaid` auch dann, wenn die Miete bereits `returned` ist. MERODEs Sequenzbedingung wird also in Mendix nicht erzwungen. Behebung: Decision-Element vor der ChangeObjectAction, das `status` gegen die `from`-Zustände der Transitionen prüft.
+- Führt ein Trigger in verschiedene Zielzustände (z. B. aus zwei Zuständen in zwei unterschiedliche Folgezustände), wird nur der erste verwendet und eine Warnung geloggt. Im Rent-A-Car-Modell tritt das nicht auf.
+- Effects auf DataType-typisierte Attribute (`Set_Rental_payDeposit.depositAmount`, `Set_Rental_payInvoice.invoiceAmount`, beide `MoneyAmount`) werden nicht gesetzt. Der Parameter `new<Attr>` entsteht als String, das Attribut existiert in Mendix aber nur als Association auf die DataType-Entity (B5), daher loggt der Agent `effect attribute ... not found` und erzeugt keinen `MemberChange`. Behebung: DataType-Werte inline als Attribut abbilden oder im Microflow ein DataType-Objekt anlegen und verknüpfen.
+- Ob Studio Pro eine `ChangeObjectAction` ohne `MemberChange` (propagierter Microflow ohne Effects) ohne Warnung akzeptiert, ist im QR3-Check zu prüfen.
+
 ### Workflow-Generierung für MERODE entfällt
 
 Die DEMO-Pipeline erzeugt für jeden Entitytyp-FSM einen Mendix-Workflow mit WaitForNotification-Aktivitäten. Die MERODE-Pipeline tut das nicht. Der `isMerodeFSM()`-Check im `pim-to-mendix-agent` überspringt die Workflow-Generierung für MERODE-Zustandsmaschinen.
