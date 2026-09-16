@@ -7,3 +7,6 @@ dist/
 # Generated transformation outputs (re-created by running the pipeline)
 tests/rent-a-car-pim.json
 tests/rent-a-car-pim-from-bus.json
+
+# Literature
+thesis-context/Literatur
