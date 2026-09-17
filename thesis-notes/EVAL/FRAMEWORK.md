@@ -500,14 +500,63 @@ DEMO Case und MERODE Case, beim Regelabdeckungs-DEMO liegen die Fremdschlüssel 
 Generalisierung und Association Class höher).
 
 **Vorbehalt zu den Zahlen dieser Tabelle:** sie sind aus dem Log des `pim-to-mendix-agent`
-gezählt. Der Agent protokolliert die beiden Member-End-Assoziationen und die Attribute einer
-Association Class nicht einzeln, sondern nur die Association Class selbst. Für das
-Regelabdeckungs-DEMO, das als einzige Untersuchungseinheit eine Association Class enthält,
-sind daher zwei Assoziationen und zwei Attribute nicht in den Zahlen enthalten. Ein Rücklesen
-des Zielmodells über `mda-agents/tests/dump-mendix-domain.ts` zählt hier entsprechend mehr.
-Für die drei übrigen Untersuchungseinheiten besteht diese Lücke nicht. Bemerkenswert bleibt, dass das fallnahe DEMO-Modell **keine** Generalisierung erzeugt, weil dort alle vier abgeleiteten Rental-Typen ein Trigger-Ereignis tragen und damit A7 statt A10 auslösen.
+gezählt, der Agent berichtet dort also seine eigene Sicht. Zwei Zählkonventionen des Logs sind
+dabei zu beachten: die Zeile "Attribute (B6)" enthält die Status-Attribute aus B13 nicht, und
+der Agent protokolliert die beiden Member-End-Assoziationen und die Attribute einer Association
+Class nicht einzeln, sondern nur die Association Class selbst. Abschnitt 8.1.1 löst beides
+gegen den zurückgelesenen Zielzustand auf. Bemerkenswert bleibt, dass das fallnahe DEMO-Modell **keine** Generalisierung erzeugt, weil dort alle vier abgeleiteten Rental-Typen ein Trigger-Ereignis tragen und damit A7 statt A10 auslösen.
 
 **QR3:** alle vier Apps öffnen in Mendix Studio Pro mit 0 Errors und 0 Warnings (Abschnitt 5).
+
+#### 8.1.1 Unabhängige Gegenprobe durch Rücklesen des Zielmodells (2026-09-17)
+
+Die Zahlen in Abschnitt 8.1 stammen aus dem Log des erzeugenden Agenten. Um sie von dieser
+Selbstauskunft unabhängig zu machen, wurde der Zielzustand nach jedem Lauf rein lesend über das
+Mendix Platform SDK aus dem Team Server zurückgelesen (`mda-agents/tests/dump-mendix-domain.ts`,
+Belege `EVAL/Eval_new/<Modell>.mendix.json`). Der Rücklesevorgang schreibt nicht in die App.
+
+| Artefakt (zurückgelesen) | DEMO | MERODE | DEMO Case | MERODE Case |
+|--------------------------|------|--------|-----------|-------------|
+| Entities | 14 | 7 | 17 | 13 |
+| Attribute | 44 | 25 | 29 | 28 |
+| Assoziationen | 15 | 8 | 31 | 20 |
+| Generalisierungen | 1 | 0 | 0 | 0 |
+| Enumerations | 1 | 7 | 1 | 11 |
+| Microflows | 28 | 65 | 14 | 60 |
+| Workflows | 17 | 0 | 7 | 0 |
+| Pages | 12 | 6 | 14 | 10 |
+
+Alle Abweichungen gegenüber Abschnitt 8.1 sind durch die beiden dort genannten
+Zählkonventionen vollständig erklärt und lösen sich rechnerisch auf. Entities sind im
+Rücklesen die Summe aus B2, B4 und der Association Class, Enumerations die Summe aus B3 und
+B13, Microflows die Summe aus B14-B16 und B12. Die Attributzahl des Regelabdeckungs-MERODE
+liegt um sechs, die des fallnahen MERODE um zehn höher, genau um die Zahl der Status-Attribute
+aus B13. Beim Regelabdeckungs-DEMO liegen Attribute und Assoziationen um je zwei höher, genau
+um die nicht protokollierten Artefakte der Association Class `BookingDetail`. Die
+Assoziationszahl 15 ist damit der belegte Wert für dieses Modell, nicht die 13 aus dem Log.
+
+**Inhaltliche Prüfung gegen die Eingabemodelle:** die zurückgelesenen Modelle wurden zusätzlich
+nicht gegen das PIM, sondern gegen die DEMO- beziehungsweise MERODE-Eingabemodelle geprüft
+(`mda-agents/tests/check-mendix-against-input.ts`), womit die vollständige Kette CIM -> PIM ->
+PSM geprüft ist und nicht nur ihr letzter Schritt. Geprüft werden Entities, Attributnamen und
+-typen, Vorgabewerte, Enum-Literale samt Reihenfolge, Generalisierungen, Status-Enums, Pages,
+die Verhaltensartefakte und die Richtung jeder einzelnen Assoziation - in Mendix hält die
+`parent`-Seite einer Reference den Verweis, sie muss also die Viele-Seite des CIM-Modells sein.
+
+| Untersuchungseinheit | bestandene Prüfungen | Abweichungen | begründete Auslassungen |
+|----------------------|----------------------|--------------|--------------------------|
+| DEMO | 104 | 0 | 1 |
+| MERODE | 73 | 0 | 0 |
+| DEMO Case | 99 | 0 | 0 |
+| MERODE Case | 112 | 0 | 0 |
+
+Keine einzige Assoziation ist verdreht, es gibt kein Eingabeelement ohne Entsprechung in Mendix
+und kein erzeugtes Artefakt ohne Ursprung im Eingabemodell. Die einzige begründete Auslassung
+ist das abgeleitete Attribut `Rental.totalDays` des Regelabdeckungs-DEMO, für das in Mendix kein
+OCL-Äquivalent erzeugt wird. Der Prüfer meldet in allen vier Läufen zusätzlich die Page
+`Rental_Detail`, die der Agent weder erzeugt noch entfernt - sie stammt aus einer früheren
+manuellen Bearbeitung des Moduls und ist in den Page-Zahlen oben nicht mitgezählt.
+
 
 ### 8.2 Ausführungsnachweis der generierten DDL gegen PostgreSQL 16
 

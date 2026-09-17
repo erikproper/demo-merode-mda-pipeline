@@ -58,51 +58,43 @@ Stand: 2026-09-17. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
     5 ACR-Microflows erzeugt. Zu klären ist, ob der Dialog in dieser Studio-Pro-Installation
     früher einmal bestätigt wurde. Betrifft auch die Thesis-Abschnitte 6.4.5 und 7.4.5.
 
-- [ ] **Unabhängige Gegenprobe des Mendix-Ergebnisses (Rücklesen über das Platform SDK)** -
-  die Artefaktzahlen in `EVAL/FRAMEWORK.md` Abschnitt 8.1 stammen bislang aus dem Log des
-  erzeugenden Agenten selbst, der Agent berichtet dort also seine eigene Sicht.
-  `mda-agents/tests/dump-mendix-domain.ts` liest den Zielzustand rein lesend aus dem Team
-  Server zurück und macht ihn maschinell prüfbar (Prozedur: `mda-agents/tests/README.md`).
-  **Erledigt:** `rent-a-car-case-merode` am 2026-09-17, Ergebnis in
-  `EVAL/Eval_new/rent-a-car-case-merode.mendix.json`. Entities, Attribute, Assoziationen,
-  Enumerations, Microflows und Workflows decken sich exakt mit dem Agenten-Log
-  (13 / 28 / 20 / 11 / 60 / 0).
-  **Was noch fehlt:** dieselbe Gegenprobe für `rent-a-car-demo`, `rent-a-car-merode` und
-  `rent-a-car-case-demo` - je Modell erst der curl-Lauf, danach das Rückleseskript, weil der
-  Agent das Modul vor jedem Lauf leert.
-  - **Befund aus dem ersten Rücklesen:** das Modul enthält eine Page `Rental_Detail`, die der
-    Agent nicht erzeugt (`pim-to-mendix-agent.ts` kennt kein `_Detail`) und die sein
-    Aufräumschritt auch nicht entfernt, weil dieser nur Pages mit der Endung `_Overview`
-    löscht. Es handelt sich also um einen Rest aus einer früheren oder manuellen Bearbeitung.
-    Die Page-Zahlen in `EVAL/FRAMEWORK.md` Abschnitt 8.1 stammen aus dem Agenten-Log und sind
-    davon nicht berührt, ein Rücklesen zählt aber eine Page mehr. Zu entscheiden, ob die Page
-    vor den restlichen drei Läufen in Studio Pro gelöscht wird.
-  - **Geprüft wird gegen die Eingabemodelle, nicht gegen das PIM:**
-    `mda-agents/tests/check-mendix-against-input.ts` stellt den Dump gegen
-    `tests/rent-a-car-demo.json` bzw. die MERODE-Fixture und prüft damit die vollständige
+- [x] **Unabhängige Gegenprobe des Mendix-Ergebnisses (Rücklesen über das Platform SDK)** -
+  die Artefaktzahlen in `EVAL/FRAMEWORK.md` Abschnitt 8.1 stammten aus dem Log des erzeugenden
+  Agenten selbst, der Agent berichtete dort also seine eigene Sicht. Erledigt am 2026-09-17 für
+  **alle vier Untersuchungseinheiten**, Belege in `EVAL/Eval_new/<Modell>.mendix.json`,
+  Auswertung in `EVAL/FRAMEWORK.md` Abschnitt 8.1.1.
+  - **Zwei Skripte:** `mda-agents/tests/dump-mendix-domain.ts` liest den Zielzustand rein lesend
+    aus dem Team Server zurück. `mda-agents/tests/check-mendix-against-input.ts` stellt diesen
+    Dump gegen das **Eingabemodell** und nicht gegen das PIM, prüft damit also die vollständige
     Kette CIM -> PIM -> PSM statt nur ihres letzten Schritts. Geprüft werden Entities,
     Attributnamen und -typen, Vorgabewerte, Enum-Literale samt Reihenfolge, Generalisierungen,
     Status-Enums, Pages, die Verhaltensartefakte (`WF_<Entity>_<Ereignis>`,
     `Set<Entity>_<Ereignis>`, `Create_<OT>`, `End_<OT>`, `Set_<OT>_<Ereignis>`) und vor allem
-    die **Richtung jeder Assoziation** - in Mendix hält die `parent`-Seite den Verweis, sie
-    muss also die Viele-Seite sein. Vertauschte Seiten werden ausdrücklich als
-    "Fremdschlüssel liegt auf der falschen Entity" gemeldet. Der Exit-Code ist 1 bei jeder
-    Abweichung, das Skript taugt damit auch als Regressionstest.
-  - **Vorabkalibrierung an den Agenten-Logs (2026-09-17):** für die drei noch nicht
-    zurückgelesenen Modelle wurde je ein Dump aus dem letzten Agenten-Log rekonstruiert und
-    geprüft. `rent-a-car-merode` (73 Prüfungen) und `rent-a-car-case-demo` (99 Prüfungen)
-    laufen ohne Abweichung durch. `rent-a-car-demo` meldet vier Abweichungen, die alle
-    denselben Ursprung haben: der Agent legt für die AssociationClass `BookingDetail` zwar
-    Attribute und die beiden Member-End-Assoziationen an, protokolliert sie aber nicht - im
-    echten Rücklesen sollten sie daher verschwinden. Einzige gerechtfertigte Auslassung über
-    alle vier Modelle: `Rental.totalDays` (abgeleitet, kein OCL-Äquivalent).
+    die **Richtung jeder Assoziation** - in Mendix hält die `parent`-Seite den Verweis, sie muss
+    also die Viele-Seite sein. Vertauschte Seiten werden ausdrücklich als "Fremdschlüssel liegt
+    auf der falschen Entity" gemeldet. Exit-Code 1 bei jeder Abweichung, damit auch als
+    Regressionstest nutzbar. Prozedur: `mda-agents/tests/README.md`.
+  - **Ergebnis:** 104 / 73 / 99 / 112 bestandene Prüfungen für DEMO, MERODE, DEMO Case und
+    MERODE Case, **null Abweichungen**. Keine Assoziation ist verdreht, kein Eingabeelement
+    bleibt ohne Entsprechung und kein Mendix-Artefakt ohne Ursprung. Einzige begründete
+    Auslassung über alle vier Modelle: `Rental.totalDays` (abgeleitet, kein OCL-Äquivalent).
+  - **Zwei Zählkonventionen des Agenten-Logs aufgedeckt:** die Logzeile "Attribute (B6)" zählt
+    die Status-Attribute aus B13 nicht mit (MERODE +6, MERODE Case +10), und die beiden
+    Member-End-Assoziationen sowie die Attribute einer Association Class protokolliert der Agent
+    nicht einzeln (DEMO +2 Attribute, +2 Assoziationen). Belegter Wert für das
+    Regelabdeckungs-DEMO sind damit **15 Assoziationen und 44 Attribute**, nicht 13 und 42.
+    Alle übrigen Zahlen decken sich rechnerisch exakt mit dem Log. In Abschnitt 8.1.1
+    dokumentiert.
   - **Daraus korrigiert:** die Zeilen "Assoziationen gesamt (B9)" und "davon
-    DataType-Assoziationen (B5)" in `EVAL/FRAMEWORK.md` Abschnitt 8.1 waren nicht
-    ineinander enthalten, sondern disjunkt - die Gesamtzahl war dadurch zu niedrig
-    ausgewiesen. Korrigiert auf 13 / 8 / 31 / 20, was sich mit dem Rücklesen des
-    fallnahen MERODE-Modells (20 Assoziationen) und mit den Fremdschlüsselzahlen in
-    Abschnitt 8.2 deckt. **Falls die Thesis dieselbe Tabelle führt, ist sie dort ebenfalls
-    zu korrigieren.**
+    DataType-Assoziationen (B5)" in `EVAL/FRAMEWORK.md` Abschnitt 8.1 waren nicht ineinander
+    enthalten, sondern disjunkt - die Gesamtzahl war dadurch zu niedrig ausgewiesen. Korrigiert
+    auf 13 / 8 / 31 / 20 (Logsicht), im Rücklesen 15 / 8 / 31 / 20. **Falls die Thesis dieselbe
+    Tabelle führt, ist sie dort ebenfalls zu korrigieren.**
+  - **Offener Nebenbefund:** das Modul enthält eine Page `Rental_Detail`, die der Agent nicht
+    erzeugt (`pim-to-mendix-agent.ts` kennt kein `_Detail`) und die sein Aufräumschritt auch
+    nicht entfernt, weil dieser nur Pages mit der Endung `_Overview` löscht. Rest aus einer
+    früheren manuellen Bearbeitung, bewusst ignoriert und in den Page-Zahlen nicht mitgezählt.
+    Kann bei Gelegenheit in Studio Pro gelöscht werden.
 
 - [x] **Traceability Coverage (QR4)** - Aus den beiden Live-Läufen oben berechnet:
   **DEMO 95,4 %** (103/108, 5 gerechtfertigte NotMapped-Einträge für A7-SM-Trigger-Semantik),

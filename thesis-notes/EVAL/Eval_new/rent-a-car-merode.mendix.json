@@ -1,0 +1,475 @@
+{
+  "readAt": "2026-09-17T10:01:19.863Z",
+  "appId": "94883cdf-f7b8-4a69-bf34-cda991406e5c",
+  "branch": "main",
+  "module": "MyFirstModule",
+  "deep": false,
+  "counts": {
+    "entities": 7,
+    "attributes": 25,
+    "associations": 8,
+    "generalizations": 0,
+    "enumerations": 7,
+    "microflows": 65,
+    "workflows": 0,
+    "pages": 7
+  },
+  "entities": [
+    {
+      "name": "Branch",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "BranchID",
+          "type": "Integer"
+        },
+        {
+          "name": "city",
+          "type": "String"
+        },
+        {
+          "name": "name",
+          "type": "String"
+        },
+        {
+          "name": "status",
+          "type": "Enumeration(Branch_Status)"
+        }
+      ]
+    },
+    {
+      "name": "Car",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "CarID",
+          "type": "Integer"
+        },
+        {
+          "name": "group",
+          "type": "Enumeration(CarGroup)"
+        },
+        {
+          "name": "licensePlate",
+          "type": "String"
+        },
+        {
+          "name": "mileage",
+          "type": "Integer"
+        },
+        {
+          "name": "status",
+          "type": "Enumeration(Car_Status)"
+        }
+      ]
+    },
+    {
+      "name": "Invoice",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "InvoiceID",
+          "type": "Integer"
+        },
+        {
+          "name": "paidOn",
+          "type": "String"
+        },
+        {
+          "name": "status",
+          "type": "Enumeration(Invoice_Status)"
+        }
+      ]
+    },
+    {
+      "name": "MoneyAmount",
+      "generalization": null,
+      "attributes": []
+    },
+    {
+      "name": "Person",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "email",
+          "type": "String"
+        },
+        {
+          "name": "fullName",
+          "type": "String"
+        },
+        {
+          "name": "PersonID",
+          "type": "Integer"
+        },
+        {
+          "name": "status",
+          "type": "Enumeration(Person_Status)"
+        }
+      ]
+    },
+    {
+      "name": "Rental",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "carGroup",
+          "type": "Enumeration(CarGroup)"
+        },
+        {
+          "name": "endingDay",
+          "type": "String"
+        },
+        {
+          "name": "RentalID",
+          "type": "Integer"
+        },
+        {
+          "name": "startingDay",
+          "type": "String"
+        },
+        {
+          "name": "status",
+          "type": "Enumeration(Rental_Status)"
+        }
+      ]
+    },
+    {
+      "name": "RentalLine",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "description",
+          "type": "String"
+        },
+        {
+          "name": "quantity",
+          "type": "Integer"
+        },
+        {
+          "name": "RentalLineID",
+          "type": "Integer"
+        },
+        {
+          "name": "status",
+          "type": "Enumeration(RentalLine_Status)"
+        }
+      ]
+    }
+  ],
+  "associations": [
+    {
+      "name": "Invoice_amount",
+      "parent": "Invoice",
+      "child": "MoneyAmount",
+      "type": "Reference",
+      "owner": "Both"
+    },
+    {
+      "name": "InvoiceDependsOnRentalLine",
+      "parent": "Invoice",
+      "child": "RentalLine",
+      "type": "Reference",
+      "owner": "Default"
+    },
+    {
+      "name": "Rental_depositAmount",
+      "parent": "Rental",
+      "child": "MoneyAmount",
+      "type": "Reference",
+      "owner": "Both"
+    },
+    {
+      "name": "Rental_invoiceAmount",
+      "parent": "Rental",
+      "child": "MoneyAmount",
+      "type": "Reference",
+      "owner": "Both"
+    },
+    {
+      "name": "RentalDependsOnBranch",
+      "parent": "Rental",
+      "child": "Branch",
+      "type": "Reference",
+      "owner": "Default"
+    },
+    {
+      "name": "RentalDependsOnCar",
+      "parent": "Rental",
+      "child": "Car",
+      "type": "Reference",
+      "owner": "Default"
+    },
+    {
+      "name": "RentalDependsOnPerson",
+      "parent": "Rental",
+      "child": "Person",
+      "type": "Reference",
+      "owner": "Default"
+    },
+    {
+      "name": "RentalLineDependsOnRental",
+      "parent": "RentalLine",
+      "child": "Rental",
+      "type": "Reference",
+      "owner": "Default"
+    }
+  ],
+  "enumerations": [
+    {
+      "name": "Branch_Status",
+      "literals": [
+        "open"
+      ]
+    },
+    {
+      "name": "Car_Status",
+      "literals": [
+        "registered"
+      ]
+    },
+    {
+      "name": "CarGroup",
+      "literals": [
+        "economy",
+        "compact",
+        "luxury"
+      ]
+    },
+    {
+      "name": "Invoice_Status",
+      "literals": [
+        "issued",
+        "paid"
+      ]
+    },
+    {
+      "name": "Person_Status",
+      "literals": [
+        "registered"
+      ]
+    },
+    {
+      "name": "Rental_Status",
+      "literals": [
+        "active",
+        "depositPaid",
+        "returned",
+        "invoicePaid"
+      ]
+    },
+    {
+      "name": "RentalLine_Status",
+      "literals": [
+        "active"
+      ]
+    }
+  ],
+  "microflows": [
+    {
+      "name": "Create_Branch"
+    },
+    {
+      "name": "Create_Car"
+    },
+    {
+      "name": "Create_Invoice"
+    },
+    {
+      "name": "Create_Person"
+    },
+    {
+      "name": "Create_Rental"
+    },
+    {
+      "name": "Create_RentalLine"
+    },
+    {
+      "name": "End_Branch"
+    },
+    {
+      "name": "End_Car"
+    },
+    {
+      "name": "End_Invoice"
+    },
+    {
+      "name": "End_Person"
+    },
+    {
+      "name": "End_Rental"
+    },
+    {
+      "name": "End_RentalLine"
+    },
+    {
+      "name": "Set_Branch_addRentalLine"
+    },
+    {
+      "name": "Set_Branch_closeInvoice"
+    },
+    {
+      "name": "Set_Branch_completeRental"
+    },
+    {
+      "name": "Set_Branch_extendRental"
+    },
+    {
+      "name": "Set_Branch_issueInvoice"
+    },
+    {
+      "name": "Set_Branch_markInvoicePaid"
+    },
+    {
+      "name": "Set_Branch_payDeposit"
+    },
+    {
+      "name": "Set_Branch_payInvoice"
+    },
+    {
+      "name": "Set_Branch_removeRentalLine"
+    },
+    {
+      "name": "Set_Branch_returnCar"
+    },
+    {
+      "name": "Set_Branch_startRental"
+    },
+    {
+      "name": "Set_Branch_updateRentalLine"
+    },
+    {
+      "name": "Set_Car_addRentalLine"
+    },
+    {
+      "name": "Set_Car_closeInvoice"
+    },
+    {
+      "name": "Set_Car_completeRental"
+    },
+    {
+      "name": "Set_Car_extendRental"
+    },
+    {
+      "name": "Set_Car_issueInvoice"
+    },
+    {
+      "name": "Set_Car_markInvoicePaid"
+    },
+    {
+      "name": "Set_Car_payDeposit"
+    },
+    {
+      "name": "Set_Car_payInvoice"
+    },
+    {
+      "name": "Set_Car_removeRentalLine"
+    },
+    {
+      "name": "Set_Car_returnCar"
+    },
+    {
+      "name": "Set_Car_startRental"
+    },
+    {
+      "name": "Set_Car_updateCarMileage"
+    },
+    {
+      "name": "Set_Car_updateRentalLine"
+    },
+    {
+      "name": "Set_Invoice_markInvoicePaid"
+    },
+    {
+      "name": "Set_Person_addRentalLine"
+    },
+    {
+      "name": "Set_Person_closeInvoice"
+    },
+    {
+      "name": "Set_Person_completeRental"
+    },
+    {
+      "name": "Set_Person_extendRental"
+    },
+    {
+      "name": "Set_Person_issueInvoice"
+    },
+    {
+      "name": "Set_Person_markInvoicePaid"
+    },
+    {
+      "name": "Set_Person_payDeposit"
+    },
+    {
+      "name": "Set_Person_payInvoice"
+    },
+    {
+      "name": "Set_Person_removeRentalLine"
+    },
+    {
+      "name": "Set_Person_returnCar"
+    },
+    {
+      "name": "Set_Person_startRental"
+    },
+    {
+      "name": "Set_Person_updatePersonDetails"
+    },
+    {
+      "name": "Set_Person_updateRentalLine"
+    },
+    {
+      "name": "Set_Rental_addRentalLine"
+    },
+    {
+      "name": "Set_Rental_closeInvoice"
+    },
+    {
+      "name": "Set_Rental_extendRental"
+    },
+    {
+      "name": "Set_Rental_issueInvoice"
+    },
+    {
+      "name": "Set_Rental_markInvoicePaid"
+    },
+    {
+      "name": "Set_Rental_payDeposit"
+    },
+    {
+      "name": "Set_Rental_payInvoice"
+    },
+    {
+      "name": "Set_Rental_removeRentalLine"
+    },
+    {
+      "name": "Set_Rental_returnCar"
+    },
+    {
+      "name": "Set_Rental_updateRentalLine"
+    },
+    {
+      "name": "Set_RentalLine_closeInvoice"
+    },
+    {
+      "name": "Set_RentalLine_issueInvoice"
+    },
+    {
+      "name": "Set_RentalLine_markInvoicePaid"
+    },
+    {
+      "name": "Set_RentalLine_updateRentalLine"
+    }
+  ],
+  "workflows": [],
+  "pages": [
+    "Branch_Overview",
+    "Car_Overview",
+    "Invoice_Overview",
+    "Person_Overview",
+    "RentalLine_Overview",
+    "Rental_Detail",
+    "Rental_Overview"
+  ]
+}
