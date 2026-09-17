@@ -19,6 +19,8 @@ Siehe `thesis-notes/PROTOTYPE_TODOS.md` für den aktuellen Stand dieser Einschr�
 |-------|-------------|
 | `rent-a-car-demo.json` | **Eingabe** - valides DEMO Fact Model (Rent-A-Car Use Case) |
 | `rent-a-car-merode.json` | **Eingabe** - valides MERODE Domain Model (Rent-A-Car Use Case) |
+| `rent-a-car-case-demo.json` | **Eingabe** - fallnahes DEMO Fact Model nach Bzowskis Rent-A-Car-Faktmodell (zweite Untersuchungseinheit, keine Regelabdeckung) |
+| `rent-a-car-case-merode.json` | **Eingabe** - MERODE-Gegenstück zum fallnahen DEMO-Modell |
 | `test-transform.ts` | **Offline-Smoke-Test** - Teilausschnitt A3/A5/A12 ohne MQTT-Broker, schreibt `rent-a-car-pim-from-bus.json` |
 | `smoke-m9-m3.ts` | **Offline-Smoke-Test** - M3/M9-EDG-Propagation ohne MQTT-Broker (bekannte `markInvoicePaid`-Abweichung, s. o.) |
 | `pim-subscriber.ts` | **Bus-Utility** - abonniert `model.pim.created`, schreibt `rent-a-car-pim-from-bus.json` |
@@ -97,3 +99,47 @@ Frühere Versionen dieser Datei beschrieben eine strukturell andere, kleinere DE
 abdeckende Rent-A-Car-Fixture ersetzt - die o.g. Workarounds sind damit gegenstandslos
 (z. B. hat `CarGroup` inzwischen reguläre, fachlich sinnvolle Literale statt eines
 Platzhalter-Workarounds).
+
+---
+
+## rent-a-car-case-demo.json / rent-a-car-case-merode.json - fallnahes Modellpaar
+
+Dieses zweite Paar verfolgt **nicht** das Ziel der Regelabdeckung. Es bildet Bzowskis
+veröffentlichtes DEMO-Faktmodell für Rent-A-Car nach (Diplomarbeit TU Wien 2025,
+Abbildungen 6.2 bis 6.4 und Anhang G, Tabellen G.1 bis G.5), das seinerseits auf
+Dietz und Mulder, Kapitel 15, zurückgeht. Zweck ist die externe Validität: die
+Transformationsqualität soll auch an einem Modell gemessen werden, das nicht auf dieses
+Artefakt hin entworfen wurde.
+
+Entsprechend feuern hier **nicht** alle Regeln. A8 (AssociationClass), A9 (abgeleitete
+Spezialisierung), A10 (schlichte Generalisierung) und die Ableitungsregeln bleiben inaktiv,
+weil Bzowskis Faktmodell die zugehörigen Konstrukte nicht enthält. A7 feuert dafür viermal,
+einmal je ereignisgetriggerter Spezialisierung von RENTAL.
+
+| Element | `rent-a-car-case-demo.json` | `rent-a-car-case-merode.json` |
+|---------|------|--------|
+| ValueTypes / DomainTypes | 4 | 4 |
+| EntityTypes / ObjectTypes | 14 | 10 |
+| FactTypes / ExistenceDependencies | 14 | 8 |
+| EventTypes / BusinessEventTypes | 7 | 30 |
+
+Drei Konstrukte aus Bzowskis Modell sind im Eingabeschema nicht ausdrückbar und werden
+inhaltstreu, aber formverändert abgebildet: der aggregierte Entitätstyp
+`{CAR GROUP} * {YEAR}` wird zum Entitätstyp `YearlyCarGroup`, der attributierte Werttyp
+`{YEAR}` wird zum Entitätstyp `Year`, und `{CAR GROUP}` erhält Literale, weil ein leerer
+Enum `pimuml-schema.json` verletzt. Die vollständige Abweichungsliste mit Begründungen
+steht in `thesis-notes/EVAL/FRAMEWORK.md`, Abschnitt 4.2.
+
+Testbefehle gegen die Live-Pipeline:
+
+```bash
+curl -X POST https://mda.tlolab.com/api/model \
+  -H "Content-Type: application/json" \
+  -H "X-Input-Format: demo" \
+  -d @mda-agents/tests/rent-a-car-case-demo.json
+
+curl -X POST https://mda.tlolab.com/api/model \
+  -H "Content-Type: application/json" \
+  -H "X-Input-Format: merode" \
+  -d @mda-agents/tests/rent-a-car-case-merode.json
+```

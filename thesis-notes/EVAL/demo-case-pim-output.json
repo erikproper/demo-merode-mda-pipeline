@@ -1,0 +1,1635 @@
+{
+  "name": "Rent-A-Car Case (DEMO) - pimUML",
+  "enumerations": [
+    {
+      "name": "CarGroup",
+      "literals": [
+        "economy",
+        "compact",
+        "luxury"
+      ]
+    }
+  ],
+  "dataTypes": [
+    {
+      "name": "MoneyAmount"
+    },
+    {
+      "name": "DayNumber"
+    },
+    {
+      "name": "YearNumber"
+    }
+  ],
+  "associationClasses": [],
+  "classes": [
+    {
+      "name": "Rental",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "RentalID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "startingDay",
+          "type": "DayNumber",
+          "isDerived": false
+        },
+        {
+          "name": "endingDay",
+          "type": "DayNumber",
+          "isDerived": false
+        },
+        {
+          "name": "carGroup",
+          "type": "CarGroup",
+          "isDerived": false
+        },
+        {
+          "name": "rentalCompleted",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "rentalTaken",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "rentalReturned",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "rentalDepositPaid",
+          "type": "Boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "rentalInvoicePaid",
+          "type": "Boolean",
+          "defaultValue": "false"
+        }
+      ]
+    },
+    {
+      "name": "DepositPaidRental",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "DepositPaidRentalID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "depositAmount",
+          "type": "MoneyAmount",
+          "isDerived": false
+        }
+      ]
+    },
+    {
+      "name": "TakenRental",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "TakenRentalID",
+          "type": "Integer",
+          "isID": true
+        }
+      ]
+    },
+    {
+      "name": "ReturnedRental",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "ReturnedRentalID",
+          "type": "Integer",
+          "isID": true
+        }
+      ]
+    },
+    {
+      "name": "InvoicePaidRental",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "InvoicePaidRentalID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "invoiceAmount",
+          "type": "MoneyAmount",
+          "isDerived": false
+        }
+      ]
+    },
+    {
+      "name": "Transport",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "TransportID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "dayOfTransport",
+          "type": "DayNumber",
+          "isDerived": false
+        },
+        {
+          "name": "transportCompleted",
+          "type": "Boolean",
+          "defaultValue": "false"
+        }
+      ]
+    },
+    {
+      "name": "ManagedDay",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "ManagedDayID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "day",
+          "type": "DayNumber",
+          "isDerived": false
+        },
+        {
+          "name": "transportManagingDone",
+          "type": "Boolean",
+          "defaultValue": "false"
+        }
+      ]
+    },
+    {
+      "name": "Car",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "CarID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "carGroup",
+          "type": "CarGroup",
+          "isDerived": false
+        }
+      ]
+    },
+    {
+      "name": "Branch",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "BranchID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "isDerived": false
+        }
+      ]
+    },
+    {
+      "name": "Person",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "PersonID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "fullName",
+          "type": "String",
+          "isDerived": false
+        }
+      ]
+    },
+    {
+      "name": "Employee",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "EmployeeID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "fullName",
+          "type": "String",
+          "isDerived": false
+        }
+      ]
+    },
+    {
+      "name": "DrivingLicense",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "DrivingLicenseID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "expirationDay",
+          "type": "DayNumber",
+          "isDerived": false
+        }
+      ]
+    },
+    {
+      "name": "Year",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "YearID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "yearNumber",
+          "type": "YearNumber",
+          "isDerived": false
+        },
+        {
+          "name": "maxRentalDuration",
+          "type": "Integer",
+          "isDerived": false
+        },
+        {
+          "name": "rentalHorizon",
+          "type": "Integer",
+          "isDerived": false
+        },
+        {
+          "name": "locationFineRate",
+          "type": "MoneyAmount",
+          "isDerived": false
+        },
+        {
+          "name": "lateReturnFineRate",
+          "type": "MoneyAmount",
+          "isDerived": false
+        }
+      ]
+    },
+    {
+      "name": "YearlyCarGroup",
+      "isAbstract": false,
+      "isDerived": false,
+      "ownedAttributes": [
+        {
+          "name": "YearlyCarGroupID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "carGroup",
+          "type": "CarGroup",
+          "isDerived": false
+        },
+        {
+          "name": "year",
+          "type": "YearNumber",
+          "isDerived": false
+        },
+        {
+          "name": "dailyRentalRate",
+          "type": "MoneyAmount",
+          "isDerived": false
+        },
+        {
+          "name": "standardDepositAmount",
+          "type": "MoneyAmount",
+          "isDerived": false
+        }
+      ]
+    }
+  ],
+  "associations": [
+    {
+      "name": "RentalPickedUpAt",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "rental",
+          "type": "Rental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "pickUpLocation",
+          "type": "Branch",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "RentalReturnedTo",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "rental",
+          "type": "Rental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "returnLocation",
+          "type": "Branch",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "RentalCompletedBy",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "rental",
+          "type": "Rental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "rentalCompleter",
+          "type": "Employee",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "RentalRentedBy",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "rental",
+          "type": "Rental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "renter",
+          "type": "Person",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "RentalDepositPaidBy",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "rental",
+          "type": "Rental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "depositPayer",
+          "type": "Person",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "RentalInvoicePaidBy",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "rental",
+          "type": "Rental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "invoicePayer",
+          "type": "Person",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "RentalDrivenBy",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "rental",
+          "type": "Rental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "driver",
+          "type": "Person",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "PersonHasDrivingLicense",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "person",
+          "type": "Person",
+          "lower": 1,
+          "upper": 1
+        },
+        {
+          "name": "drivingLicense",
+          "type": "DrivingLicense",
+          "lower": 0,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "TakenRentalUsesCar",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "takenRental",
+          "type": "TakenRental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "car",
+          "type": "Car",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "ReturnedRentalReturnedAt",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "returnedRental",
+          "type": "ReturnedRental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "actualReturnLocation",
+          "type": "Branch",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "TransportStartsAt",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "transport",
+          "type": "Transport",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "fromBranch",
+          "type": "Branch",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "TransportEndsAt",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "transport",
+          "type": "Transport",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "toBranch",
+          "type": "Branch",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "TransportMovesCar",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "transport",
+          "type": "Transport",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "car",
+          "type": "Car",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "ManagedDayManagedBy",
+      "isAggregation": false,
+      "memberEnds": [
+        {
+          "name": "managedDay",
+          "type": "ManagedDay",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "transportManager",
+          "type": "Employee",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "DepositPaidRentalIsARental",
+      "triggerEvent": "rentalDepositPaid",
+      "memberEnds": [
+        {
+          "name": "specialization",
+          "type": "DepositPaidRental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "parent",
+          "type": "Rental",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "TakenRentalIsARental",
+      "triggerEvent": "rentalTaken",
+      "memberEnds": [
+        {
+          "name": "specialization",
+          "type": "TakenRental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "parent",
+          "type": "Rental",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "ReturnedRentalIsARental",
+      "triggerEvent": "rentalReturned",
+      "memberEnds": [
+        {
+          "name": "specialization",
+          "type": "ReturnedRental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "parent",
+          "type": "Rental",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "InvoicePaidRentalIsARental",
+      "triggerEvent": "rentalInvoicePaid",
+      "memberEnds": [
+        {
+          "name": "specialization",
+          "type": "InvoicePaidRental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "parent",
+          "type": "Rental",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    }
+  ],
+  "generalizations": [],
+  "stateMachines": [
+    {
+      "name": "SM_Rental",
+      "entityType": "Rental",
+      "regions": [
+        {
+          "name": "rentalCompleted",
+          "forEvent": "rentalCompleted",
+          "states": [
+            {
+              "name": "rentalCompleted_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "rentalCompleted_false",
+              "kind": "false"
+            },
+            {
+              "name": "rentalCompleted_true",
+              "kind": "true"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "rentalCompleted_initial",
+              "to": "rentalCompleted_false"
+            },
+            {
+              "from": "rentalCompleted_false",
+              "to": "rentalCompleted_true",
+              "trigger": "rentalCompleted",
+              "alfExpression": "self.rentalCompleted = true"
+            }
+          ]
+        },
+        {
+          "name": "rentalTaken",
+          "forEvent": "rentalTaken",
+          "states": [
+            {
+              "name": "rentalTaken_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "rentalTaken_false",
+              "kind": "false"
+            },
+            {
+              "name": "rentalTaken_true",
+              "kind": "true",
+              "entryActivity": "CreateTakenRental"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "rentalTaken_initial",
+              "to": "rentalTaken_false"
+            },
+            {
+              "from": "rentalTaken_false",
+              "to": "rentalTaken_true",
+              "trigger": "rentalTaken",
+              "alfExpression": "self.rentalTaken = true"
+            }
+          ]
+        },
+        {
+          "name": "rentalReturned",
+          "forEvent": "rentalReturned",
+          "states": [
+            {
+              "name": "rentalReturned_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "rentalReturned_false",
+              "kind": "false"
+            },
+            {
+              "name": "rentalReturned_true",
+              "kind": "true",
+              "entryActivity": "CreateReturnedRental"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "rentalReturned_initial",
+              "to": "rentalReturned_false"
+            },
+            {
+              "from": "rentalReturned_false",
+              "to": "rentalReturned_true",
+              "trigger": "rentalReturned",
+              "alfExpression": "self.rentalReturned = true"
+            }
+          ]
+        },
+        {
+          "name": "rentalDepositPaid",
+          "forEvent": "rentalDepositPaid",
+          "states": [
+            {
+              "name": "rentalDepositPaid_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "rentalDepositPaid_false",
+              "kind": "false"
+            },
+            {
+              "name": "rentalDepositPaid_true",
+              "kind": "true",
+              "entryActivity": "CreateDepositPaidRental"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "rentalDepositPaid_initial",
+              "to": "rentalDepositPaid_false"
+            },
+            {
+              "from": "rentalDepositPaid_false",
+              "to": "rentalDepositPaid_true",
+              "trigger": "rentalDepositPaid",
+              "alfExpression": "self.rentalDepositPaid = true"
+            }
+          ]
+        },
+        {
+          "name": "rentalInvoicePaid",
+          "forEvent": "rentalInvoicePaid",
+          "states": [
+            {
+              "name": "rentalInvoicePaid_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "rentalInvoicePaid_false",
+              "kind": "false"
+            },
+            {
+              "name": "rentalInvoicePaid_true",
+              "kind": "true",
+              "entryActivity": "CreateInvoicePaidRental"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "rentalInvoicePaid_initial",
+              "to": "rentalInvoicePaid_false"
+            },
+            {
+              "from": "rentalInvoicePaid_false",
+              "to": "rentalInvoicePaid_true",
+              "trigger": "rentalInvoicePaid",
+              "alfExpression": "self.rentalInvoicePaid = true"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "SetRental_rentalCompleted",
+          "kind": "set",
+          "targetType": "Rental"
+        },
+        {
+          "name": "SetRental_rentalTaken",
+          "kind": "set",
+          "targetType": "Rental"
+        },
+        {
+          "name": "SetRental_rentalReturned",
+          "kind": "set",
+          "targetType": "Rental"
+        },
+        {
+          "name": "SetRental_rentalDepositPaid",
+          "kind": "set",
+          "targetType": "Rental"
+        },
+        {
+          "name": "SetRental_rentalInvoicePaid",
+          "kind": "set",
+          "targetType": "Rental"
+        },
+        {
+          "name": "CreateDepositPaidRental",
+          "kind": "create",
+          "targetType": "DepositPaidRental"
+        },
+        {
+          "name": "CreateTakenRental",
+          "kind": "create",
+          "targetType": "TakenRental"
+        },
+        {
+          "name": "CreateReturnedRental",
+          "kind": "create",
+          "targetType": "ReturnedRental"
+        },
+        {
+          "name": "CreateInvoicePaidRental",
+          "kind": "create",
+          "targetType": "InvoicePaidRental"
+        }
+      ]
+    },
+    {
+      "name": "SM_DepositPaidRental",
+      "entityType": "DepositPaidRental",
+      "regions": []
+    },
+    {
+      "name": "SM_TakenRental",
+      "entityType": "TakenRental",
+      "regions": []
+    },
+    {
+      "name": "SM_ReturnedRental",
+      "entityType": "ReturnedRental",
+      "regions": []
+    },
+    {
+      "name": "SM_InvoicePaidRental",
+      "entityType": "InvoicePaidRental",
+      "regions": []
+    },
+    {
+      "name": "SM_Transport",
+      "entityType": "Transport",
+      "regions": [
+        {
+          "name": "transportCompleted",
+          "forEvent": "transportCompleted",
+          "states": [
+            {
+              "name": "transportCompleted_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "transportCompleted_false",
+              "kind": "false"
+            },
+            {
+              "name": "transportCompleted_true",
+              "kind": "true"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "transportCompleted_initial",
+              "to": "transportCompleted_false"
+            },
+            {
+              "from": "transportCompleted_false",
+              "to": "transportCompleted_true",
+              "trigger": "transportCompleted",
+              "alfExpression": "self.transportCompleted = true"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "SetTransport_transportCompleted",
+          "kind": "set",
+          "targetType": "Transport"
+        }
+      ]
+    },
+    {
+      "name": "SM_ManagedDay",
+      "entityType": "ManagedDay",
+      "regions": [
+        {
+          "name": "transportManagingDone",
+          "forEvent": "transportManagingDone",
+          "states": [
+            {
+              "name": "transportManagingDone_initial",
+              "kind": "initial"
+            },
+            {
+              "name": "transportManagingDone_false",
+              "kind": "false"
+            },
+            {
+              "name": "transportManagingDone_true",
+              "kind": "true"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "transportManagingDone_initial",
+              "to": "transportManagingDone_false"
+            },
+            {
+              "from": "transportManagingDone_false",
+              "to": "transportManagingDone_true",
+              "trigger": "transportManagingDone",
+              "alfExpression": "self.transportManagingDone = true"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "SetManagedDay_transportManagingDone",
+          "kind": "set",
+          "targetType": "ManagedDay"
+        }
+      ]
+    },
+    {
+      "name": "SM_Car",
+      "entityType": "Car",
+      "regions": []
+    },
+    {
+      "name": "SM_Branch",
+      "entityType": "Branch",
+      "regions": []
+    },
+    {
+      "name": "SM_Person",
+      "entityType": "Person",
+      "regions": []
+    },
+    {
+      "name": "SM_Employee",
+      "entityType": "Employee",
+      "regions": []
+    },
+    {
+      "name": "SM_DrivingLicense",
+      "entityType": "DrivingLicense",
+      "regions": []
+    },
+    {
+      "name": "SM_Year",
+      "entityType": "Year",
+      "regions": []
+    },
+    {
+      "name": "SM_YearlyCarGroup",
+      "entityType": "YearlyCarGroup",
+      "regions": []
+    }
+  ],
+  "_source": {
+    "format": "demo"
+  },
+  "_trace": [
+    {
+      "sourceType": "ValueType",
+      "sourceName": "CarGroup",
+      "targetType": "Enumeration",
+      "targetName": "CarGroup"
+    },
+    {
+      "sourceType": "ValueType",
+      "sourceName": "MoneyAmount",
+      "targetType": "DataType",
+      "targetName": "MoneyAmount"
+    },
+    {
+      "sourceType": "ValueType",
+      "sourceName": "DayNumber",
+      "targetType": "DataType",
+      "targetName": "DayNumber"
+    },
+    {
+      "sourceType": "ValueType",
+      "sourceName": "YearNumber",
+      "targetType": "DataType",
+      "targetName": "YearNumber"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Rental",
+      "targetType": "Class",
+      "targetName": "Rental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Rental",
+      "targetType": "Property",
+      "targetName": "Rental.RentalID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Rental.startingDay",
+      "targetType": "Property",
+      "targetName": "Rental.startingDay"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Rental.endingDay",
+      "targetType": "Property",
+      "targetName": "Rental.endingDay"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Rental.carGroup",
+      "targetType": "Property",
+      "targetName": "Rental.carGroup"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "DepositPaidRental",
+      "targetType": "Class",
+      "targetName": "DepositPaidRental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "DepositPaidRental",
+      "targetType": "Property",
+      "targetName": "DepositPaidRental.DepositPaidRentalID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "DepositPaidRental.depositAmount",
+      "targetType": "Property",
+      "targetName": "DepositPaidRental.depositAmount"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "TakenRental",
+      "targetType": "Class",
+      "targetName": "TakenRental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "TakenRental",
+      "targetType": "Property",
+      "targetName": "TakenRental.TakenRentalID"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "ReturnedRental",
+      "targetType": "Class",
+      "targetName": "ReturnedRental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "ReturnedRental",
+      "targetType": "Property",
+      "targetName": "ReturnedRental.ReturnedRentalID"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "InvoicePaidRental",
+      "targetType": "Class",
+      "targetName": "InvoicePaidRental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "InvoicePaidRental",
+      "targetType": "Property",
+      "targetName": "InvoicePaidRental.InvoicePaidRentalID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "InvoicePaidRental.invoiceAmount",
+      "targetType": "Property",
+      "targetName": "InvoicePaidRental.invoiceAmount"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Transport",
+      "targetType": "Class",
+      "targetName": "Transport"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Transport",
+      "targetType": "Property",
+      "targetName": "Transport.TransportID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Transport.dayOfTransport",
+      "targetType": "Property",
+      "targetName": "Transport.dayOfTransport"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "ManagedDay",
+      "targetType": "Class",
+      "targetName": "ManagedDay"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "ManagedDay",
+      "targetType": "Property",
+      "targetName": "ManagedDay.ManagedDayID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "ManagedDay.day",
+      "targetType": "Property",
+      "targetName": "ManagedDay.day"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Car",
+      "targetType": "Class",
+      "targetName": "Car"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Car",
+      "targetType": "Property",
+      "targetName": "Car.CarID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Car.carGroup",
+      "targetType": "Property",
+      "targetName": "Car.carGroup"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Branch",
+      "targetType": "Class",
+      "targetName": "Branch"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Branch",
+      "targetType": "Property",
+      "targetName": "Branch.BranchID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Branch.name",
+      "targetType": "Property",
+      "targetName": "Branch.name"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Person",
+      "targetType": "Class",
+      "targetName": "Person"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Person",
+      "targetType": "Property",
+      "targetName": "Person.PersonID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Person.fullName",
+      "targetType": "Property",
+      "targetName": "Person.fullName"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Employee",
+      "targetType": "Class",
+      "targetName": "Employee"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Employee",
+      "targetType": "Property",
+      "targetName": "Employee.EmployeeID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Employee.fullName",
+      "targetType": "Property",
+      "targetName": "Employee.fullName"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "DrivingLicense",
+      "targetType": "Class",
+      "targetName": "DrivingLicense"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "DrivingLicense",
+      "targetType": "Property",
+      "targetName": "DrivingLicense.DrivingLicenseID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "DrivingLicense.expirationDay",
+      "targetType": "Property",
+      "targetName": "DrivingLicense.expirationDay"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Year",
+      "targetType": "Class",
+      "targetName": "Year"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Year",
+      "targetType": "Property",
+      "targetName": "Year.YearID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Year.yearNumber",
+      "targetType": "Property",
+      "targetName": "Year.yearNumber"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Year.maxRentalDuration",
+      "targetType": "Property",
+      "targetName": "Year.maxRentalDuration"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Year.rentalHorizon",
+      "targetType": "Property",
+      "targetName": "Year.rentalHorizon"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Year.locationFineRate",
+      "targetType": "Property",
+      "targetName": "Year.locationFineRate"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "Year.lateReturnFineRate",
+      "targetType": "Property",
+      "targetName": "Year.lateReturnFineRate"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "YearlyCarGroup",
+      "targetType": "Class",
+      "targetName": "YearlyCarGroup"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "YearlyCarGroup",
+      "targetType": "Property",
+      "targetName": "YearlyCarGroup.YearlyCarGroupID"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "YearlyCarGroup.carGroup",
+      "targetType": "Property",
+      "targetName": "YearlyCarGroup.carGroup"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "YearlyCarGroup.year",
+      "targetType": "Property",
+      "targetName": "YearlyCarGroup.year"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "YearlyCarGroup.dailyRentalRate",
+      "targetType": "Property",
+      "targetName": "YearlyCarGroup.dailyRentalRate"
+    },
+    {
+      "sourceType": "AttributeType",
+      "sourceName": "YearlyCarGroup.standardDepositAmount",
+      "targetType": "Property",
+      "targetName": "YearlyCarGroup.standardDepositAmount"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalCompleted",
+      "targetType": "Property",
+      "targetName": "Rental.rentalCompleted"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalTaken",
+      "targetType": "Property",
+      "targetName": "Rental.rentalTaken"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalReturned",
+      "targetType": "Property",
+      "targetName": "Rental.rentalReturned"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalDepositPaid",
+      "targetType": "Property",
+      "targetName": "Rental.rentalDepositPaid"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalInvoicePaid",
+      "targetType": "Property",
+      "targetName": "Rental.rentalInvoicePaid"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "transportCompleted",
+      "targetType": "Property",
+      "targetName": "Transport.transportCompleted"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "transportManagingDone",
+      "targetType": "Property",
+      "targetName": "ManagedDay.transportManagingDone"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "DepositPaidRental",
+      "targetType": "EventTriggeredAssociation",
+      "targetName": "DepositPaidRentalIsARental"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalDepositPaid",
+      "targetType": "NotMapped",
+      "targetName": "StateMachineBehavior"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "TakenRental",
+      "targetType": "EventTriggeredAssociation",
+      "targetName": "TakenRentalIsARental"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalTaken",
+      "targetType": "NotMapped",
+      "targetName": "StateMachineBehavior"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "ReturnedRental",
+      "targetType": "EventTriggeredAssociation",
+      "targetName": "ReturnedRentalIsARental"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalReturned",
+      "targetType": "NotMapped",
+      "targetName": "StateMachineBehavior"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "InvoicePaidRental",
+      "targetType": "EventTriggeredAssociation",
+      "targetName": "InvoicePaidRentalIsARental"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalInvoicePaid",
+      "targetType": "NotMapped",
+      "targetName": "StateMachineBehavior"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "RentalPickedUpAt",
+      "targetType": "Association",
+      "targetName": "RentalPickedUpAt"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "RentalReturnedTo",
+      "targetType": "Association",
+      "targetName": "RentalReturnedTo"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "RentalCompletedBy",
+      "targetType": "Association",
+      "targetName": "RentalCompletedBy"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "RentalRentedBy",
+      "targetType": "Association",
+      "targetName": "RentalRentedBy"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "RentalDepositPaidBy",
+      "targetType": "Association",
+      "targetName": "RentalDepositPaidBy"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "RentalInvoicePaidBy",
+      "targetType": "Association",
+      "targetName": "RentalInvoicePaidBy"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "RentalDrivenBy",
+      "targetType": "Association",
+      "targetName": "RentalDrivenBy"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "PersonHasDrivingLicense",
+      "targetType": "Association",
+      "targetName": "PersonHasDrivingLicense"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "TakenRentalUsesCar",
+      "targetType": "Association",
+      "targetName": "TakenRentalUsesCar"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "ReturnedRentalReturnedAt",
+      "targetType": "Association",
+      "targetName": "ReturnedRentalReturnedAt"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "TransportStartsAt",
+      "targetType": "Association",
+      "targetName": "TransportStartsAt"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "TransportEndsAt",
+      "targetType": "Association",
+      "targetName": "TransportEndsAt"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "TransportMovesCar",
+      "targetType": "Association",
+      "targetName": "TransportMovesCar"
+    },
+    {
+      "sourceType": "FactType",
+      "sourceName": "ManagedDayManagedBy",
+      "targetType": "Association",
+      "targetName": "ManagedDayManagedBy"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalCompleted",
+      "targetType": "Region",
+      "targetName": "Rental.rentalCompleted"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalTaken",
+      "targetType": "Region",
+      "targetName": "Rental.rentalTaken"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalReturned",
+      "targetType": "Region",
+      "targetName": "Rental.rentalReturned"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalDepositPaid",
+      "targetType": "Region",
+      "targetName": "Rental.rentalDepositPaid"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "rentalInvoicePaid",
+      "targetType": "Region",
+      "targetName": "Rental.rentalInvoicePaid"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Rental",
+      "targetType": "StateMachine",
+      "targetName": "SM_Rental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "DepositPaidRental",
+      "targetType": "StateMachine",
+      "targetName": "SM_DepositPaidRental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "TakenRental",
+      "targetType": "StateMachine",
+      "targetName": "SM_TakenRental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "ReturnedRental",
+      "targetType": "StateMachine",
+      "targetName": "SM_ReturnedRental"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "InvoicePaidRental",
+      "targetType": "StateMachine",
+      "targetName": "SM_InvoicePaidRental"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "transportCompleted",
+      "targetType": "Region",
+      "targetName": "Transport.transportCompleted"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Transport",
+      "targetType": "StateMachine",
+      "targetName": "SM_Transport"
+    },
+    {
+      "sourceType": "EventType",
+      "sourceName": "transportManagingDone",
+      "targetType": "Region",
+      "targetName": "ManagedDay.transportManagingDone"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "ManagedDay",
+      "targetType": "StateMachine",
+      "targetName": "SM_ManagedDay"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Car",
+      "targetType": "StateMachine",
+      "targetName": "SM_Car"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Branch",
+      "targetType": "StateMachine",
+      "targetName": "SM_Branch"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Person",
+      "targetType": "StateMachine",
+      "targetName": "SM_Person"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Employee",
+      "targetType": "StateMachine",
+      "targetName": "SM_Employee"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "DrivingLicense",
+      "targetType": "StateMachine",
+      "targetName": "SM_DrivingLicense"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "Year",
+      "targetType": "StateMachine",
+      "targetName": "SM_Year"
+    },
+    {
+      "sourceType": "EntityType",
+      "sourceName": "YearlyCarGroup",
+      "targetType": "StateMachine",
+      "targetName": "SM_YearlyCarGroup"
+    }
+  ]
+}

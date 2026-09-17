@@ -1,0 +1,1971 @@
+{
+  "name": "Rent-A-Car Case (MERODE) - pimUML",
+  "enumerations": [
+    {
+      "name": "CarGroup",
+      "literals": [
+        "economy",
+        "compact",
+        "luxury"
+      ]
+    }
+  ],
+  "dataTypes": [
+    {
+      "name": "MoneyAmount"
+    },
+    {
+      "name": "DayNumber"
+    },
+    {
+      "name": "YearNumber"
+    }
+  ],
+  "classes": [
+    {
+      "name": "Car",
+      "ownedAttributes": [
+        {
+          "name": "CarID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "carGroup",
+          "type": "CarGroup"
+        }
+      ]
+    },
+    {
+      "name": "Branch",
+      "ownedAttributes": [
+        {
+          "name": "BranchID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "name",
+          "type": "String"
+        }
+      ]
+    },
+    {
+      "name": "Person",
+      "ownedAttributes": [
+        {
+          "name": "PersonID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "fullName",
+          "type": "String"
+        }
+      ]
+    },
+    {
+      "name": "Employee",
+      "ownedAttributes": [
+        {
+          "name": "EmployeeID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "fullName",
+          "type": "String"
+        }
+      ]
+    },
+    {
+      "name": "DrivingLicense",
+      "ownedAttributes": [
+        {
+          "name": "DrivingLicenseID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "expirationDay",
+          "type": "DayNumber"
+        }
+      ]
+    },
+    {
+      "name": "Year",
+      "ownedAttributes": [
+        {
+          "name": "YearID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "yearNumber",
+          "type": "YearNumber"
+        },
+        {
+          "name": "maxRentalDuration",
+          "type": "Integer"
+        },
+        {
+          "name": "rentalHorizon",
+          "type": "Integer"
+        },
+        {
+          "name": "locationFineRate",
+          "type": "MoneyAmount"
+        },
+        {
+          "name": "lateReturnFineRate",
+          "type": "MoneyAmount"
+        }
+      ]
+    },
+    {
+      "name": "YearlyCarGroup",
+      "ownedAttributes": [
+        {
+          "name": "YearlyCarGroupID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "carGroup",
+          "type": "CarGroup"
+        },
+        {
+          "name": "dailyRentalRate",
+          "type": "MoneyAmount"
+        },
+        {
+          "name": "standardDepositAmount",
+          "type": "MoneyAmount"
+        }
+      ]
+    },
+    {
+      "name": "Rental",
+      "ownedAttributes": [
+        {
+          "name": "RentalID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "startingDay",
+          "type": "DayNumber"
+        },
+        {
+          "name": "endingDay",
+          "type": "DayNumber"
+        },
+        {
+          "name": "carGroup",
+          "type": "CarGroup"
+        },
+        {
+          "name": "depositAmount",
+          "type": "MoneyAmount"
+        },
+        {
+          "name": "invoiceAmount",
+          "type": "MoneyAmount"
+        }
+      ]
+    },
+    {
+      "name": "Transport",
+      "ownedAttributes": [
+        {
+          "name": "TransportID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "dayOfTransport",
+          "type": "DayNumber"
+        }
+      ]
+    },
+    {
+      "name": "ManagedDay",
+      "ownedAttributes": [
+        {
+          "name": "ManagedDayID",
+          "type": "Integer",
+          "isID": true
+        },
+        {
+          "name": "day",
+          "type": "DayNumber"
+        }
+      ]
+    }
+  ],
+  "associations": [
+    {
+      "name": "RentalDependsOnPerson",
+      "memberEnds": [
+        {
+          "name": "dependent",
+          "type": "Rental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "master",
+          "type": "Person",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "RentalDependsOnBranch",
+      "memberEnds": [
+        {
+          "name": "dependent",
+          "type": "Rental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "master",
+          "type": "Branch",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "RentalDependsOnCar",
+      "memberEnds": [
+        {
+          "name": "dependent",
+          "type": "Rental",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "master",
+          "type": "Car",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "DrivingLicenseDependsOnPerson",
+      "memberEnds": [
+        {
+          "name": "dependent",
+          "type": "DrivingLicense",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "master",
+          "type": "Person",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "YearlyCarGroupDependsOnYear",
+      "memberEnds": [
+        {
+          "name": "dependent",
+          "type": "YearlyCarGroup",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "master",
+          "type": "Year",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "TransportDependsOnCar",
+      "memberEnds": [
+        {
+          "name": "dependent",
+          "type": "Transport",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "master",
+          "type": "Car",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "TransportDependsOnBranch",
+      "memberEnds": [
+        {
+          "name": "dependent",
+          "type": "Transport",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "master",
+          "type": "Branch",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    },
+    {
+      "name": "ManagedDayDependsOnEmployee",
+      "memberEnds": [
+        {
+          "name": "dependent",
+          "type": "ManagedDay",
+          "lower": 0,
+          "upper": "*"
+        },
+        {
+          "name": "master",
+          "type": "Employee",
+          "lower": 1,
+          "upper": 1
+        }
+      ]
+    }
+  ],
+  "stateMachines": [
+    {
+      "name": "SM_Car",
+      "entityType": "Car",
+      "regions": [
+        {
+          "name": "lifecycle",
+          "states": [
+            {
+              "name": "__initial",
+              "kind": "initial"
+            },
+            {
+              "name": "registered",
+              "kind": "simple"
+            },
+            {
+              "name": "__final",
+              "kind": "final"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "__initial",
+              "to": "registered",
+              "trigger": "registerCar"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "reclassifyCar"
+            },
+            {
+              "from": "registered",
+              "to": "__final",
+              "trigger": "deregisterCar"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "startRental"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "payDeposit"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "takeCar"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "returnCar"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "payInvoice"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "completeRental"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "planTransport"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "completeTransport"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "Create_Car",
+          "kind": "create",
+          "targetType": "Car"
+        },
+        {
+          "name": "Set_Car_reclassifyCar",
+          "kind": "set",
+          "targetType": "Car",
+          "effects": [
+            {
+              "attribute": "carGroup",
+              "type": "CarGroup"
+            }
+          ]
+        },
+        {
+          "name": "End_Car",
+          "kind": "end",
+          "targetType": "Car"
+        },
+        {
+          "name": "Set_Car_startRental",
+          "kind": "set",
+          "targetType": "Car"
+        },
+        {
+          "name": "Set_Car_payDeposit",
+          "kind": "set",
+          "targetType": "Car"
+        },
+        {
+          "name": "Set_Car_takeCar",
+          "kind": "set",
+          "targetType": "Car"
+        },
+        {
+          "name": "Set_Car_returnCar",
+          "kind": "set",
+          "targetType": "Car"
+        },
+        {
+          "name": "Set_Car_payInvoice",
+          "kind": "set",
+          "targetType": "Car"
+        },
+        {
+          "name": "Set_Car_completeRental",
+          "kind": "set",
+          "targetType": "Car"
+        },
+        {
+          "name": "Set_Car_planTransport",
+          "kind": "set",
+          "targetType": "Car"
+        },
+        {
+          "name": "Set_Car_completeTransport",
+          "kind": "set",
+          "targetType": "Car"
+        }
+      ]
+    },
+    {
+      "name": "SM_Branch",
+      "entityType": "Branch",
+      "regions": [
+        {
+          "name": "lifecycle",
+          "states": [
+            {
+              "name": "__initial",
+              "kind": "initial"
+            },
+            {
+              "name": "open",
+              "kind": "simple"
+            },
+            {
+              "name": "__final",
+              "kind": "final"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "__initial",
+              "to": "open",
+              "trigger": "openBranch"
+            },
+            {
+              "from": "open",
+              "to": "open",
+              "trigger": "renameBranch"
+            },
+            {
+              "from": "open",
+              "to": "__final",
+              "trigger": "closeBranch"
+            },
+            {
+              "from": "open",
+              "to": "open",
+              "trigger": "startRental"
+            },
+            {
+              "from": "open",
+              "to": "open",
+              "trigger": "payDeposit"
+            },
+            {
+              "from": "open",
+              "to": "open",
+              "trigger": "takeCar"
+            },
+            {
+              "from": "open",
+              "to": "open",
+              "trigger": "returnCar"
+            },
+            {
+              "from": "open",
+              "to": "open",
+              "trigger": "payInvoice"
+            },
+            {
+              "from": "open",
+              "to": "open",
+              "trigger": "completeRental"
+            },
+            {
+              "from": "open",
+              "to": "open",
+              "trigger": "planTransport"
+            },
+            {
+              "from": "open",
+              "to": "open",
+              "trigger": "completeTransport"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "Create_Branch",
+          "kind": "create",
+          "targetType": "Branch"
+        },
+        {
+          "name": "Set_Branch_renameBranch",
+          "kind": "set",
+          "targetType": "Branch",
+          "effects": [
+            {
+              "attribute": "name",
+              "type": "String"
+            }
+          ]
+        },
+        {
+          "name": "End_Branch",
+          "kind": "end",
+          "targetType": "Branch"
+        },
+        {
+          "name": "Set_Branch_startRental",
+          "kind": "set",
+          "targetType": "Branch"
+        },
+        {
+          "name": "Set_Branch_payDeposit",
+          "kind": "set",
+          "targetType": "Branch"
+        },
+        {
+          "name": "Set_Branch_takeCar",
+          "kind": "set",
+          "targetType": "Branch"
+        },
+        {
+          "name": "Set_Branch_returnCar",
+          "kind": "set",
+          "targetType": "Branch"
+        },
+        {
+          "name": "Set_Branch_payInvoice",
+          "kind": "set",
+          "targetType": "Branch"
+        },
+        {
+          "name": "Set_Branch_completeRental",
+          "kind": "set",
+          "targetType": "Branch"
+        },
+        {
+          "name": "Set_Branch_planTransport",
+          "kind": "set",
+          "targetType": "Branch"
+        },
+        {
+          "name": "Set_Branch_completeTransport",
+          "kind": "set",
+          "targetType": "Branch"
+        }
+      ]
+    },
+    {
+      "name": "SM_Person",
+      "entityType": "Person",
+      "regions": [
+        {
+          "name": "lifecycle",
+          "states": [
+            {
+              "name": "__initial",
+              "kind": "initial"
+            },
+            {
+              "name": "registered",
+              "kind": "simple"
+            },
+            {
+              "name": "__final",
+              "kind": "final"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "__initial",
+              "to": "registered",
+              "trigger": "registerPerson"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "updatePersonDetails"
+            },
+            {
+              "from": "registered",
+              "to": "__final",
+              "trigger": "deregisterPerson"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "startRental"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "payDeposit"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "takeCar"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "returnCar"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "payInvoice"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "completeRental"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "issueDrivingLicense"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "expireDrivingLicense"
+            },
+            {
+              "from": "registered",
+              "to": "registered",
+              "trigger": "withdrawDrivingLicense"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "Create_Person",
+          "kind": "create",
+          "targetType": "Person"
+        },
+        {
+          "name": "Set_Person_updatePersonDetails",
+          "kind": "set",
+          "targetType": "Person",
+          "effects": [
+            {
+              "attribute": "fullName",
+              "type": "String"
+            }
+          ]
+        },
+        {
+          "name": "End_Person",
+          "kind": "end",
+          "targetType": "Person"
+        },
+        {
+          "name": "Set_Person_startRental",
+          "kind": "set",
+          "targetType": "Person"
+        },
+        {
+          "name": "Set_Person_payDeposit",
+          "kind": "set",
+          "targetType": "Person"
+        },
+        {
+          "name": "Set_Person_takeCar",
+          "kind": "set",
+          "targetType": "Person"
+        },
+        {
+          "name": "Set_Person_returnCar",
+          "kind": "set",
+          "targetType": "Person"
+        },
+        {
+          "name": "Set_Person_payInvoice",
+          "kind": "set",
+          "targetType": "Person"
+        },
+        {
+          "name": "Set_Person_completeRental",
+          "kind": "set",
+          "targetType": "Person"
+        },
+        {
+          "name": "Set_Person_issueDrivingLicense",
+          "kind": "set",
+          "targetType": "Person"
+        },
+        {
+          "name": "Set_Person_expireDrivingLicense",
+          "kind": "set",
+          "targetType": "Person"
+        },
+        {
+          "name": "Set_Person_withdrawDrivingLicense",
+          "kind": "set",
+          "targetType": "Person"
+        }
+      ]
+    },
+    {
+      "name": "SM_Employee",
+      "entityType": "Employee",
+      "regions": [
+        {
+          "name": "lifecycle",
+          "states": [
+            {
+              "name": "__initial",
+              "kind": "initial"
+            },
+            {
+              "name": "employed",
+              "kind": "simple"
+            },
+            {
+              "name": "__final",
+              "kind": "final"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "__initial",
+              "to": "employed",
+              "trigger": "hireEmployee"
+            },
+            {
+              "from": "employed",
+              "to": "__final",
+              "trigger": "dismissEmployee"
+            },
+            {
+              "from": "employed",
+              "to": "employed",
+              "trigger": "planDayManagement"
+            },
+            {
+              "from": "employed",
+              "to": "employed",
+              "trigger": "completeDayManagement"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "Create_Employee",
+          "kind": "create",
+          "targetType": "Employee"
+        },
+        {
+          "name": "End_Employee",
+          "kind": "end",
+          "targetType": "Employee"
+        },
+        {
+          "name": "Set_Employee_planDayManagement",
+          "kind": "set",
+          "targetType": "Employee"
+        },
+        {
+          "name": "Set_Employee_completeDayManagement",
+          "kind": "set",
+          "targetType": "Employee"
+        }
+      ]
+    },
+    {
+      "name": "SM_DrivingLicense",
+      "entityType": "DrivingLicense",
+      "regions": [
+        {
+          "name": "lifecycle",
+          "states": [
+            {
+              "name": "__initial",
+              "kind": "initial"
+            },
+            {
+              "name": "valid",
+              "kind": "simple"
+            },
+            {
+              "name": "expired",
+              "kind": "simple"
+            },
+            {
+              "name": "__final",
+              "kind": "final"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "__initial",
+              "to": "valid",
+              "trigger": "issueDrivingLicense"
+            },
+            {
+              "from": "valid",
+              "to": "expired",
+              "trigger": "expireDrivingLicense"
+            },
+            {
+              "from": "expired",
+              "to": "__final",
+              "trigger": "withdrawDrivingLicense"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "Create_DrivingLicense",
+          "kind": "create",
+          "targetType": "DrivingLicense"
+        },
+        {
+          "name": "Set_DrivingLicense_expireDrivingLicense",
+          "kind": "set",
+          "targetType": "DrivingLicense"
+        },
+        {
+          "name": "End_DrivingLicense",
+          "kind": "end",
+          "targetType": "DrivingLicense"
+        }
+      ]
+    },
+    {
+      "name": "SM_Year",
+      "entityType": "Year",
+      "regions": [
+        {
+          "name": "lifecycle",
+          "states": [
+            {
+              "name": "__initial",
+              "kind": "initial"
+            },
+            {
+              "name": "open",
+              "kind": "simple"
+            },
+            {
+              "name": "__final",
+              "kind": "final"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "__initial",
+              "to": "open",
+              "trigger": "openYear"
+            },
+            {
+              "from": "open",
+              "to": "open",
+              "trigger": "setYearParameters"
+            },
+            {
+              "from": "open",
+              "to": "__final",
+              "trigger": "closeYear"
+            },
+            {
+              "from": "open",
+              "to": "open",
+              "trigger": "defineYearlyCarGroup"
+            },
+            {
+              "from": "open",
+              "to": "open",
+              "trigger": "updateYearlyCarGroupRates"
+            },
+            {
+              "from": "open",
+              "to": "open",
+              "trigger": "retireYearlyCarGroup"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "Create_Year",
+          "kind": "create",
+          "targetType": "Year"
+        },
+        {
+          "name": "Set_Year_setYearParameters",
+          "kind": "set",
+          "targetType": "Year",
+          "effects": [
+            {
+              "attribute": "maxRentalDuration",
+              "type": "Integer"
+            },
+            {
+              "attribute": "rentalHorizon",
+              "type": "Integer"
+            },
+            {
+              "attribute": "locationFineRate",
+              "type": "MoneyAmount"
+            },
+            {
+              "attribute": "lateReturnFineRate",
+              "type": "MoneyAmount"
+            }
+          ]
+        },
+        {
+          "name": "End_Year",
+          "kind": "end",
+          "targetType": "Year"
+        },
+        {
+          "name": "Set_Year_defineYearlyCarGroup",
+          "kind": "set",
+          "targetType": "Year"
+        },
+        {
+          "name": "Set_Year_updateYearlyCarGroupRates",
+          "kind": "set",
+          "targetType": "Year"
+        },
+        {
+          "name": "Set_Year_retireYearlyCarGroup",
+          "kind": "set",
+          "targetType": "Year"
+        }
+      ]
+    },
+    {
+      "name": "SM_YearlyCarGroup",
+      "entityType": "YearlyCarGroup",
+      "regions": [
+        {
+          "name": "lifecycle",
+          "states": [
+            {
+              "name": "__initial",
+              "kind": "initial"
+            },
+            {
+              "name": "active",
+              "kind": "simple"
+            },
+            {
+              "name": "__final",
+              "kind": "final"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "__initial",
+              "to": "active",
+              "trigger": "defineYearlyCarGroup"
+            },
+            {
+              "from": "active",
+              "to": "active",
+              "trigger": "updateYearlyCarGroupRates"
+            },
+            {
+              "from": "active",
+              "to": "__final",
+              "trigger": "retireYearlyCarGroup"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "Create_YearlyCarGroup",
+          "kind": "create",
+          "targetType": "YearlyCarGroup"
+        },
+        {
+          "name": "Set_YearlyCarGroup_updateYearlyCarGroupRates",
+          "kind": "set",
+          "targetType": "YearlyCarGroup",
+          "effects": [
+            {
+              "attribute": "dailyRentalRate",
+              "type": "MoneyAmount"
+            },
+            {
+              "attribute": "standardDepositAmount",
+              "type": "MoneyAmount"
+            }
+          ]
+        },
+        {
+          "name": "End_YearlyCarGroup",
+          "kind": "end",
+          "targetType": "YearlyCarGroup"
+        }
+      ]
+    },
+    {
+      "name": "SM_Rental",
+      "entityType": "Rental",
+      "regions": [
+        {
+          "name": "lifecycle",
+          "states": [
+            {
+              "name": "__initial",
+              "kind": "initial"
+            },
+            {
+              "name": "active",
+              "kind": "simple"
+            },
+            {
+              "name": "depositPaid",
+              "kind": "simple"
+            },
+            {
+              "name": "taken",
+              "kind": "simple"
+            },
+            {
+              "name": "returned",
+              "kind": "simple"
+            },
+            {
+              "name": "invoicePaid",
+              "kind": "simple"
+            },
+            {
+              "name": "__final",
+              "kind": "final"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "__initial",
+              "to": "active",
+              "trigger": "startRental"
+            },
+            {
+              "from": "active",
+              "to": "depositPaid",
+              "trigger": "payDeposit"
+            },
+            {
+              "from": "depositPaid",
+              "to": "taken",
+              "trigger": "takeCar"
+            },
+            {
+              "from": "taken",
+              "to": "returned",
+              "trigger": "returnCar"
+            },
+            {
+              "from": "returned",
+              "to": "invoicePaid",
+              "trigger": "payInvoice"
+            },
+            {
+              "from": "invoicePaid",
+              "to": "__final",
+              "trigger": "completeRental"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "Create_Rental",
+          "kind": "create",
+          "targetType": "Rental"
+        },
+        {
+          "name": "Set_Rental_payDeposit",
+          "kind": "set",
+          "targetType": "Rental",
+          "effects": [
+            {
+              "attribute": "depositAmount",
+              "type": "MoneyAmount"
+            }
+          ]
+        },
+        {
+          "name": "Set_Rental_takeCar",
+          "kind": "set",
+          "targetType": "Rental"
+        },
+        {
+          "name": "Set_Rental_returnCar",
+          "kind": "set",
+          "targetType": "Rental"
+        },
+        {
+          "name": "Set_Rental_payInvoice",
+          "kind": "set",
+          "targetType": "Rental",
+          "effects": [
+            {
+              "attribute": "invoiceAmount",
+              "type": "MoneyAmount"
+            }
+          ]
+        },
+        {
+          "name": "End_Rental",
+          "kind": "end",
+          "targetType": "Rental"
+        }
+      ]
+    },
+    {
+      "name": "SM_Transport",
+      "entityType": "Transport",
+      "regions": [
+        {
+          "name": "lifecycle",
+          "states": [
+            {
+              "name": "__initial",
+              "kind": "initial"
+            },
+            {
+              "name": "planned",
+              "kind": "simple"
+            },
+            {
+              "name": "__final",
+              "kind": "final"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "__initial",
+              "to": "planned",
+              "trigger": "planTransport"
+            },
+            {
+              "from": "planned",
+              "to": "__final",
+              "trigger": "completeTransport"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "Create_Transport",
+          "kind": "create",
+          "targetType": "Transport"
+        },
+        {
+          "name": "End_Transport",
+          "kind": "end",
+          "targetType": "Transport"
+        }
+      ]
+    },
+    {
+      "name": "SM_ManagedDay",
+      "entityType": "ManagedDay",
+      "regions": [
+        {
+          "name": "lifecycle",
+          "states": [
+            {
+              "name": "__initial",
+              "kind": "initial"
+            },
+            {
+              "name": "planned",
+              "kind": "simple"
+            },
+            {
+              "name": "__final",
+              "kind": "final"
+            }
+          ],
+          "transitions": [
+            {
+              "from": "__initial",
+              "to": "planned",
+              "trigger": "planDayManagement"
+            },
+            {
+              "from": "planned",
+              "to": "__final",
+              "trigger": "completeDayManagement"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": "Create_ManagedDay",
+          "kind": "create",
+          "targetType": "ManagedDay"
+        },
+        {
+          "name": "End_ManagedDay",
+          "kind": "end",
+          "targetType": "ManagedDay"
+        }
+      ]
+    }
+  ],
+  "_source": {
+    "format": "merode"
+  },
+  "_trace": [
+    {
+      "sourceType": "DomainType",
+      "sourceName": "CarGroup",
+      "targetType": "Enumeration",
+      "targetName": "CarGroup"
+    },
+    {
+      "sourceType": "DomainType",
+      "sourceName": "MoneyAmount",
+      "targetType": "DataType",
+      "targetName": "MoneyAmount"
+    },
+    {
+      "sourceType": "DomainType",
+      "sourceName": "DayNumber",
+      "targetType": "DataType",
+      "targetName": "DayNumber"
+    },
+    {
+      "sourceType": "DomainType",
+      "sourceName": "YearNumber",
+      "targetType": "DataType",
+      "targetName": "YearNumber"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "Car",
+      "targetType": "Class",
+      "targetName": "Car"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "Car.carGroup",
+      "targetType": "Property",
+      "targetName": "Car.carGroup"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "registerCar",
+      "targetType": "Transition",
+      "targetName": "__initial->registered"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "reclassifyCar",
+      "targetType": "Transition",
+      "targetName": "registered->registered"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "deregisterCar",
+      "targetType": "Transition",
+      "targetName": "registered->__final"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "startRental",
+      "targetType": "Transition",
+      "targetName": "Car.startRental (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "payDeposit",
+      "targetType": "Transition",
+      "targetName": "Car.payDeposit (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "takeCar",
+      "targetType": "Transition",
+      "targetName": "Car.takeCar (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "returnCar",
+      "targetType": "Transition",
+      "targetName": "Car.returnCar (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "payInvoice",
+      "targetType": "Transition",
+      "targetName": "Car.payInvoice (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "completeRental",
+      "targetType": "Transition",
+      "targetName": "Car.completeRental (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "planTransport",
+      "targetType": "Transition",
+      "targetName": "Car.planTransport (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "completeTransport",
+      "targetType": "Transition",
+      "targetName": "Car.completeTransport (M9 propagated)"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "Car",
+      "targetType": "StateMachine",
+      "targetName": "SM_Car"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "Branch",
+      "targetType": "Class",
+      "targetName": "Branch"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "Branch.name",
+      "targetType": "Property",
+      "targetName": "Branch.name"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "openBranch",
+      "targetType": "Transition",
+      "targetName": "__initial->open"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "renameBranch",
+      "targetType": "Transition",
+      "targetName": "open->open"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "closeBranch",
+      "targetType": "Transition",
+      "targetName": "open->__final"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "startRental",
+      "targetType": "Transition",
+      "targetName": "Branch.startRental (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "payDeposit",
+      "targetType": "Transition",
+      "targetName": "Branch.payDeposit (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "takeCar",
+      "targetType": "Transition",
+      "targetName": "Branch.takeCar (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "returnCar",
+      "targetType": "Transition",
+      "targetName": "Branch.returnCar (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "payInvoice",
+      "targetType": "Transition",
+      "targetName": "Branch.payInvoice (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "completeRental",
+      "targetType": "Transition",
+      "targetName": "Branch.completeRental (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "planTransport",
+      "targetType": "Transition",
+      "targetName": "Branch.planTransport (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "completeTransport",
+      "targetType": "Transition",
+      "targetName": "Branch.completeTransport (M9 propagated)"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "Branch",
+      "targetType": "StateMachine",
+      "targetName": "SM_Branch"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "Person",
+      "targetType": "Class",
+      "targetName": "Person"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "Person.fullName",
+      "targetType": "Property",
+      "targetName": "Person.fullName"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "registerPerson",
+      "targetType": "Transition",
+      "targetName": "__initial->registered"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "updatePersonDetails",
+      "targetType": "Transition",
+      "targetName": "registered->registered"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "deregisterPerson",
+      "targetType": "Transition",
+      "targetName": "registered->__final"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "startRental",
+      "targetType": "Transition",
+      "targetName": "Person.startRental (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "payDeposit",
+      "targetType": "Transition",
+      "targetName": "Person.payDeposit (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "takeCar",
+      "targetType": "Transition",
+      "targetName": "Person.takeCar (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "returnCar",
+      "targetType": "Transition",
+      "targetName": "Person.returnCar (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "payInvoice",
+      "targetType": "Transition",
+      "targetName": "Person.payInvoice (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "completeRental",
+      "targetType": "Transition",
+      "targetName": "Person.completeRental (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "issueDrivingLicense",
+      "targetType": "Transition",
+      "targetName": "Person.issueDrivingLicense (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "expireDrivingLicense",
+      "targetType": "Transition",
+      "targetName": "Person.expireDrivingLicense (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "withdrawDrivingLicense",
+      "targetType": "Transition",
+      "targetName": "Person.withdrawDrivingLicense (M9 propagated)"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "Person",
+      "targetType": "StateMachine",
+      "targetName": "SM_Person"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "Employee",
+      "targetType": "Class",
+      "targetName": "Employee"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "Employee.fullName",
+      "targetType": "Property",
+      "targetName": "Employee.fullName"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "hireEmployee",
+      "targetType": "Transition",
+      "targetName": "__initial->employed"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "dismissEmployee",
+      "targetType": "Transition",
+      "targetName": "employed->__final"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "planDayManagement",
+      "targetType": "Transition",
+      "targetName": "Employee.planDayManagement (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "completeDayManagement",
+      "targetType": "Transition",
+      "targetName": "Employee.completeDayManagement (M9 propagated)"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "Employee",
+      "targetType": "StateMachine",
+      "targetName": "SM_Employee"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "DrivingLicense",
+      "targetType": "Class",
+      "targetName": "DrivingLicense"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "DrivingLicense.expirationDay",
+      "targetType": "Property",
+      "targetName": "DrivingLicense.expirationDay"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "issueDrivingLicense",
+      "targetType": "Transition",
+      "targetName": "__initial->valid"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "expireDrivingLicense",
+      "targetType": "Transition",
+      "targetName": "valid->expired"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "withdrawDrivingLicense",
+      "targetType": "Transition",
+      "targetName": "expired->__final"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "DrivingLicense",
+      "targetType": "StateMachine",
+      "targetName": "SM_DrivingLicense"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "Year",
+      "targetType": "Class",
+      "targetName": "Year"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "Year.yearNumber",
+      "targetType": "Property",
+      "targetName": "Year.yearNumber"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "Year.maxRentalDuration",
+      "targetType": "Property",
+      "targetName": "Year.maxRentalDuration"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "Year.rentalHorizon",
+      "targetType": "Property",
+      "targetName": "Year.rentalHorizon"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "Year.locationFineRate",
+      "targetType": "Property",
+      "targetName": "Year.locationFineRate"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "Year.lateReturnFineRate",
+      "targetType": "Property",
+      "targetName": "Year.lateReturnFineRate"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "openYear",
+      "targetType": "Transition",
+      "targetName": "__initial->open"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "setYearParameters",
+      "targetType": "Transition",
+      "targetName": "open->open"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "closeYear",
+      "targetType": "Transition",
+      "targetName": "open->__final"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "defineYearlyCarGroup",
+      "targetType": "Transition",
+      "targetName": "Year.defineYearlyCarGroup (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "updateYearlyCarGroupRates",
+      "targetType": "Transition",
+      "targetName": "Year.updateYearlyCarGroupRates (M9 propagated)"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "retireYearlyCarGroup",
+      "targetType": "Transition",
+      "targetName": "Year.retireYearlyCarGroup (M9 propagated)"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "Year",
+      "targetType": "StateMachine",
+      "targetName": "SM_Year"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "YearlyCarGroup",
+      "targetType": "Class",
+      "targetName": "YearlyCarGroup"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "YearlyCarGroup.carGroup",
+      "targetType": "Property",
+      "targetName": "YearlyCarGroup.carGroup"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "YearlyCarGroup.dailyRentalRate",
+      "targetType": "Property",
+      "targetName": "YearlyCarGroup.dailyRentalRate"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "YearlyCarGroup.standardDepositAmount",
+      "targetType": "Property",
+      "targetName": "YearlyCarGroup.standardDepositAmount"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "defineYearlyCarGroup",
+      "targetType": "Transition",
+      "targetName": "__initial->active"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "updateYearlyCarGroupRates",
+      "targetType": "Transition",
+      "targetName": "active->active"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "retireYearlyCarGroup",
+      "targetType": "Transition",
+      "targetName": "active->__final"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "YearlyCarGroup",
+      "targetType": "StateMachine",
+      "targetName": "SM_YearlyCarGroup"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "Rental",
+      "targetType": "Class",
+      "targetName": "Rental"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "Rental.startingDay",
+      "targetType": "Property",
+      "targetName": "Rental.startingDay"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "Rental.endingDay",
+      "targetType": "Property",
+      "targetName": "Rental.endingDay"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "Rental.carGroup",
+      "targetType": "Property",
+      "targetName": "Rental.carGroup"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "Rental.depositAmount",
+      "targetType": "Property",
+      "targetName": "Rental.depositAmount"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "Rental.invoiceAmount",
+      "targetType": "Property",
+      "targetName": "Rental.invoiceAmount"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "startRental",
+      "targetType": "Transition",
+      "targetName": "__initial->active"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "payDeposit",
+      "targetType": "Transition",
+      "targetName": "active->depositPaid"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "takeCar",
+      "targetType": "Transition",
+      "targetName": "depositPaid->taken"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "returnCar",
+      "targetType": "Transition",
+      "targetName": "taken->returned"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "payInvoice",
+      "targetType": "Transition",
+      "targetName": "returned->invoicePaid"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "completeRental",
+      "targetType": "Transition",
+      "targetName": "invoicePaid->__final"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "Rental",
+      "targetType": "StateMachine",
+      "targetName": "SM_Rental"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "Transport",
+      "targetType": "Class",
+      "targetName": "Transport"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "Transport.dayOfTransport",
+      "targetType": "Property",
+      "targetName": "Transport.dayOfTransport"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "planTransport",
+      "targetType": "Transition",
+      "targetName": "__initial->planned"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "completeTransport",
+      "targetType": "Transition",
+      "targetName": "planned->__final"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "Transport",
+      "targetType": "StateMachine",
+      "targetName": "SM_Transport"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "ManagedDay",
+      "targetType": "Class",
+      "targetName": "ManagedDay"
+    },
+    {
+      "sourceType": "Attribute",
+      "sourceName": "ManagedDay.day",
+      "targetType": "Property",
+      "targetName": "ManagedDay.day"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "planDayManagement",
+      "targetType": "Transition",
+      "targetName": "__initial->planned"
+    },
+    {
+      "sourceType": "BusinessEventType",
+      "sourceName": "completeDayManagement",
+      "targetType": "Transition",
+      "targetName": "planned->__final"
+    },
+    {
+      "sourceType": "ObjectType",
+      "sourceName": "ManagedDay",
+      "targetType": "StateMachine",
+      "targetName": "SM_ManagedDay"
+    },
+    {
+      "sourceType": "ExistenceDependency",
+      "sourceName": "RentalDependsOnPerson",
+      "targetType": "Association",
+      "targetName": "RentalDependsOnPerson"
+    },
+    {
+      "sourceType": "ExistenceDependency",
+      "sourceName": "RentalDependsOnBranch",
+      "targetType": "Association",
+      "targetName": "RentalDependsOnBranch"
+    },
+    {
+      "sourceType": "ExistenceDependency",
+      "sourceName": "RentalDependsOnCar",
+      "targetType": "Association",
+      "targetName": "RentalDependsOnCar"
+    },
+    {
+      "sourceType": "ExistenceDependency",
+      "sourceName": "DrivingLicenseDependsOnPerson",
+      "targetType": "Association",
+      "targetName": "DrivingLicenseDependsOnPerson"
+    },
+    {
+      "sourceType": "ExistenceDependency",
+      "sourceName": "YearlyCarGroupDependsOnYear",
+      "targetType": "Association",
+      "targetName": "YearlyCarGroupDependsOnYear"
+    },
+    {
+      "sourceType": "ExistenceDependency",
+      "sourceName": "TransportDependsOnCar",
+      "targetType": "Association",
+      "targetName": "TransportDependsOnCar"
+    },
+    {
+      "sourceType": "ExistenceDependency",
+      "sourceName": "TransportDependsOnBranch",
+      "targetType": "Association",
+      "targetName": "TransportDependsOnBranch"
+    },
+    {
+      "sourceType": "ExistenceDependency",
+      "sourceName": "ManagedDayDependsOnEmployee",
+      "targetType": "Association",
+      "targetName": "ManagedDayDependsOnEmployee"
+    }
+  ]
+}
