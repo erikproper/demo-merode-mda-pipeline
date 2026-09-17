@@ -1,0 +1,215 @@
+{
+  "name": "Rent-A-Car Case (DEMO)",
+  "valueTypes": [
+    { "name": "CarGroup",    "kind": "categorical", "literals": ["economy", "compact", "luxury"] },
+    { "name": "MoneyAmount", "kind": "nonCategorical" },
+    { "name": "DayNumber",   "kind": "nonCategorical" },
+    { "name": "YearNumber",  "kind": "nonCategorical" }
+  ],
+  "entityTypes": [
+    {
+      "name": "Rental",
+      "attributes": [
+        { "name": "startingDay", "valueType": "DayNumber" },
+        { "name": "endingDay",   "valueType": "DayNumber" },
+        { "name": "carGroup",    "valueType": "CarGroup"  }
+      ]
+    },
+    {
+      "name": "DepositPaidRental",
+      "parent": "Rental",
+      "triggerEventType": "rentalDepositPaid",
+      "attributes": [
+        { "name": "depositAmount", "valueType": "MoneyAmount" }
+      ]
+    },
+    {
+      "name": "TakenRental",
+      "parent": "Rental",
+      "triggerEventType": "rentalTaken"
+    },
+    {
+      "name": "ReturnedRental",
+      "parent": "Rental",
+      "triggerEventType": "rentalReturned"
+    },
+    {
+      "name": "InvoicePaidRental",
+      "parent": "Rental",
+      "triggerEventType": "rentalInvoicePaid",
+      "attributes": [
+        { "name": "invoiceAmount", "valueType": "MoneyAmount" }
+      ]
+    },
+    {
+      "name": "Transport",
+      "attributes": [
+        { "name": "dayOfTransport", "valueType": "DayNumber" }
+      ]
+    },
+    {
+      "name": "ManagedDay",
+      "attributes": [
+        { "name": "day", "valueType": "DayNumber" }
+      ]
+    },
+    {
+      "name": "Car",
+      "attributes": [
+        { "name": "carGroup", "valueType": "CarGroup" }
+      ]
+    },
+    {
+      "name": "Branch",
+      "attributes": [
+        { "name": "name", "valueType": "String" }
+      ]
+    },
+    {
+      "name": "Person",
+      "attributes": [
+        { "name": "fullName", "valueType": "String" }
+      ]
+    },
+    {
+      "name": "Employee",
+      "attributes": [
+        { "name": "fullName", "valueType": "String" }
+      ]
+    },
+    {
+      "name": "DrivingLicense",
+      "attributes": [
+        { "name": "expirationDay", "valueType": "DayNumber" }
+      ]
+    },
+    {
+      "name": "Year",
+      "attributes": [
+        { "name": "yearNumber",         "valueType": "YearNumber"  },
+        { "name": "maxRentalDuration",  "valueType": "Integer"     },
+        { "name": "rentalHorizon",      "valueType": "Integer"     },
+        { "name": "locationFineRate",   "valueType": "MoneyAmount" },
+        { "name": "lateReturnFineRate", "valueType": "MoneyAmount" }
+      ]
+    },
+    {
+      "name": "YearlyCarGroup",
+      "attributes": [
+        { "name": "carGroup",              "valueType": "CarGroup"    },
+        { "name": "year",                  "valueType": "YearNumber"  },
+        { "name": "dailyRentalRate",       "valueType": "MoneyAmount" },
+        { "name": "standardDepositAmount", "valueType": "MoneyAmount" }
+      ]
+    }
+  ],
+  "factTypes": [
+    {
+      "name": "RentalPickedUpAt",
+      "roles": [
+        { "name": "rental",         "entityType": "Rental", "lower": 0, "upper": "*" },
+        { "name": "pickUpLocation", "entityType": "Branch", "lower": 1, "upper": 1   }
+      ]
+    },
+    {
+      "name": "RentalReturnedTo",
+      "roles": [
+        { "name": "rental",         "entityType": "Rental", "lower": 0, "upper": "*" },
+        { "name": "returnLocation", "entityType": "Branch", "lower": 1, "upper": 1   }
+      ]
+    },
+    {
+      "name": "RentalCompletedBy",
+      "roles": [
+        { "name": "rental",         "entityType": "Rental",   "lower": 0, "upper": "*" },
+        { "name": "rentalCompleter", "entityType": "Employee", "lower": 1, "upper": 1  }
+      ]
+    },
+    {
+      "name": "RentalRentedBy",
+      "roles": [
+        { "name": "rental", "entityType": "Rental", "lower": 0, "upper": "*" },
+        { "name": "renter", "entityType": "Person", "lower": 1, "upper": 1   }
+      ]
+    },
+    {
+      "name": "RentalDepositPaidBy",
+      "roles": [
+        { "name": "rental",       "entityType": "Rental", "lower": 0, "upper": "*" },
+        { "name": "depositPayer", "entityType": "Person", "lower": 1, "upper": 1   }
+      ]
+    },
+    {
+      "name": "RentalInvoicePaidBy",
+      "roles": [
+        { "name": "rental",       "entityType": "Rental", "lower": 0, "upper": "*" },
+        { "name": "invoicePayer", "entityType": "Person", "lower": 1, "upper": 1   }
+      ]
+    },
+    {
+      "name": "RentalDrivenBy",
+      "roles": [
+        { "name": "rental", "entityType": "Rental", "lower": 0, "upper": "*" },
+        { "name": "driver", "entityType": "Person", "lower": 1, "upper": 1   }
+      ]
+    },
+    {
+      "name": "PersonHasDrivingLicense",
+      "roles": [
+        { "name": "person",        "entityType": "Person",         "lower": 1, "upper": 1 },
+        { "name": "drivingLicense", "entityType": "DrivingLicense", "lower": 0, "upper": 1 }
+      ]
+    },
+    {
+      "name": "TakenRentalUsesCar",
+      "roles": [
+        { "name": "takenRental", "entityType": "TakenRental", "lower": 0, "upper": "*" },
+        { "name": "car",         "entityType": "Car",         "lower": 1, "upper": 1   }
+      ]
+    },
+    {
+      "name": "ReturnedRentalReturnedAt",
+      "roles": [
+        { "name": "returnedRental",       "entityType": "ReturnedRental", "lower": 0, "upper": "*" },
+        { "name": "actualReturnLocation", "entityType": "Branch",         "lower": 1, "upper": 1   }
+      ]
+    },
+    {
+      "name": "TransportStartsAt",
+      "roles": [
+        { "name": "transport",  "entityType": "Transport", "lower": 0, "upper": "*" },
+        { "name": "fromBranch", "entityType": "Branch",    "lower": 1, "upper": 1   }
+      ]
+    },
+    {
+      "name": "TransportEndsAt",
+      "roles": [
+        { "name": "transport", "entityType": "Transport", "lower": 0, "upper": "*" },
+        { "name": "toBranch",  "entityType": "Branch",    "lower": 1, "upper": 1   }
+      ]
+    },
+    {
+      "name": "TransportMovesCar",
+      "roles": [
+        { "name": "transport", "entityType": "Transport", "lower": 0, "upper": "*" },
+        { "name": "car",       "entityType": "Car",       "lower": 1, "upper": 1   }
+      ]
+    },
+    {
+      "name": "ManagedDayManagedBy",
+      "roles": [
+        { "name": "managedDay",       "entityType": "ManagedDay", "lower": 0, "upper": "*" },
+        { "name": "transportManager", "entityType": "Employee",   "lower": 1, "upper": 1   }
+      ]
+    }
+  ],
+  "eventTypes": [
+    { "name": "rentalCompleted",       "entityType": "Rental"     },
+    { "name": "rentalTaken",           "entityType": "Rental"     },
+    { "name": "rentalReturned",        "entityType": "Rental"     },
+    { "name": "rentalDepositPaid",     "entityType": "Rental"     },
+    { "name": "rentalInvoicePaid",     "entityType": "Rental"     },
+    { "name": "transportCompleted",    "entityType": "Transport"  },
+    { "name": "transportManagingDone", "entityType": "ManagedDay" }
+  ]
+}

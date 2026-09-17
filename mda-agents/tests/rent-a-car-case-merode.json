@@ -1,0 +1,157 @@
+{
+  "name": "Rent-A-Car Case (MERODE)",
+  "domainTypes": [
+    { "name": "CarGroup",    "kind": "categorical", "literals": ["economy", "compact", "luxury"] },
+    { "name": "MoneyAmount", "kind": "nonCategorical" },
+    { "name": "DayNumber",   "kind": "nonCategorical" },
+    { "name": "YearNumber",  "kind": "nonCategorical" }
+  ],
+  "objectTypes": [
+    {
+      "name": "Car",
+      "attributes": [
+        { "name": "carGroup", "type": "CarGroup" }
+      ],
+      "lifecycleStates": ["registered"]
+    },
+    {
+      "name": "Branch",
+      "attributes": [
+        { "name": "name", "type": "String" }
+      ],
+      "lifecycleStates": ["open"]
+    },
+    {
+      "name": "Person",
+      "attributes": [
+        { "name": "fullName", "type": "String" }
+      ],
+      "lifecycleStates": ["registered"]
+    },
+    {
+      "name": "Employee",
+      "attributes": [
+        { "name": "fullName", "type": "String" }
+      ],
+      "lifecycleStates": ["employed"]
+    },
+    {
+      "name": "DrivingLicense",
+      "attributes": [
+        { "name": "expirationDay", "type": "DayNumber" }
+      ],
+      "lifecycleStates": ["valid", "expired"]
+    },
+    {
+      "name": "Year",
+      "attributes": [
+        { "name": "yearNumber",         "type": "YearNumber"  },
+        { "name": "maxRentalDuration",  "type": "Integer"     },
+        { "name": "rentalHorizon",      "type": "Integer"     },
+        { "name": "locationFineRate",   "type": "MoneyAmount" },
+        { "name": "lateReturnFineRate", "type": "MoneyAmount" }
+      ],
+      "lifecycleStates": ["open"]
+    },
+    {
+      "name": "YearlyCarGroup",
+      "attributes": [
+        { "name": "carGroup",              "type": "CarGroup"    },
+        { "name": "dailyRentalRate",       "type": "MoneyAmount" },
+        { "name": "standardDepositAmount", "type": "MoneyAmount" }
+      ],
+      "lifecycleStates": ["active"]
+    },
+    {
+      "name": "Rental",
+      "attributes": [
+        { "name": "startingDay",   "type": "DayNumber"   },
+        { "name": "endingDay",     "type": "DayNumber"   },
+        { "name": "carGroup",      "type": "CarGroup"    },
+        { "name": "depositAmount", "type": "MoneyAmount" },
+        { "name": "invoiceAmount", "type": "MoneyAmount" }
+      ],
+      "lifecycleStates": ["active", "depositPaid", "taken", "returned", "invoicePaid"]
+    },
+    {
+      "name": "Transport",
+      "attributes": [
+        { "name": "dayOfTransport", "type": "DayNumber" }
+      ],
+      "lifecycleStates": ["planned"]
+    },
+    {
+      "name": "ManagedDay",
+      "attributes": [
+        { "name": "day", "type": "DayNumber" }
+      ],
+      "lifecycleStates": ["planned"]
+    }
+  ],
+  "existenceDependencies": [
+    { "name": "RentalDependsOnPerson",         "dependent": "Rental",         "master": "Person"   },
+    { "name": "RentalDependsOnBranch",         "dependent": "Rental",         "master": "Branch"   },
+    { "name": "RentalDependsOnCar",            "dependent": "Rental",         "master": "Car"      },
+    { "name": "DrivingLicenseDependsOnPerson", "dependent": "DrivingLicense", "master": "Person"   },
+    { "name": "YearlyCarGroupDependsOnYear",   "dependent": "YearlyCarGroup", "master": "Year"     },
+    { "name": "TransportDependsOnCar",         "dependent": "Transport",      "master": "Car"      },
+    { "name": "TransportDependsOnBranch",      "dependent": "Transport",      "master": "Branch"   },
+    { "name": "ManagedDayDependsOnEmployee",   "dependent": "ManagedDay",     "master": "Employee" }
+  ],
+  "businessEventTypes": [
+    { "name": "registerCar",   "objectType": "Car", "role": "C" },
+    { "name": "reclassifyCar", "objectType": "Car", "role": "M", "fromState": "registered", "toState": "registered",
+      "effects": [{ "attribute": "carGroup" }] },
+    { "name": "deregisterCar", "objectType": "Car", "role": "E" },
+
+    { "name": "openBranch",   "objectType": "Branch", "role": "C" },
+    { "name": "renameBranch", "objectType": "Branch", "role": "M", "fromState": "open", "toState": "open",
+      "effects": [{ "attribute": "name" }] },
+    { "name": "closeBranch",  "objectType": "Branch", "role": "E" },
+
+    { "name": "registerPerson",       "objectType": "Person", "role": "C" },
+    { "name": "updatePersonDetails",  "objectType": "Person", "role": "M", "fromState": "registered", "toState": "registered",
+      "effects": [{ "attribute": "fullName" }] },
+    { "name": "deregisterPerson",     "objectType": "Person", "role": "E" },
+
+    { "name": "hireEmployee",    "objectType": "Employee", "role": "C" },
+    { "name": "dismissEmployee", "objectType": "Employee", "role": "E" },
+
+    { "name": "issueDrivingLicense",    "objectType": "DrivingLicense", "role": "C" },
+    { "name": "expireDrivingLicense",   "objectType": "DrivingLicense", "role": "M", "fromState": "valid", "toState": "expired" },
+    { "name": "withdrawDrivingLicense", "objectType": "DrivingLicense", "role": "E" },
+
+    { "name": "openYear",          "objectType": "Year", "role": "C" },
+    { "name": "setYearParameters", "objectType": "Year", "role": "M", "fromState": "open", "toState": "open",
+      "effects": [
+        { "attribute": "maxRentalDuration"  },
+        { "attribute": "rentalHorizon"      },
+        { "attribute": "locationFineRate"   },
+        { "attribute": "lateReturnFineRate" }
+      ] },
+    { "name": "closeYear",         "objectType": "Year", "role": "E" },
+
+    { "name": "defineYearlyCarGroup",      "objectType": "YearlyCarGroup", "role": "C" },
+    { "name": "updateYearlyCarGroupRates", "objectType": "YearlyCarGroup", "role": "M", "fromState": "active", "toState": "active",
+      "effects": [
+        { "attribute": "dailyRentalRate"       },
+        { "attribute": "standardDepositAmount" }
+      ] },
+    { "name": "retireYearlyCarGroup",      "objectType": "YearlyCarGroup", "role": "E" },
+
+    { "name": "startRental",    "objectType": "Rental", "role": "C" },
+    { "name": "payDeposit",     "objectType": "Rental", "role": "M", "fromState": "active",      "toState": "depositPaid",
+      "effects": [{ "attribute": "depositAmount" }] },
+    { "name": "takeCar",        "objectType": "Rental", "role": "M", "fromState": "depositPaid", "toState": "taken" },
+    { "name": "returnCar",      "objectType": "Rental", "role": "M", "fromState": "taken",       "toState": "returned" },
+    { "name": "payInvoice",     "objectType": "Rental", "role": "M", "fromState": "returned",    "toState": "invoicePaid",
+      "effects": [{ "attribute": "invoiceAmount" }] },
+    { "name": "completeRental", "objectType": "Rental", "role": "E" },
+
+    { "name": "planTransport",     "objectType": "Transport", "role": "C" },
+    { "name": "completeTransport", "objectType": "Transport", "role": "E" },
+
+    { "name": "planDayManagement",     "objectType": "ManagedDay", "role": "C" },
+    { "name": "completeDayManagement", "objectType": "ManagedDay", "role": "E" }
+  ]
+}

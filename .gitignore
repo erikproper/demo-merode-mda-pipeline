@@ -23,6 +23,9 @@ mda-agents/tests/rent-a-car-pim.json
 mda-agents/tests/rent-a-car-pim-from-bus.json
 mda-agents/output/*.sql
 
+# -- Thesis working material (local only, not part of the artefact) ------------
+thesis-context/Literatur/
+
 # -- Go (big-modelling-bus.go.v1/) ---------------------------------------------
 big-modelling-bus.go.v1/bin/
 big-modelling-bus.go.v1/*.exe
