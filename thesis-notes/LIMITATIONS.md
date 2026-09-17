@@ -36,15 +36,15 @@ Verbleibende Einschränkungen:
 - Der Microflow prüft den Ausgangszustand nicht. `Set_Rental_payDeposit` setzt `depositPaid` auch dann, wenn die Miete bereits `returned` ist. MERODEs Sequenzbedingung wird also in Mendix nicht erzwungen. Behebung: Decision-Element vor der ChangeObjectAction, das `status` gegen die `from`-Zustände der Transitionen prüft.
 - Führt ein Trigger in verschiedene Zielzustände (z. B. aus zwei Zuständen in zwei unterschiedliche Folgezustände), wird nur der erste verwendet und eine Warnung geloggt. Im Rent-A-Car-Modell tritt das nicht auf.
 - Effects auf DataType-typisierte Attribute (`Set_Rental_payDeposit.depositAmount`, `Set_Rental_payInvoice.invoiceAmount`, beide `MoneyAmount`) werden nicht gesetzt. Der Parameter `new<Attr>` entsteht als String, das Attribut existiert in Mendix aber nur als Association auf die DataType-Entity (B5), daher loggt der Agent `effect attribute ... not found` und erzeugt keinen `MemberChange`. Behebung: DataType-Werte inline als Attribut abbilden oder im Microflow ein DataType-Objekt anlegen und verknüpfen.
-- Ob Studio Pro eine `ChangeObjectAction` ohne `MemberChange` (propagierter Microflow ohne Effects) ohne Warnung akzeptiert, ist im QR3-Check zu prüfen.
+- Dass Studio Pro eine `ChangeObjectAction` ohne `MemberChange` (propagierter Microflow ohne Effects) ohne Warnung akzeptiert, ist durch den QR3-Check am 2026-09-17 bestätigt.
 
 ### B11/B12 - Ein Workflow je DEMO-Region OK behoben (2026-09-14)
 
 Vorher wurden alle Regionen einer DEMO-StateMachine in einem einzigen Workflow `WF_<Entity>` hintereinander verkettet. Damit mussten die Ereignisse in Regionsreihenfolge eintreten, was der Orthogonalität der Regionen widerspricht. Jetzt entsteht je Region ein Workflow `WF_<Entity>_<forEvent>`, und `ACR_<Entity>` startet alle (wie bei Bzowski [4], Abschnitt 11.2.3). Test: `mda-agents/tests/test-mendix-workflows.ts`.
 
 Verbleibende Einschränkungen:
-- CE0049 betrifft jetzt jede `WorkflowCallAction` im ACR-Microflow. Für Rental muss der Aufrufdialog in Studio Pro sechsmal statt einmal mit OK bestätigt werden.
-- Ob Mendix mehrere parallel laufende Workflows mit demselben Context-Objekt ohne Warnung zulässt, ist im QR3-Check zu prüfen.
+- CE0049 wurde in einem früheren Implementierungsstand für jede `WorkflowCallAction` im ACR-Microflow beobachtet ("No variable name specified", weil das SDK keine logische `MicroflowParameter` anlegen kann). Beim QR3-Check am 2026-09-17 trat der Fehler in keiner der vier erzeugten Apps mehr auf, alle vier öffnen mit 0 Errors und 0 Warnings. Der im Agenten hinterlegte Umweg über `MicroflowParameterObject` genügt in der verwendeten Studio-Pro-Version offenbar. Die Warnzeile, die `pim-to-mendix-agent.ts` beim Erzeugen jedes Set-Microflows ausgibt, ist damit überholt und beschreibt einen Zustand, der sich nicht mehr reproduzieren lässt.
+- Dass Mendix mehrere parallel laufende Workflows mit demselben Context-Objekt ohne Warnung zulässt, ist durch den QR3-Check am 2026-09-17 bestätigt (0 Warnings bei 17 Workflows und 5 ACR-Microflows im Regelabdeckungs-DEMO).
 - `ACR_<Entity>` ist seit 2026-09-14 als After-Create-Handler registriert und committet das Objekt vor dem Workflow-Start (DD13). Folge: ein neu angelegtes Objekt steht sofort in der Datenbank, auch wenn der Nutzer das Formular abbricht. Behebung: Workflows erst beim ersten regulären Commit starten, geschützt durch ein Kennzeichen am Objekt.
 
 ### Workflow-Generierung für MERODE entfällt
@@ -89,7 +89,11 @@ Eine dritte Sprache, die FSMs ohne Ereignisannotationen verwendet, würde vom Di
 
 ### Einzelne Fallstudie begrenzt den Evaluationsumfang
 
-Die Evaluation (D7) gilt nur für das Rent-A-Car-Fallbeispiel. Snoeck nutzt eine Bibliotheks-Fallstudie als laufendes Beispiel; Bzowski nutzt Rent-A-Car. Der direkte Vergleich mit Bzowskis Ergebnissen ist damit möglich, aber die Evaluation testet keine Randfälle, die im Modell nicht vorkommen: keine Vererbung, keine Constraints, keine mehrstufigen Propagierungsketten, nur ein erzeugender Ereignistyp pro Objekttyp. Eine vollständigere Evaluation würde mehrere Fallstudien verwenden.
+Die Evaluation (D7) gilt nur für das Rent-A-Car-Fallbeispiel. Snoeck nutzt eine Bibliotheks-Fallstudie als laufendes Beispiel, Bzowski nutzt Rent-A-Car. Der direkte Vergleich mit Bzowskis Ergebnissen ist damit möglich.
+
+Innerhalb dieses einen Falls deckt die Evaluation seit dem 2026-09-17 zwei Modellpaare und damit vier Untersuchungseinheiten ab: ein Regelabdeckungspaar, das jede A- und jede M-Regel mindestens einmal auslöst, und ein fallnahes Paar nach Bzowski. Zwei früher hier genannte Lücken sind dadurch geschlossen. Vererbung ist über die A10-Generalisierung `Vehicle`/`Car` abgedeckt, mehrstufige Ereignispropagierung über die 3-Hop-M9-Kette `Invoice -> RentalLine -> Rental -> {Car, Person, Branch}`.
+
+Nicht abgedeckt bleiben Constraints, mehrere erzeugende Ereignistypen je Objekttyp und alles, was außerhalb der Rent-A-Car-Domäne liegt. Eine vollständigere Evaluation würde mehrere Fallstudien verwenden.
 
 ### Mendix-Applikation braucht Cloud-Lizenz zum Ausführen
 

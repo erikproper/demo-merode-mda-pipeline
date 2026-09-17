@@ -53,10 +53,16 @@ Stand: 2026-09-17. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
   2026-09-17 für alle vier Fälle geprüft, jeweils **0 Errors und 0 Warnings**. QR3 ist damit
   für beide CIM-Sprachen und beide Modellpaare erfüllt. Die Prüfung erfolgte zwischen den
   Läufen, weil `pim-to-mendix-agent` das Zielmodell vor jedem Lauf leert.
-  - **Offen dazu:** CE0049 trat nicht auf, obwohl `EVAL/FRAMEWORK.md` Abschnitt 5 den Fehler
-    als "je WorkflowCallAction" dokumentiert und das Regelabdeckungs-DEMO 17 Workflows und
-    5 ACR-Microflows erzeugt. Zu klären ist, ob der Dialog in dieser Studio-Pro-Installation
-    früher einmal bestätigt wurde. Betrifft auch die Thesis-Abschnitte 6.4.5 und 7.4.5.
+  - **Geklärt dazu (2026-09-17):** CE0049 trat nicht auf, obwohl das Regelabdeckungs-DEMO
+    17 Workflows und 5 ACR-Microflows erzeugt. Die ältere Notiz "je WorkflowCallAction" in
+    `EVAL/FRAMEWORK.md` Abschnitt 5 stützte sich nicht auf eine Rückmeldung aus Studio Pro,
+    sondern auf die Zeile `[warn] CE0049: click OK once in Studio Pro`, die
+    `pim-to-mendix-agent.ts` beim Erzeugen jedes Set-Microflows fest verdrahtet ausgibt. Sie
+    beschreibt einen Implementierungsstand vor dem Umweg über `MicroflowParameterObject`.
+    Maßgeblich ist die Messung: alle vier Apps öffnen mit 0 Errors und 0 Warnings. CE0049
+    wird nicht mehr als Einschränkung geführt (`LIMITATIONS.md`, `EVAL/FRAMEWORK.md`
+    Abschnitt 5). Die Thesis-Abschnitte 6.4.5 und 7.4.5 behaupten den Fehler noch und sind
+    zu korrigieren.
 
 - [x] **Unabhängige Gegenprobe des Mendix-Ergebnisses (Rücklesen über das Platform SDK)** -
   die Artefaktzahlen in `EVAL/FRAMEWORK.md` Abschnitt 8.1 stammten aus dem Log des erzeugenden
@@ -210,6 +216,45 @@ Stand: 2026-09-17. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
   - **Neue-Objekt-Button auf Overview-Page:** "New [EntityName]"-Button der ein leeres Objekt erstellt, committed und zur Detail-Page navigiert.
 
   **Warum:** Getestet am 2026-08-21. Pages waren zwar technisch korrekt im Modell vorhanden, aber vollständig leer - kein Inhalt, keine Interaktion möglich ohne manuellen Aufbau in Studio Pro.
+
+---
+
+## Thesis-Entscheidungen (2026-09-17)
+
+Festlegungen zu den offenen Punkten aus der Draft-Durchsicht (MasterthesisDraft-36). Sie
+betreffen nur den Thesis-Text, nicht den Prototyp. Der Thesis-Text wird nicht aus diesem
+Repo heraus geändert, die Umsetzung erfolgt in der Arbeitskopie des Autors.
+
+- [x] **§9.3 Performance entfällt.** Es existiert keine Zeitmessung und keine der
+  Anforderungen QR1-QR5 fordert eine. Der Abschnitt wird aus Kapitel 9 gestrichen, damit
+  bleiben 9.1 Semantics, 9.2 Architecture, 9.3 Limitations.
+- [x] **CE0049 wird aus der Thesis entfernt.** Siehe die Klärung oben unter QR3. Betrifft
+  die Abschnitte 6.4.5 und 7.4.5, die die Meldung bisher als beobachtete Einschränkung
+  führen. Die SDK-Limitation selbst (keine logische `MicroflowParameter` über das SDK)
+  bleibt bestehen und wird weiterhin genannt, nur ohne die Fehlermeldung und ohne den
+  Dialogklick.
+- [x] **Sprache Kapitel 8 und 9: Deutsch**, Fachbegriffe bleiben englisch. Damit wie
+  Kapitel 6 und 7. Überschriften bleiben englisch, ebenfalls wie in Kapitel 6 und 7.
+- [ ] **Screenshots zu Kapitel 8** liefert der Autor selbst nach (Studio Pro). Im Repo
+  liegen keine.
+- [ ] **QR4-Definition (Empfehlung: NotMapped im Nenner belassen).** Thesis §4.4 nimmt
+  NotMapped-Elemente aus dem Nenner, damit kann die Kennzahl nie unter 100 % fallen und
+  misst nichts. Die EVAL-Zahlen rechnen NotMapped mit (DEMO 95,4 % / 96,1 %, MERODE
+  100 % / 100 %). Empfehlung: §4.4 an die EVAL-Rechnung angleichen und beide Werte
+  ausweisen, statt die Messung an die Definition anzupassen. Entscheidung des Autors steht
+  noch aus.
+- [ ] **D7 und Yins unit of analysis (Empfehlung: single case, embedded units).** §1.3 D7
+  und §1.4 sind im Singular formuliert, evaluiert wurden aber vier Untersuchungseinheiten
+  (zwei CIM-Sprachen mal zwei Modellpaare). Empfehlung: die Fallstudie bleibt ein
+  Einzelfall (Rent-A-Car) und bekommt nach Yin vier embedded units of analysis.
+  Entscheidung des Autors steht noch aus.
+- [ ] **Artefakttabelle für §8.3.** In der Thesis existiert noch keine, §6.6.4 verweist nur
+  voraus ("Die Stückzahlen der erzeugten Artefakte weist Abschnitt 8.3 aus."). Zu
+  korrigieren ist daher nichts, die Zahlen aus `EVAL/FRAMEWORK.md` Abschnitt 8.1.1
+  (Rücklesen über das SDK, nicht die Agenten-Logs) sind beim Schreiben von §8.3 zu
+  übernehmen. Beim Schreiben ist die PIM-Sicht in §6.6.1 (elf bzw. fünf Associations) von
+  der Mendix-Sicht (15 bzw. 8) zu trennen, die Differenz entsteht durch
+  DataType-Assoziationen und die Association Class.
 
 ---
 

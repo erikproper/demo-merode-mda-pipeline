@@ -421,13 +421,13 @@ Nach dem Beheben von CE7247, CE0117 und CW0263 sollte das Modell ohne Fehler öf
 
 Zusätzlich nach den Korrekturen vom 2026-09-14 prüfen:
 - Rental hat sechs Workflows `WF_Rental_<forEvent>` und `ACR_Rental` ist unter Entity > Event handlers als After Create eingetragen (Commit + sechs WorkflowCallActions).
-- CE0049 tritt je WorkflowCallAction auf (für Rental sechsmal), bekannt und dokumentiert.
+- CE0049 trat in einem früheren Implementierungsstand je WorkflowCallAction auf (für Rental sechsmal). Siehe die Klärung am Ende dieses Abschnitts.
 - Beim Anlegen eines Rental in der laufenden App starten alle sechs Workflows parallel auf demselben Objekt ohne Fehler.
 - `Set_Rental_extendRental` und die propagierten `Set_Rental_*`-Microflows (ChangeObject ohne Status-MemberChange) erzeugen keinen Fehler.
 
 **Durchführung am 2026-09-17 (alle vier Untersuchungseinheiten):** Nach jedem der vier Live-Läufe wurde die erzeugte App in Mendix Studio Pro geöffnet und der Fehlerbereich geprüft. Ergebnis für `rent-a-car-demo`, `rent-a-car-merode`, `rent-a-car-case-demo` und `rent-a-car-case-merode` jeweils **0 Errors und 0 Warnings**. QR3 ist damit für beide CIM-Sprachen und beide Modellpaare erfüllt, einschließlich der erweiterten Fixtures (Vehicle/A10, Branch, mehrstufige Rental-Lebenszyklen, Invoice/3-Hop-M9). Die Prüfung musste zwischen den Läufen erfolgen, weil `pim-to-mendix-agent` das Zielmodell vor jedem Lauf leert.
 
-**Ungeklärt:** der oben dokumentierte Befund, CE0049 trete je WorkflowCallAction auf, ließ sich bei diesem Lauf nicht reproduzieren, obwohl das Regelabdeckungs-DEMO 17 Workflows und 5 ACR-Microflows erzeugt. Offen ist, ob der Dialog in dieser Studio-Pro-Installation früher einmal bestätigt wurde und die Einstellung fortgilt, oder ob die Meldung nicht mehr auftritt. Das ist vor der Verwertung in Kapitel 9 zu klären und betrifft auch die Thesis-Abschnitte 6.4.5 und 7.4.5.
+**Geklärt (2026-09-17):** der oben dokumentierte Befund, CE0049 trete je WorkflowCallAction auf, ließ sich bei diesem Lauf nicht reproduzieren, obwohl das Regelabdeckungs-DEMO 17 Workflows und 5 ACR-Microflows erzeugt. Maßgeblich ist die Messung, nicht die ältere Notiz: alle vier Apps öffnen mit 0 Errors und 0 Warnings. Die Zeile `[warn] CE0049: click OK once in Studio Pro`, die `pim-to-mendix-agent.ts` beim Erzeugen jedes Set-Microflows ausgibt, ist eine fest verdrahtete Vorhersage des Agenten und keine Rückmeldung aus Studio Pro. Sie beschreibt einen Implementierungsstand vor dem Umweg über `MicroflowParameterObject`. CE0049 wird daher nicht mehr als offene Einschränkung geführt, sondern in `LIMITATIONS.md` als nicht mehr beobachtet dokumentiert.
 
 ---
 
@@ -571,4 +571,4 @@ Die vier vom `pim-to-sql-agent` erzeugten DDL-Dateien wurden in je einer eigenen
 
 Die Tabellen- und Enum-Zahlen stimmen mit den Statements in den Skripten überein, und jeder `REFERENCES`-Ausdruck ist als Constraint in der Datenbank angekommen. Damit ist auch S12 belegt, die topologische Sortierung der `CREATE TABLE`-Reihenfolge nach Kahns Algorithmus: bei falscher Reihenfolge würde eine Tabelle vor ihrem Ziel angelegt und `psql` abbrechen.
 
-**Noch offen:** die Frage zu CE0049 aus Abschnitt 5.
+Zur früher hier vermerkten offenen Frage zu CE0049 siehe die Klärung am Ende von Abschnitt 5.
