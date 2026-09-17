@@ -1,6 +1,6 @@
 # Prototype ToDo-Liste
 
-Stand: 2026-09-01. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benötigen Evaluation).
+Stand: 2026-09-17. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benötigen Evaluation).
 
 ---
 
@@ -13,7 +13,7 @@ Stand: 2026-09-01. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
   1 AssociationClass, 1 Generalisierung, 12 State Machines, 108 Trace-Einträge) und Inhalt
   gegen Ground Truth und `EVAL/FRAMEWORK.md` Abschnitt 3 geprüft: C=66, M=0, I=0 -
   **Completeness 100 %, Validity 100 %**. Identisch zum vorab verifizierten
-  Direktaufruf-Testlauf. Ergebnis in `EVAL/FRAMEWORK.md` Abschnitt 1 und 7 dokumentiert.
+  Direktaufruf-Testlauf. Ergebnis in `EVAL/FRAMEWORK.md` Abschnitt 1 und 8 dokumentiert.
 
 - [x] **MERODE-Evaluation (QR1 Completeness, QR2 Validity)** - Live-Lauf am 2026-09-07
   analog zur DEMO-Evaluation (`EVAL/merode-pim-output.json`). Struktur (6 Klassen,
@@ -21,24 +21,47 @@ Stand: 2026-09-01. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
   M9-propagierte Self-Transitionen) und Inhalt gegen Ground Truth und `EVAL/FRAMEWORK.md`
   Abschnitt 2 geprüft: C=104, M=0, I=0 - **Completeness 100 %, Validity 100 %**. Identisch
   zum vorab verifizierten Direktaufruf-Testlauf. Ergebnis in `EVAL/FRAMEWORK.md` Abschnitt 1
-  und 7 dokumentiert.
+  und 8 dokumentiert.
 
-- [ ] **Mendix Studio Pro - Schema Validation Rate (QR3, binär, muss 100% sein)**
-  - **Was:** Generiertes Mendix-Modell (aus DEMO- und aus MERODE-Lauf) in Studio Pro öffnen,
-    Fehlerbereich ("Errors"-Panel) prüfen, Screenshot machen, Anzahl Consistency
-    Errors (CE) und Consistency Warnings (CW) dokumentieren.
-  - **Warum wichtig:** QR3 ist laut `REQUIREMENTS.md` §4 binär (0 CE = erfüllt, >0 CE =
-    nicht erfüllt) - eine reine JSON-Schema-Validierung reicht nicht, weil Mendix eigene,
-    über das pimUML-Schema hinausgehende Konsistenzregeln prüft (z. B. Microflow-Typkompatibilität).
-  - **Aktueller Stand:** Noch nicht durchgeführt - erfordert manuellen Schritt in Studio Pro
-    (kann nicht headless/pipeline-seitig automatisiert werden).
-  - **Nächster Schritt:** Nach DEMO- und MERODE-Live-Lauf jeweils die generierte App in
-    Studio Pro öffnen, Screenshot des Errors-Panels für beide Fälle anfertigen.
+- [x] **Zweite Untersuchungseinheit: fallnahes Modellpaar (QR1, QR2, QR4)** - Lauf am
+  2026-09-17 mit `rent-a-car-case-demo.json` und `rent-a-car-case-merode.json` gegen die
+  unveränderten Produktionsagenten (lokaler Broker, weil der Pi nicht erreichbar war).
+  DEMO: C=64, M=0, I=0 - **100 % / 100 %**, Traceability **96,1 %** (103 Trace-Einträge,
+  4 NotMapped für A7-Trigger). MERODE: C=117, M=0, I=0 - **100 % / 100 %**, Traceability
+  **100 %** (112 Trace-Einträge, 0 NotMapped). PIM-Payloads archiviert in
+  `EVAL/demo-case-pim-output.json` und `EVAL/merode-case-pim-output.json`, Ground Truth und
+  Ergebnisse in `EVAL/FRAMEWORK.md` Abschnitt 4 und 8.
+
+- [x] **Live-Pipeline-Lauf aller vier Untersuchungseinheiten** - am 2026-09-17 wurden
+  `rent-a-car-demo`, `rent-a-car-merode`, `rent-a-car-case-demo` und
+  `rent-a-car-case-merode` nacheinander über `https://mda.tlolab.com/api/model` gegen die
+  auf dem Pi laufende Pipeline geschickt. Alle vier Läufe enden mit `committed to branch`.
+  Die über den Bus gelesenen PIM-Nutzlasten sind byte-identisch mit den zuvor archivierten
+  Direktaufruf-Ergebnissen (Trace 108/100/103/112). Damit entfällt die frühere Asymmetrie,
+  dass das fallnahe Paar nur gegen einen lokalen Broker gelaufen war. Rohbelege unter
+  `EVAL/Eval_new/`, Auswertung in `EVAL/FRAMEWORK.md` Abschnitt 8.1 inklusive der
+  Mendix-Artefaktzahlen je Lauf, die Thesis-Abschnitt 8.3 benötigt.
+
+- [x] **PostgreSQL-Ausführungsnachweis für alle vier DDL-Dateien** - am 2026-09-17 gegen
+  `postgres:16-alpine` mit `ON_ERROR_STOP=1` eingespielt, alle vier fehlerfrei. Gegenprüfung
+  am Systemkatalog: 14/7/17/13 Tabellen, 1/7/1/11 Enum-Typen und 16/8/31/20 Fremdschlüssel
+  tatsächlich angelegt. Damit ist auch S12 (topologische Sortierung nach Kahn) belegt, und
+  der Rollennamen-Kollisionsfall `TransportStartsAt`/`TransportEndsAt` im Case-DEMO-PIM läuft
+  nachweislich durch. Details: `EVAL/FRAMEWORK.md` Abschnitt 8.2.
+
+- [x] **Mendix Studio Pro - Schema Validation Rate (QR3, binär, muss 100% sein)** - am
+  2026-09-17 für alle vier Fälle geprüft, jeweils **0 Errors und 0 Warnings**. QR3 ist damit
+  für beide CIM-Sprachen und beide Modellpaare erfüllt. Die Prüfung erfolgte zwischen den
+  Läufen, weil `pim-to-mendix-agent` das Zielmodell vor jedem Lauf leert.
+  - **Offen dazu:** CE0049 trat nicht auf, obwohl `EVAL/FRAMEWORK.md` Abschnitt 5 den Fehler
+    als "je WorkflowCallAction" dokumentiert und das Regelabdeckungs-DEMO 17 Workflows und
+    5 ACR-Microflows erzeugt. Zu klären ist, ob der Dialog in dieser Studio-Pro-Installation
+    früher einmal bestätigt wurde. Betrifft auch die Thesis-Abschnitte 6.4.5 und 7.4.5.
 
 - [x] **Traceability Coverage (QR4)** - Aus den beiden Live-Läufen oben berechnet:
   **DEMO 95,4 %** (103/108, 5 gerechtfertigte NotMapped-Einträge für A7-SM-Trigger-Semantik),
   **MERODE 100 %** (100/100, keine NotMapped-Einträge). Ergebnis in `EVAL/FRAMEWORK.md`
-  Abschnitt 5 und 7 dokumentiert. Implementiert/ausgewertet 2026-09-07.
+  Abschnitt 6 und 8 dokumentiert. Implementiert/ausgewertet 2026-09-07.
 
 - [ ] **Test-Fidelity-Lücke: Offline-Tests testen nicht die echte Produktionslogik**
   - **Was:** `mda-agents/tests/test-transform.ts` und `mda-agents/tests/smoke-m9-m3.ts` sind
@@ -72,17 +95,17 @@ Stand: 2026-09-01. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benöti
     nur, wenn an den Agenten noch weitergearbeitet wird - noch zu entscheiden.
 
 - [ ] **QR1/QR2-Scoping für den pim-to-sql-agent klären und dokumentieren**
-  - **Was:** `EVAL/FRAMEWORK.md` erwähnt `pim-to-sql-agent`/SQL-Output bisher an keiner Stelle
-    (geprüft per grep, 2026-09-07). QR1 (Completeness) und QR2 (Validity) sind laut
-    `REQUIREMENTS.md` §4 als Quellaussage-Klassifikation für den CIM->PIM-Schritt definiert
-    (DEMO/MERODE -> pimUML), nicht für PSM-Outputs - das gilt für Mendix genauso, dessen
-    Korrektheitsnachweis stattdessen über QR3 (Schema Validation Rate / Studio-Pro-Check)
-    läuft, nicht über C/M/I-Klassifikation. Für SQL existiert mit dem
-    Postgres-Ausführbarkeitsnachweis (`tests/README.md`, Wegwerf-Docker-Container) bereits ein
-    strukturelles Analogon zu QR3 - aber dieser Nachweis lief bislang gegen die synthetische
-    Vollständigkeits-Fixture `rent-a-car-pim-full.json`, nicht gegen die tatsächlichen
-    Live-Pipeline-PIM-Outputs (`EVAL/demo-pim-output.json` / `merode-pim-output.json`), die für
-    die DEMO/MERODE-Evaluation oben verwendet wurden.
+  - **Was:** QR1 (Completeness) und QR2 (Validity) sind laut `REQUIREMENTS.md` §4 als
+    Quellaussage-Klassifikation für den CIM->PIM-Schritt definiert (DEMO/MERODE -> pimUML),
+    nicht für PSM-Outputs - das gilt für Mendix genauso, dessen Korrektheitsnachweis
+    stattdessen über QR3 (Schema Validation Rate / Studio-Pro-Check) läuft, nicht über
+    C/M/I-Klassifikation. Für SQL existiert mit dem Postgres-Ausführbarkeitsnachweis das
+    strukturelle Analogon zu QR3. Dieser Nachweis liegt seit 2026-09-17 für alle vier
+    Live-Pipeline-DDLs vor (`EVAL/FRAMEWORK.md` Abschnitt 8.2) und nicht mehr nur für die
+    synthetische Vollständigkeits-Fixture `rent-a-car-pim-full.json`.
+  - **Was noch fehlt:** eine ausdrückliche Scoping-Aussage in `EVAL/FRAMEWORK.md`, die
+    festhält, warum der SQL-Agent nicht mit QR1/QR2 bewertet wird. Der Ausführungsnachweis
+    steht dort inzwischen, die methodische Begründung dafür nicht.
   - **Warum wichtig:** Ohne eine explizite Scoping-Aussage in `FRAMEWORK.md` wirkt es wie eine
     Lücke, wenn ein Gutachter fragt, warum der zweite PSM-Agent nicht mit denselben Metriken
     wie DEMO/MERODE bewertet wurde - dabei ist die Antwort methodisch sauber (andere

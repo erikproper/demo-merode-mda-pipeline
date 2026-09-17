@@ -10,6 +10,8 @@ Gemessen werden vier Dimensionen: semantische Vollständigkeit, semantische Vali
 
 Die Evaluation läuft in drei Phasen.
 
+Die Evaluation stützt sich auf zwei Modellpaare. Das erste Paar (Abschnitt 2 und 3) ist ein Regelabdeckungsmodell und dient dem Nachweis, dass jede A- und M-Regel real feuert. Das zweite Paar (Abschnitt 4) bildet ein veröffentlichtes Fallmodell Dritter nach und dient der externen Validität. Beide sind eingebettete Untersuchungseinheiten mit unterschiedlicher Beweislast.
+
 In der ersten Phase wird die Ground Truth extrahiert: alle atomaren Aussagen im Quellmodell (Rent-A-Car DEMO und MERODE) werden aufgelistet. Eine "atomare Aussage" ist die kleinste Bedeutungseinheit in der Quellsprache. Für DEMO sind das: Entitätstypen, Faktentypen (mit Multiplizitäten), Eigenschaftstypen, Werttypen und Ableitungsregeln. Für MERODE: Objekttypen (mit Attributen), Existenzabhängigkeiten (mit Multiplizitäten), Geschäftsereignistypen (mit C/M/E-Rolle) und Lebenszykluszustände (mit Übergangsstruktur).
 
 In der zweiten Phase wird die Pipeline ausgeführt:
@@ -30,7 +32,7 @@ In der dritten Phase werden die Ausgabeelemente klassifiziert. Für jede Ground-
 
 Daraus ergeben sich die Metriken: Completeness = C / (C + M + I), Validity = C / (C + I + Added_unjustified), Schema Validation Rate = immer 100% oder die Pipeline bricht ab, Traceability Coverage = Elemente mit Trace-Links / (alle Elemente ausgenommen explizit NotMapped).
 
-**Verifikationsstatus:** Die Klassifikationen in Abschnitt 2 und 3 basieren nicht mehr auf statischer Code-Analyse, sondern auf einem tatsächlichen Aufruf der Produktionsfunktionen `demo-to-pim-agent.ts::transform()` und `merode-to-pim-agent.ts::transform()` gegen die aktuellen Fixtures, mit anschließender Ajv-Validierung des Outputs gegen `pimuml-schema.json` (beide Outputs schemagültig, DEMO: 108 Trace-Einträge, MERODE: 100 Trace-Einträge). Diese Zahlen wurden am 2026-09-07 durch einen echten End-to-End-Lauf über die Live-Pipeline bestätigt (`curl`-POST an `https://mda.tlolab.com/api/model` vom Mac, PIM-Payload per `mosquitto_sub` vom retained MQTT-Topic direkt auf dem Pi gelesen; Rohdaten in `EVAL/demo-pim-output.json` und `EVAL/merode-pim-output.json` archiviert): identische Trace-Anzahl (108/100), identische Struktur (12/6 Klassen, 11/5 Assoziationen, 12/6 State Machines, 45 M9-propagierte Self-Transitionen bei MERODE). Damit ist auch die formale Traceability-Coverage-Berechnung (Abschnitt 5) nicht mehr offen. Offen bleibt nur noch der Live-Mendix-Studio-Pro-Check (Abschnitt 4, QR3), der zwingend manuell erfolgen muss.
+**Verifikationsstatus:** Die Klassifikationen in Abschnitt 2 und 3 basieren nicht mehr auf statischer Code-Analyse, sondern auf einem tatsächlichen Aufruf der Produktionsfunktionen `demo-to-pim-agent.ts::transform()` und `merode-to-pim-agent.ts::transform()` gegen die aktuellen Fixtures, mit anschließender Ajv-Validierung des Outputs gegen `pimuml-schema.json` (beide Outputs schemagültig, DEMO: 108 Trace-Einträge, MERODE: 100 Trace-Einträge). Diese Zahlen wurden am 2026-09-07 durch einen echten End-to-End-Lauf über die Live-Pipeline bestätigt (`curl`-POST an `https://mda.tlolab.com/api/model` vom Mac, PIM-Payload per `mosquitto_sub` vom retained MQTT-Topic direkt auf dem Pi gelesen; Rohdaten in `EVAL/demo-pim-output.json` und `EVAL/merode-pim-output.json` archiviert): identische Trace-Anzahl (108/100), identische Struktur (12/6 Klassen, 11/5 Assoziationen, 12/6 State Machines, 45 M9-propagierte Self-Transitionen bei MERODE). Damit ist auch die formale Traceability-Coverage-Berechnung (Abschnitt 6) nicht mehr offen. Offen bleibt nur noch der Live-Mendix-Studio-Pro-Check (Abschnitt 5, QR3), der zwingend manuell erfolgen muss.
 
 ---
 
@@ -314,7 +316,104 @@ Alle 12 A-Regeln (A1-A12) sind mit dieser Fixture-Version mindestens einmal real
 
 ---
 
-## 4. Mendix-seitige Evaluation (Schema Validation Rate)
+## 4. Ground Truth: Rent-A-Car Case (fallnahes Modellpaar nach Bzowski)
+
+Quellmodelle: `mda-agents/tests/rent-a-car-case-demo.json` und `mda-agents/tests/rent-a-car-case-merode.json`
+PIM-Rohdaten: `EVAL/demo-case-pim-output.json` und `EVAL/merode-case-pim-output.json`
+
+### 4.1 Zweck und Abgrenzung zu den Fixtures aus Abschnitt 2 und 3
+
+Die Fixtures aus Abschnitt 2 und 3 sind Regelabdeckungsmodelle. Sie wurden gezielt so gebaut, dass jede A-Regel und jede M-Regel mindestens einmal feuert (`mda-agents/tests/README.md`). Das ist für den Nachweis der Regelvollständigkeit richtig, taugt aber nicht als Argument für externe Validität, weil der Fallzuschnitt vom Artefakt her gedacht ist.
+
+Dieses zweite Modellpaar schliesst genau diese Lücke. Es bildet nicht die Regelmenge ab, sondern ein veröffentlichtes, von Dritten erstelltes Fallmodell: das DEMO-Faktmodell für Rent-A-Car aus Bzowskis Diplomarbeit [bzowski2025], Abbildungen 6.2 bis 6.4 und Anhang G, Tabellen G.1 bis G.5. Bzowski leitet den Fall seinerseits aus Dietz und Mulder [dietz2020], Kapitel 15, ab. Die Regelabdeckung ist hier kein Ziel und wird auch nicht erreicht. Die beiden Modellpaare sind damit zwei eingebettete Untersuchungseinheiten mit unterschiedlicher Beweislast, nicht zwei Varianten derselben Sache.
+
+### 4.2 Abweichungen vom Referenzmodell
+
+Drei Konstrukte aus Bzowskis Faktmodell sind im DEMO-Eingabeschema dieses Prototyps nicht ausdrückbar. Sie werden inhaltstreu, aber formverändert abgebildet. Die Abweichungen sind vollständig aufgeführt, damit die Fallnähe überprüfbar bleibt.
+
+| Bzowski | Fixture | Grund |
+|---------|---------|-------|
+| Aggregate entity type `{CAR GROUP} * {YEAR}` mit den Attributen daily rental rate und standard deposit amount | Entitätstyp `YearlyCarGroup` mit den Attributen `carGroup`, `year`, `dailyRentalRate`, `standardDepositAmount` | `demo-schema.json` kennt keinen aggregierten Entitätstyp. Bzowski lässt für genau diesen Typ die Spalten "Standard UML?" und "Mendix?" in Tabelle G.1 leer, die Grenze ist also in der Referenzarbeit selbst belegt |
+| Werttyp `{YEAR}` mit den Attributen max rental duration, rental horizon, location fine rate, late return fine rate | Entitätstyp `Year` mit denselben vier Attributen plus `yearNumber` | Werttypen tragen im Schema nur bei `kind: associationClass` Attribute |
+| Kategorienwerttyp `{CAR GROUP}` ohne Literale | `CarGroup` mit den Literalen economy, compact, luxury | Bzowski begründet die leere Aufzählung damit, dass DEMO-Kategorienwerttypen ihre Werte erst bei der Instanziierung erhalten. Ein leerer Enum verletzt `pimuml-schema.json` (`Enumeration.literals`, `minItems: 1`) und bricht die Mendix-Seite |
+
+Eine vierte Abweichung betrifft nur die MERODE-Seite. Bzowskis Property `the car of [rental] is [car]` hat als Domäne ausdrücklich *taken rental*, ist also partiell. Im DEMO-Fixture bleibt das erhalten, weil der Fakttyp `TakenRentalUsesCar` an der Spezialisierung hängt. Im MERODE-Fixture geht die Partialität verloren, weil eine Existenzabhängigkeit per Definition total ist. `RentalDependsOnCar` bindet das Fahrzeug damit schon an den frisch angelegten Mietvorgang. Das ist eine Ausdrucksgrenze von MERODE, keine Ungenauigkeit der Modellierung, und gehört als Befund in die Diskussion.
+
+Nicht im Fixture enthalten sind Bzowskis abgeleitete Faktspezifikationen (duration, base charge, fine charge und die übrigen aus Dietz und Mulder, Abschnitt 15.4). Bzowski führt sie in Anhang G nicht als Attributtypen, sondern nur im Fliesstext. Die Ableitungsregeln des DEMO-Agenten bleiben in diesem Paar deshalb ungeprüft und werden weiterhin allein durch das Regelabdeckungsmodell aus Abschnitt 3 abgedeckt.
+
+### 4.3 DEMO-Seite: atomare Quellaussagen
+
+| Kategorie | Anzahl | Klassifikation |
+|-----------|--------|----------------|
+| Werttypen (A1, A2): CarGroup kategorisch, MoneyAmount, DayNumber, YearNumber nicht-kategorisch | 4 | alle Correct |
+| Entitätstypen (A3, A4): Rental, DepositPaidRental, TakenRental, ReturnedRental, InvoicePaidRental, Transport, ManagedDay, Car, Branch, Person, Employee, DrivingLicense, Year, YearlyCarGroup | 14 | alle Correct |
+| Attributtypen (A5) | 21 | alle Correct |
+| Faktentypen (A11, A12), darunter viermal Ziel Person und viermal Ziel Branch | 14 | alle Correct |
+| Ereignistypen (A6), TK01 bis TK07 | 7 | alle Correct |
+| Ereignisgetriggerte Spezialisierungen (A7), Diamanten 02 bis 05 | 4 | alle Correct |
+
+Die Klassifikation wurde nicht per Augenschein vorgenommen, sondern für jede einzelne Aussage gegen `EVAL/demo-case-pim-output.json` geprüft: Existenz und Typ des Zielelements, bei Attributen zusätzlich der Typverweis, bei Faktentypen Rollennamen, Rollenziele und beide Kardinalitäten, bei Spezialisierungen das hinterlegte Triggerereignis.
+
+Erzeugtes PIM: 1 Enumeration, 3 DataTypes, 14 Klassen mit 42 Properties, 18 Assoziationen (14 aus Faktentypen, 4 aus ereignisgetriggerten Spezialisierungen), 0 Generalisierungen, 14 State Machines mit 7 Regionen (alle mit gesetztem `forEvent`), 14 Transitionen und 11 Activities (7 Set, 4 Create).
+
+Bemerkenswert ist der Nullwert bei den Generalisierungen. Bzowskis Modell enthält keine schlichte Spezialisierung, sondern ausschliesslich Spezialisierungen mit Ereignistyp. Regel A10 feuert deshalb kein einziges Mal, A7 dagegen viermal. Im Regelabdeckungsmodell ist es genau umgekehrt gewichtet. Das ist der klarste Beleg dafür, dass die beiden Paare unterschiedliche Aussagen tragen.
+
+Ebenfalls unaktiviert bleiben A8 (AssociationClass, Bzowski hat keine), A9 (abgeleitete Spezialisierung) und die Ableitungsregeln aus A5.
+
+### 4.4 MERODE-Seite: atomare Quellaussagen
+
+| Kategorie | Anzahl | Klassifikation |
+|-----------|--------|----------------|
+| Domänentypen (M3) | 4 | alle Correct |
+| Objekttypen (M1) | 10 | alle Correct |
+| Attribute (M2) | 20 | alle Correct |
+| Existenzabhängigkeiten (M4) | 8 | alle Correct |
+| Geschäftsereignistypen (M5 bis M8): 10 C-Rollen, 10 M-Rollen, 10 E-Rollen | 30 | alle Correct |
+| Lebenszykluszustände (LC), darunter fünf für Rental und zwei für DrivingLicense | 15 | alle Correct |
+| Propagierungsobligationen (M9) | 30 | alle Correct |
+
+Die M9-Zahl ergibt sich aus der transitiven Hülle des Existenzabhängigkeitsgraphen: Person empfängt 9 Ereignisse (6 von Rental, 3 von DrivingLicense), Branch 8 (6 von Rental, 2 von Transport), Car 8 (6 von Rental, 2 von Transport), Year 3 (von YearlyCarGroup) und Employee 2 (von ManagedDay). Jeder dieser Master hat genau einen Lebenszykluszustand, weshalb pro Ereignis genau eine Self-Transition entsteht.
+
+Anders als im Regelabdeckungsmodell aus Abschnitt 2 gibt es hier keine mehrstufige Propagierungskette und keine Vervielfachung über mehrere Zustände: Rental trägt zwar fünf Zustände, ist aber in Bzowskis Fall von nichts abhängig. Der 3-Hop-Pfad von M9 bleibt allein durch die Fixture aus Abschnitt 2 abgedeckt.
+
+Erzeugtes PIM: 1 Enumeration, 3 DataTypes, 10 Klassen mit 30 Properties, 8 Assoziationen, 10 State Machines mit je einer Region ohne `forEvent`, 60 Transitionen (10 C, 10 M, 10 E, 30 propagiert) und 60 Activities (10 Create, 40 Set, 10 End).
+
+### 4.5 Hilfsstrukturen (Added_justified)
+
+DEMO: 14 Identifier-Properties, 7 boolesche Zustandsattribute (A6), 7 Regionen mit je einem `{ev}_initial`-Pseudozustand sowie den Zuständen `{ev}_false` und `{ev}_true`, 7 Set-Activities und 4 Create-Activities für die A7-Spezialisierungen.
+
+MERODE: 10 Identifier-Properties sowie je Zustandsmaschine ein `__initial`- und ein `__final`-Pseudozustand, dazu die Create-, Set- und End-Activities.
+
+Alle diese Elemente sind strukturell notwendig und für die Mendix-Generierung erforderlich. Added_unjustified ist in beiden Modellen leer.
+
+### 4.6 Zusammenfassung des fallnahen Modellpaars
+
+| Metrik | DEMO | MERODE |
+|--------|------|--------|
+| Atomare Quellaussagen | 64 | 117 |
+| Correct (C) | 64 | 117 |
+| Missing (M) | 0 | 0 |
+| Incorrect (I) | 0 | 0 |
+| **Completeness** = C/(C+M+I) | **100 %** | **100 %** |
+| Added_unjustified | 0 | 0 |
+| **Validity** = C/(C+I+Added_unjustified) | **100 %** | **100 %** |
+| Trace-Einträge | 103 | 112 |
+| davon NotMapped | 4 | 0 |
+| **Traceability Coverage** | **96,1 %** | **100 %** |
+
+Die vier NotMapped-Einträge auf der DEMO-Seite sind die A7-Trigger-Ereignisse `rentalDepositPaid`, `rentalTaken`, `rentalReturned` und `rentalInvoicePaid`, jeweils mit `targetName: "StateMachineBehavior"`. Es ist derselbe gerechtfertigte Fall wie in Abschnitt 6, nur mit vier statt fünf Vorkommen.
+
+### 4.7 Durchführung
+
+Der Lauf erfolgte am 2026-09-17 über die unveränderten Produktionsagenten `api-server.ts`, `demo-to-pim-agent.ts`, `merode-to-pim-agent.ts` und `pim-to-sql-agent.ts` gegen einen lokalen Mosquitto-Broker, weil der Raspberry Pi zu diesem Zeitpunkt nicht im Heimnetz erreichbar war. Es wurde keine Zeile Agentencode und keine Schema-Datei verändert. Die PIM-Nutzlasten stammen aus den retained MQTT-Nachrichten auf `model.pim.created`, gelesen per `mosquitto_sub`, und liegen unverändert in `EVAL/demo-case-pim-output.json` und `EVAL/merode-case-pim-output.json`.
+
+Der SQL-Agent erzeugte dabei 17 `CREATE TABLE` und 1 `CREATE TYPE` für das DEMO-Modell sowie 13 `CREATE TABLE` und 11 `CREATE TYPE` für das MERODE-Modell.
+
+**Nachgereicht am 2026-09-17:** alle drei zu diesem Zeitpunkt offenen Punkte - End-to-End-Lauf über die Live-Pipeline auf dem Pi, Ausführungsnachweis der DDL gegen PostgreSQL 16 und Mendix-Studio-Pro-Check - sind erbracht. Abschnitt 8 hält die Ergebnisse fest.
+
+---
+
+## 5. Mendix-seitige Evaluation (Schema Validation Rate)
 
 Nach dem Ausführen der Pipeline das generierte Mendix-Modell in Mendix Studio Pro öffnen und prüfen: keine Fehler (CE-Präfix) und idealerweise keine Warnungen (CW-Präfix) oder diese dokumentieren.
 
@@ -326,11 +425,13 @@ Zusätzlich nach den Korrekturen vom 2026-09-14 prüfen:
 - Beim Anlegen eines Rental in der laufenden App starten alle sechs Workflows parallel auf demselben Objekt ohne Fehler.
 - `Set_Rental_extendRental` und die propagierten `Set_Rental_*`-Microflows (ChangeObject ohne Status-MemberChange) erzeugen keinen Fehler.
 
-**Noch offen:** dieser Schritt setzt einen laufenden Bus/Pi und Mendix Studio Pro voraus und wurde für die erweiterten Fixtures (Vehicle/A10, Branch, mehrstufige Rental-Lebenszyklen, Invoice/3-Hop-M9) noch nicht wiederholt.
+**Durchführung am 2026-09-17 (alle vier Untersuchungseinheiten):** Nach jedem der vier Live-Läufe wurde die erzeugte App in Mendix Studio Pro geöffnet und der Fehlerbereich geprüft. Ergebnis für `rent-a-car-demo`, `rent-a-car-merode`, `rent-a-car-case-demo` und `rent-a-car-case-merode` jeweils **0 Errors und 0 Warnings**. QR3 ist damit für beide CIM-Sprachen und beide Modellpaare erfüllt, einschließlich der erweiterten Fixtures (Vehicle/A10, Branch, mehrstufige Rental-Lebenszyklen, Invoice/3-Hop-M9). Die Prüfung musste zwischen den Läufen erfolgen, weil `pim-to-mendix-agent` das Zielmodell vor jedem Lauf leert.
+
+**Ungeklärt:** der oben dokumentierte Befund, CE0049 trete je WorkflowCallAction auf, ließ sich bei diesem Lauf nicht reproduzieren, obwohl das Regelabdeckungs-DEMO 17 Workflows und 5 ACR-Microflows erzeugt. Offen ist, ob der Dialog in dieser Studio-Pro-Installation früher einmal bestätigt wurde und die Einstellung fortgilt, oder ob die Meldung nicht mehr auftritt. Das ist vor der Verwertung in Kapitel 9 zu klären und betrifft auch die Thesis-Abschnitte 6.4.5 und 7.4.5.
 
 ---
 
-## 5. Traceability Coverage
+## 6. Traceability Coverage
 
 Das `_trace`-Array in jeder veröffentlichten PIM-Nachricht enthält Trace-Einträge als `{ sourceType, sourceName, targetType, targetName }`. Zur Berechnung der Traceability Coverage: das `_trace`-Array aus der MERODE-PIM-Nachricht extrahieren (aus der MQTT-Retained-Message oder den Konsolenausgaben), Einträge mit `targetType != "NotMapped"` zählen (nachverfolgte Elemente), Einträge mit `targetType == "NotMapped"` zählen (explizit nicht nachverfolgbar, akzeptabel für A7-Verweise), und Coverage = verfolgt / (verfolgt + nicht verfolgt) berechnen.
 
@@ -343,13 +444,13 @@ Referenzwerte aus dem verifizierten Testlauf (Abschnitt 1): DEMO-Trace enthält 
 
 ---
 
-## 6. Gliederungsplan für das Thesis-Kapitel
+## 7. Gliederungsplan für das Thesis-Kapitel
 
 Das Evaluationskapitel sollte folgende Struktur haben: Versuchsaufbau (Fallstudie, Quellmodelle, Pipeline-Konfiguration), Ground-Truth-Extraktion (atomare Aussagen für jede Quellsprache in tabellarischer Form), Transformationsergebnisse für DEMO (Klassifikationstabelle, Vollständigkeit/Validität, Vergleich mit Bzowskis Ergebnissen), Transformationsergebnisse für MERODE (Klassifikationstabelle, explizite Nennung des mehrstufigen Rental-Lebenszyklus und der 3-Hop-M9-Propagierung), Mendix-Modellvalidierung (Screenshot, Fehleranzahl, SVR = 100%), Traceability (Abdeckungsprozentsatz, Liste der NotMapped-Elemente mit Begründungen), Extensibilität (Git-Diff beim Hinzufügen von MERODE, Verweis auf EXTENSIBILITY_EVIDENCE.md) und Diskussion (was die Werte bedeuten, wie die Ergebnisse RQ3 und RQ4 beantworten).
 
 ---
 
-## 7. Ergebnisse (verifiziert gegen echten Transform-Output)
+## 8. Ergebnisse (verifiziert gegen echten Transform-Output)
 
 Die folgenden Zahlen stammen aus einem tatsächlichen Aufruf von `demo-to-pim-agent.ts::transform()` und `merode-to-pim-agent.ts::transform()` gegen die aktuellen Fixtures, mit Ajv-Validierung des Outputs gegen `pimuml-schema.json` (nicht mehr aus statischer Code-Analyse geschätzt).
 
@@ -359,8 +460,51 @@ Die folgenden Zahlen stammen aus einem tatsächlichen Aufruf von `demo-to-pim-ag
 
 **Schema Validation Rate:** Konstruktionsbedingt 100 % - die Pipeline bricht bei jedem Schemaverstoß ab, bevor sie publiziert. Dieser Anspruch wurde im Zuge dieser Verifikation selbst bestätigt: ein zuvor unentdeckter Fixture-Fehler (fehlendes `literals`-Array bei DEMOs `CarGroup`-ValueType) führte dazu, dass der reale Output beim ersten Testlauf tatsächlich am `pimuml-schema.json`-Constraint `Enumeration.literals minItems:1` scheiterte - ein Beleg dafür, dass die Schema-Validierung wirksam greift, nicht nur eine unbewiesene Behauptung. Nach Behebung (Ergänzung der Literale) ist der Output schemagültig.
 
-**Traceability Coverage:** DEMO 95,4 % (103/108, 5 gerechtfertigte NotMapped-Einträge), MERODE 100 % (100/100, keine NotMapped-Einträge). Einzige NotMapped-Einträge entstehen beim A7-Trace-Eintrag `{ targetType: "NotMapped", targetName: "StateMachineBehavior" }`, der die nicht-übersetzte SM-Trigger-Semantik explizit kennzeichnet. Diese sind semantisch gerechtfertigt (s. Abschnitt 5).
+**Traceability Coverage:** DEMO 95,4 % (103/108, 5 gerechtfertigte NotMapped-Einträge), MERODE 100 % (100/100, keine NotMapped-Einträge). Einzige NotMapped-Einträge entstehen beim A7-Trace-Eintrag `{ targetType: "NotMapped", targetName: "StateMachineBehavior" }`, der die nicht-übersetzte SM-Trigger-Semantik explizit kennzeichnet. Diese sind semantisch gerechtfertigt (s. Abschnitt 6).
 
 **Live-Pipeline-Bestätigung (2026-09-07):** Beide obigen Ergebnisse wurden zusätzlich über einen echten End-to-End-Lauf verifiziert - `curl`-POST an `https://mda.tlolab.com/api/model` (Mac, öffentlicher Cloudflare Tunnel), PIM-Payload per `mosquitto_sub` vom retained Topic `model.pim.created` direkt auf dem Pi gelesen (`EVAL/demo-pim-output.json`, `EVAL/merode-pim-output.json`). Alle Struktur- und Trace-Zahlen sind identisch zum Direktaufruf-Testlauf oben; Completeness und Validity bleiben damit für beide Sprachen bei 100 %.
 
-**Noch offen:** einzig der Live-Mendix-Studio-Pro-Check (Abschnitt 4, QR3) - erfordert manuelles Öffnen der generierten App in Studio Pro und ist nicht automatisierbar.
+**Fallnahes Modellpaar (Abschnitt 4, Lauf vom 2026-09-17):** DEMO 64 Quellaussagen, MERODE 117 Quellaussagen, jeweils C = alle, M = 0, I = 0. Completeness und Validity liegen für beide Sprachen bei 100 %. Traceability Coverage: DEMO 96,1 % (99/103, vier gerechtfertigte NotMapped-Einträge für die A7-Trigger-Ereignisse), MERODE 100 % (112/112). Dieses Paar aktiviert bewusst nicht alle Regeln: A8, A9, A10 und die Ableitungsregeln feuern nicht, weil Bzowskis Faktmodell die zugehörigen Konstrukte nicht enthält. Umgekehrt feuert A7 hier viermal statt einmal. Der Vergleich der beiden Paare zeigt damit, dass die gemessenen Werte nicht vom Fallzuschnitt abhängen.
+
+### 8.1 Live-Pipeline-Lauf aller vier Untersuchungseinheiten (2026-09-17)
+
+Alle vier Modelle wurden nacheinander über den öffentlichen Endpunkt `https://mda.tlolab.com/api/model` an die auf dem Raspberry Pi laufende Pipeline geschickt. Die Rohbelege jedes Laufs - Agent-Logs, PIM vom retained Topic und erzeugte DDL - liegen unter `EVAL/Eval_new/`. Es wurde keine Zeile Agentencode und keine Schema-Datei verändert.
+
+**Identität mit den Direktaufruf-Läufen:** die vier über den Bus gelesenen PIM-Nutzlasten sind nach Entfernen der Bus-Metadaten byte-identisch mit den zuvor archivierten Ergebnissen `demo-pim-output.json`, `merode-pim-output.json`, `demo-case-pim-output.json` und `merode-case-pim-output.json`. Die Trace-Längen betragen unverändert 108, 100, 103 und 112 Einträge. Completeness, Validity und Traceability Coverage aus den Abschnitten oben gelten damit unverändert für den Live-Betrieb. Insbesondere entfällt die frühere Asymmetrie, dass das fallnahe Modellpaar nur gegen einen lokalen Broker gelaufen war.
+
+**Erzeugte Mendix-Artefakte je Lauf** (gezählt aus den `+`-Zeilen der `pim-to-mendix-agent`-Logs, alle vier Läufe enden mit `committed to branch`):
+
+| Artefakt | DEMO | MERODE | DEMO Case | MERODE Case |
+|----------|------|--------|-----------|-------------|
+| Entities (B2) | 12 | 6 | 14 | 10 |
+| DataType-Entities (B4) | 1 | 1 | 3 | 3 |
+| Enumerations (B3) | 1 | 1 | 1 | 1 |
+| Status-Enums (B13) | 0 | 6 | 0 | 10 |
+| Attribute (B6) | 42 | 19 | 29 | 18 |
+| Assoziationen gesamt (B9) | 11 | 5 | 18 | 8 |
+| davon DataType-Assoziationen (B5) | 2 | 3 | 13 | 12 |
+| Association Class (B8) | 1 | 0 | 0 | 0 |
+| Generalisierung (B7) | 1 | 0 | 0 | 0 |
+| Microflows (B14-B16) | 23 | 65 | 11 | 60 |
+| ACR-Microflows (B12) | 5 | 0 | 3 | 0 |
+| Workflows (B11) | 17 | 0 | 7 | 0 |
+| Pages | 12 | 6 | 14 | 10 |
+
+Die Assoziationszahlen decken sich mit den PIM-seitigen Zahlen der Abschnitte 2 bis 4. Bemerkenswert bleibt, dass das fallnahe DEMO-Modell **keine** Generalisierung erzeugt, weil dort alle vier abgeleiteten Rental-Typen ein Trigger-Ereignis tragen und damit A7 statt A10 auslösen.
+
+**QR3:** alle vier Apps öffnen in Mendix Studio Pro mit 0 Errors und 0 Warnings (Abschnitt 5).
+
+### 8.2 Ausführungsnachweis der generierten DDL gegen PostgreSQL 16
+
+Die vier vom `pim-to-sql-agent` erzeugten DDL-Dateien wurden in je einer eigenen, leeren Datenbank eines Wegwerf-Containers (`postgres:16-alpine`) mit `psql -v ON_ERROR_STOP=1` eingespielt. Alle vier laufen fehlerfrei durch. Anschließend wurde gegen den Systemkatalog geprüft, dass die Objekte tatsächlich angelegt wurden - ein stärkerer Nachweis als das bloße Ausbleiben einer Fehlermeldung.
+
+| DDL | Tabellen | Enum-Typen | Fremdschlüssel |
+|-----|----------|------------|----------------|
+| `rent_a_car_demo_pim_uml.sql` | 14 | 1 | 16 |
+| `rent_a_car_merode_pim_uml.sql` | 7 | 7 | 8 |
+| `rent_a_car_case_demo_pim_uml.sql` | 17 | 1 | 31 |
+| `rent_a_car_case_merode_pim_uml.sql` | 13 | 11 | 20 |
+
+Die Tabellen- und Enum-Zahlen stimmen mit den Statements in den Skripten überein, und jeder `REFERENCES`-Ausdruck ist als Constraint in der Datenbank angekommen. Damit ist auch S12 belegt, die topologische Sortierung der `CREATE TABLE`-Reihenfolge nach Kahns Algorithmus: bei falscher Reihenfolge würde eine Tabelle vor ihrem Ziel angelegt und `psql` abbrechen.
+
+**Noch offen:** die Frage zu CE0049 aus Abschnitt 5.
