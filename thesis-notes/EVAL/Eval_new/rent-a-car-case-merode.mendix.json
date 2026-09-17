@@ -1,0 +1,619 @@
+{
+  "readAt": "2026-09-17T09:31:00.086Z",
+  "appId": "94883cdf-f7b8-4a69-bf34-cda991406e5c",
+  "branch": "main",
+  "module": "MyFirstModule",
+  "deep": false,
+  "counts": {
+    "entities": 13,
+    "attributes": 28,
+    "associations": 20,
+    "generalizations": 0,
+    "enumerations": 11,
+    "microflows": 60,
+    "workflows": 0,
+    "pages": 11
+  },
+  "entities": [
+    {
+      "name": "Branch",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "BranchID",
+          "type": "Integer"
+        },
+        {
+          "name": "name",
+          "type": "String"
+        },
+        {
+          "name": "status",
+          "type": "Enumeration(Branch_Status)"
+        }
+      ]
+    },
+    {
+      "name": "Car",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "carGroup",
+          "type": "Enumeration(CarGroup)"
+        },
+        {
+          "name": "CarID",
+          "type": "Integer"
+        },
+        {
+          "name": "status",
+          "type": "Enumeration(Car_Status)"
+        }
+      ]
+    },
+    {
+      "name": "DayNumber",
+      "generalization": null,
+      "attributes": []
+    },
+    {
+      "name": "DrivingLicense",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "DrivingLicenseID",
+          "type": "Integer"
+        },
+        {
+          "name": "status",
+          "type": "Enumeration(DrivingLicense_Status)"
+        }
+      ]
+    },
+    {
+      "name": "Employee",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "EmployeeID",
+          "type": "Integer"
+        },
+        {
+          "name": "fullName",
+          "type": "String"
+        },
+        {
+          "name": "status",
+          "type": "Enumeration(Employee_Status)"
+        }
+      ]
+    },
+    {
+      "name": "ManagedDay",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "ManagedDayID",
+          "type": "Integer"
+        },
+        {
+          "name": "status",
+          "type": "Enumeration(ManagedDay_Status)"
+        }
+      ]
+    },
+    {
+      "name": "MoneyAmount",
+      "generalization": null,
+      "attributes": []
+    },
+    {
+      "name": "Person",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "fullName",
+          "type": "String"
+        },
+        {
+          "name": "PersonID",
+          "type": "Integer"
+        },
+        {
+          "name": "status",
+          "type": "Enumeration(Person_Status)"
+        }
+      ]
+    },
+    {
+      "name": "Rental",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "carGroup",
+          "type": "Enumeration(CarGroup)"
+        },
+        {
+          "name": "RentalID",
+          "type": "Integer"
+        },
+        {
+          "name": "status",
+          "type": "Enumeration(Rental_Status)"
+        }
+      ]
+    },
+    {
+      "name": "Transport",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "status",
+          "type": "Enumeration(Transport_Status)"
+        },
+        {
+          "name": "TransportID",
+          "type": "Integer"
+        }
+      ]
+    },
+    {
+      "name": "Year",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "maxRentalDuration",
+          "type": "Integer"
+        },
+        {
+          "name": "rentalHorizon",
+          "type": "Integer"
+        },
+        {
+          "name": "status",
+          "type": "Enumeration(Year_Status)"
+        },
+        {
+          "name": "YearID",
+          "type": "Integer"
+        }
+      ]
+    },
+    {
+      "name": "YearlyCarGroup",
+      "generalization": null,
+      "attributes": [
+        {
+          "name": "carGroup",
+          "type": "Enumeration(CarGroup)"
+        },
+        {
+          "name": "status",
+          "type": "Enumeration(YearlyCarGroup_Status)"
+        },
+        {
+          "name": "YearlyCarGroupID",
+          "type": "Integer"
+        }
+      ]
+    },
+    {
+      "name": "YearNumber",
+      "generalization": null,
+      "attributes": []
+    }
+  ],
+  "associations": [
+    {
+      "name": "DrivingLicense_expirationDay",
+      "parent": "DrivingLicense",
+      "child": "DayNumber",
+      "type": "Reference",
+      "owner": "Both"
+    },
+    {
+      "name": "DrivingLicenseDependsOnPerson",
+      "parent": "DrivingLicense",
+      "child": "Person",
+      "type": "Reference",
+      "owner": "Default"
+    },
+    {
+      "name": "ManagedDay_day",
+      "parent": "ManagedDay",
+      "child": "DayNumber",
+      "type": "Reference",
+      "owner": "Both"
+    },
+    {
+      "name": "ManagedDayDependsOnEmployee",
+      "parent": "ManagedDay",
+      "child": "Employee",
+      "type": "Reference",
+      "owner": "Default"
+    },
+    {
+      "name": "Rental_depositAmount",
+      "parent": "Rental",
+      "child": "MoneyAmount",
+      "type": "Reference",
+      "owner": "Both"
+    },
+    {
+      "name": "Rental_endingDay",
+      "parent": "Rental",
+      "child": "DayNumber",
+      "type": "Reference",
+      "owner": "Both"
+    },
+    {
+      "name": "Rental_invoiceAmount",
+      "parent": "Rental",
+      "child": "MoneyAmount",
+      "type": "Reference",
+      "owner": "Both"
+    },
+    {
+      "name": "Rental_startingDay",
+      "parent": "Rental",
+      "child": "DayNumber",
+      "type": "Reference",
+      "owner": "Both"
+    },
+    {
+      "name": "RentalDependsOnBranch",
+      "parent": "Rental",
+      "child": "Branch",
+      "type": "Reference",
+      "owner": "Default"
+    },
+    {
+      "name": "RentalDependsOnCar",
+      "parent": "Rental",
+      "child": "Car",
+      "type": "Reference",
+      "owner": "Default"
+    },
+    {
+      "name": "RentalDependsOnPerson",
+      "parent": "Rental",
+      "child": "Person",
+      "type": "Reference",
+      "owner": "Default"
+    },
+    {
+      "name": "Transport_dayOfTransport",
+      "parent": "Transport",
+      "child": "DayNumber",
+      "type": "Reference",
+      "owner": "Both"
+    },
+    {
+      "name": "TransportDependsOnBranch",
+      "parent": "Transport",
+      "child": "Branch",
+      "type": "Reference",
+      "owner": "Default"
+    },
+    {
+      "name": "TransportDependsOnCar",
+      "parent": "Transport",
+      "child": "Car",
+      "type": "Reference",
+      "owner": "Default"
+    },
+    {
+      "name": "Year_lateReturnFineRate",
+      "parent": "Year",
+      "child": "MoneyAmount",
+      "type": "Reference",
+      "owner": "Both"
+    },
+    {
+      "name": "Year_locationFineRate",
+      "parent": "Year",
+      "child": "MoneyAmount",
+      "type": "Reference",
+      "owner": "Both"
+    },
+    {
+      "name": "Year_yearNumber",
+      "parent": "Year",
+      "child": "YearNumber",
+      "type": "Reference",
+      "owner": "Both"
+    },
+    {
+      "name": "YearlyCarGroup_dailyRentalRate",
+      "parent": "YearlyCarGroup",
+      "child": "MoneyAmount",
+      "type": "Reference",
+      "owner": "Both"
+    },
+    {
+      "name": "YearlyCarGroup_standardDepositAmount",
+      "parent": "YearlyCarGroup",
+      "child": "MoneyAmount",
+      "type": "Reference",
+      "owner": "Both"
+    },
+    {
+      "name": "YearlyCarGroupDependsOnYear",
+      "parent": "YearlyCarGroup",
+      "child": "Year",
+      "type": "Reference",
+      "owner": "Default"
+    }
+  ],
+  "enumerations": [
+    {
+      "name": "Branch_Status",
+      "literals": [
+        "open"
+      ]
+    },
+    {
+      "name": "Car_Status",
+      "literals": [
+        "registered"
+      ]
+    },
+    {
+      "name": "CarGroup",
+      "literals": [
+        "economy",
+        "compact",
+        "luxury"
+      ]
+    },
+    {
+      "name": "DrivingLicense_Status",
+      "literals": [
+        "valid",
+        "expired"
+      ]
+    },
+    {
+      "name": "Employee_Status",
+      "literals": [
+        "employed"
+      ]
+    },
+    {
+      "name": "ManagedDay_Status",
+      "literals": [
+        "planned"
+      ]
+    },
+    {
+      "name": "Person_Status",
+      "literals": [
+        "registered"
+      ]
+    },
+    {
+      "name": "Rental_Status",
+      "literals": [
+        "active",
+        "depositPaid",
+        "taken",
+        "returned",
+        "invoicePaid"
+      ]
+    },
+    {
+      "name": "Transport_Status",
+      "literals": [
+        "planned"
+      ]
+    },
+    {
+      "name": "Year_Status",
+      "literals": [
+        "open"
+      ]
+    },
+    {
+      "name": "YearlyCarGroup_Status",
+      "literals": [
+        "active"
+      ]
+    }
+  ],
+  "microflows": [
+    {
+      "name": "Create_Branch"
+    },
+    {
+      "name": "Create_Car"
+    },
+    {
+      "name": "Create_DrivingLicense"
+    },
+    {
+      "name": "Create_Employee"
+    },
+    {
+      "name": "Create_ManagedDay"
+    },
+    {
+      "name": "Create_Person"
+    },
+    {
+      "name": "Create_Rental"
+    },
+    {
+      "name": "Create_Transport"
+    },
+    {
+      "name": "Create_Year"
+    },
+    {
+      "name": "Create_YearlyCarGroup"
+    },
+    {
+      "name": "End_Branch"
+    },
+    {
+      "name": "End_Car"
+    },
+    {
+      "name": "End_DrivingLicense"
+    },
+    {
+      "name": "End_Employee"
+    },
+    {
+      "name": "End_ManagedDay"
+    },
+    {
+      "name": "End_Person"
+    },
+    {
+      "name": "End_Rental"
+    },
+    {
+      "name": "End_Transport"
+    },
+    {
+      "name": "End_Year"
+    },
+    {
+      "name": "End_YearlyCarGroup"
+    },
+    {
+      "name": "Set_Branch_completeRental"
+    },
+    {
+      "name": "Set_Branch_completeTransport"
+    },
+    {
+      "name": "Set_Branch_payDeposit"
+    },
+    {
+      "name": "Set_Branch_payInvoice"
+    },
+    {
+      "name": "Set_Branch_planTransport"
+    },
+    {
+      "name": "Set_Branch_renameBranch"
+    },
+    {
+      "name": "Set_Branch_returnCar"
+    },
+    {
+      "name": "Set_Branch_startRental"
+    },
+    {
+      "name": "Set_Branch_takeCar"
+    },
+    {
+      "name": "Set_Car_completeRental"
+    },
+    {
+      "name": "Set_Car_completeTransport"
+    },
+    {
+      "name": "Set_Car_payDeposit"
+    },
+    {
+      "name": "Set_Car_payInvoice"
+    },
+    {
+      "name": "Set_Car_planTransport"
+    },
+    {
+      "name": "Set_Car_reclassifyCar"
+    },
+    {
+      "name": "Set_Car_returnCar"
+    },
+    {
+      "name": "Set_Car_startRental"
+    },
+    {
+      "name": "Set_Car_takeCar"
+    },
+    {
+      "name": "Set_DrivingLicense_expireDrivingLicense"
+    },
+    {
+      "name": "Set_Employee_completeDayManagement"
+    },
+    {
+      "name": "Set_Employee_planDayManagement"
+    },
+    {
+      "name": "Set_Person_completeRental"
+    },
+    {
+      "name": "Set_Person_expireDrivingLicense"
+    },
+    {
+      "name": "Set_Person_issueDrivingLicense"
+    },
+    {
+      "name": "Set_Person_payDeposit"
+    },
+    {
+      "name": "Set_Person_payInvoice"
+    },
+    {
+      "name": "Set_Person_returnCar"
+    },
+    {
+      "name": "Set_Person_startRental"
+    },
+    {
+      "name": "Set_Person_takeCar"
+    },
+    {
+      "name": "Set_Person_updatePersonDetails"
+    },
+    {
+      "name": "Set_Person_withdrawDrivingLicense"
+    },
+    {
+      "name": "Set_Rental_payDeposit"
+    },
+    {
+      "name": "Set_Rental_payInvoice"
+    },
+    {
+      "name": "Set_Rental_returnCar"
+    },
+    {
+      "name": "Set_Rental_takeCar"
+    },
+    {
+      "name": "Set_Year_defineYearlyCarGroup"
+    },
+    {
+      "name": "Set_Year_retireYearlyCarGroup"
+    },
+    {
+      "name": "Set_Year_setYearParameters"
+    },
+    {
+      "name": "Set_Year_updateYearlyCarGroupRates"
+    },
+    {
+      "name": "Set_YearlyCarGroup_updateYearlyCarGroupRates"
+    }
+  ],
+  "workflows": [],
+  "pages": [
+    "Branch_Overview",
+    "Car_Overview",
+    "DrivingLicense_Overview",
+    "Employee_Overview",
+    "ManagedDay_Overview",
+    "Person_Overview",
+    "Rental_Detail",
+    "Rental_Overview",
+    "Transport_Overview",
+    "Year_Overview",
+    "YearlyCarGroup_Overview"
+  ]
+}

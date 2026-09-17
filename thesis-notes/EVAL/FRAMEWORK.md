@@ -481,8 +481,9 @@ Alle vier Modelle wurden nacheinander über den öffentlichen Endpunkt `https://
 | Enumerations (B3) | 1 | 1 | 1 | 1 |
 | Status-Enums (B13) | 0 | 6 | 0 | 10 |
 | Attribute (B6) | 42 | 19 | 29 | 18 |
-| Assoziationen gesamt (B9) | 11 | 5 | 18 | 8 |
-| davon DataType-Assoziationen (B5) | 2 | 3 | 13 | 12 |
+| Assoziationen aus Fakten-/Abhängigkeitsbeziehungen (B9) | 11 | 5 | 18 | 8 |
+| DataType-Assoziationen (B5) | 2 | 3 | 13 | 12 |
+| Assoziationen gesamt | 13 | 8 | 31 | 20 |
 | Association Class (B8) | 1 | 0 | 0 | 0 |
 | Generalisierung (B7) | 1 | 0 | 0 | 0 |
 | Microflows (B14-B16) | 23 | 65 | 11 | 60 |
@@ -490,7 +491,21 @@ Alle vier Modelle wurden nacheinander über den öffentlichen Endpunkt `https://
 | Workflows (B11) | 17 | 0 | 7 | 0 |
 | Pages | 12 | 6 | 14 | 10 |
 
-Die Assoziationszahlen decken sich mit den PIM-seitigen Zahlen der Abschnitte 2 bis 4. Bemerkenswert bleibt, dass das fallnahe DEMO-Modell **keine** Generalisierung erzeugt, weil dort alle vier abgeleiteten Rental-Typen ein Trigger-Ereignis tragen und damit A7 statt A10 auslösen.
+Die Assoziationszahlen decken sich mit den PIM-seitigen Zahlen der Abschnitte 2 bis 4.
+Die beiden Assoziationszeilen sind disjunkt und nicht ineinander enthalten - eine frühere
+Fassung dieser Tabelle bezeichnete die erste Zeile als "gesamt" und die zweite als "davon",
+was die Gesamtzahl um die DataType-Assoziationen zu niedrig auswies. Die Gesamtzeile stimmt
+mit den Fremdschlüsselzahlen der DDL in Abschnitt 8.2 überein (8, 31 und 20 für MERODE,
+DEMO Case und MERODE Case, beim Regelabdeckungs-DEMO liegen die Fremdschlüssel wegen
+Generalisierung und Association Class höher).
+
+**Vorbehalt zu den Zahlen dieser Tabelle:** sie sind aus dem Log des `pim-to-mendix-agent`
+gezählt. Der Agent protokolliert die beiden Member-End-Assoziationen und die Attribute einer
+Association Class nicht einzeln, sondern nur die Association Class selbst. Für das
+Regelabdeckungs-DEMO, das als einzige Untersuchungseinheit eine Association Class enthält,
+sind daher zwei Assoziationen und zwei Attribute nicht in den Zahlen enthalten. Ein Rücklesen
+des Zielmodells über `mda-agents/tests/dump-mendix-domain.ts` zählt hier entsprechend mehr.
+Für die drei übrigen Untersuchungseinheiten besteht diese Lücke nicht. Bemerkenswert bleibt, dass das fallnahe DEMO-Modell **keine** Generalisierung erzeugt, weil dort alle vier abgeleiteten Rental-Typen ein Trigger-Ereignis tragen und damit A7 statt A10 auslösen.
 
 **QR3:** alle vier Apps öffnen in Mendix Studio Pro mit 0 Errors und 0 Warnings (Abschnitt 5).
 
