@@ -429,6 +429,12 @@ Zusätzlich nach den Korrekturen vom 2026-09-14 prüfen:
 
 **Geklärt (2026-09-17):** der oben dokumentierte Befund, CE0049 trete je WorkflowCallAction auf, ließ sich bei diesem Lauf nicht reproduzieren, obwohl das Regelabdeckungs-DEMO 17 Workflows und 5 ACR-Microflows erzeugt. Maßgeblich ist die Messung, nicht die ältere Notiz: alle vier Apps öffnen mit 0 Errors und 0 Warnings. Die Zeile `[warn] CE0049: click OK once in Studio Pro`, die `pim-to-mendix-agent.ts` beim Erzeugen jedes Set-Microflows ausgibt, ist eine fest verdrahtete Vorhersage des Agenten und keine Rückmeldung aus Studio Pro. Sie beschreibt einen Implementierungsstand vor dem Umweg über `MicroflowParameterObject`. CE0049 wird daher nicht mehr als offene Einschränkung geführt, sondern in `LIMITATIONS.md` als nicht mehr beobachtet dokumentiert.
 
+**Korrektur (2026-09-19):** ein Fehlerlisten-Export aus Studio Pro zeigt für das generierte Modul `MyFirstModule` drei Warnungen CW0263 (Empty enumeration value caption) auf den Werten `economy`, `compact` und `luxury` der Enumeration `CarGroup`. Der oben protokollierte Teilbefund **0 Warnings** war damit für alle vier Einheiten unzutreffend, der Teilbefund 0 Errors bleibt bestehen. Ursache ist eine Asymmetrie im Mendix-Agenten: nur der Pfad für die Status-Enumerationen (B13) setzte je Wert einen englischen Caption, der Pfad für die fachlichen Enumerationen (B4) setzte ausschließlich den Namen. `LIMITATIONS.md` und `DESIGN_DECISIONS.md` beschrieben den Caption bereits als umgesetzt, diese Beschreibung traf aber nur auf den Status-Pfad zu. Jede der vier Einheiten enthält genau eine B4-Enumeration mit drei Literalen, daher genau drei Warnungen je Einheit.
+
+Der B4-Pfad wurde am 2026-09-19 an den B13-Pfad angeglichen, beide Pfade erzeugen jetzt denselben englischen Caption. Die vier Studio-Pro-Prüfungen sind nach einer Neugenerierung zu wiederholen. Bis dahin gilt für QR3 gesichert 0 Errors, der Anspruch 0 Warnings ist offen.
+
+Für künftige Prüfungen: nur Meldungen im generierten Modul zählen. Der Export enthält zusätzlich Meldungen aus `Atlas_Core` und `Atlas_Web_Content`, die aus den mitgelieferten Standardmodulen stammen und kein Pipeline-Artefakt sind. Fehler CE1571 (fehlendes Argument für einen Seitenparameter) entstehen durch manuelles Hinzufügen eines Data View auf einer generierten Seite und sind ebenfalls kein Pipeline-Artefakt, weil der Agent Seiten ohne Parameter erzeugt.
+
 ---
 
 ## 6. Traceability Coverage
@@ -506,7 +512,7 @@ der Agent protokolliert die beiden Member-End-Assoziationen und die Attribute ei
 Class nicht einzeln, sondern nur die Association Class selbst. Abschnitt 8.1.1 löst beides
 gegen den zurückgelesenen Zielzustand auf. Bemerkenswert bleibt, dass das fallnahe DEMO-Modell **keine** Generalisierung erzeugt, weil dort alle vier abgeleiteten Rental-Typen ein Trigger-Ereignis tragen und damit A7 statt A10 auslösen.
 
-**QR3:** alle vier Apps öffnen in Mendix Studio Pro mit 0 Errors und 0 Warnings (Abschnitt 5).
+**QR3:** alle vier Apps öffnen in Mendix Studio Pro mit 0 Errors (Abschnitt 5). Der Zusatz 0 Warnings ist seit der Korrektur vom 2026-09-19 offen und erst nach einer Neugenerierung erneut zu prüfen.
 
 #### 8.1.1 Unabhängige Gegenprobe durch Rücklesen des Zielmodells (2026-09-17)
 

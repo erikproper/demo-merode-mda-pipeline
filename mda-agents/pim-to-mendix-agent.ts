@@ -133,6 +133,12 @@ async function applyPimToMendix(
     for (const literal of enumDef.literals) {
       const val  = enumerations.EnumerationValue.createIn(mxEnum);
       val.name   = literal;
+      // CW0263 fix: an enumeration value without a caption raises a warning in Studio Pro.
+      // Same treatment as the B13 status enums below, so both enumeration paths behave alike.
+      const cap  = texts.Text.createInEnumerationValueUnderCaption(val);
+      const tr   = texts.Translation.createIn(cap);
+      tr.languageCode = "en_US";
+      tr.text    = literal.charAt(0).toUpperCase() + literal.slice(1);
     }
     enumMap.set(enumDef.name, mxEnum);
     console.log(`  + enumeration "${enumDef.name}" [${enumDef.literals.join(", ")}]`);
