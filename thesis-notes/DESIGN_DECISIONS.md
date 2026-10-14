@@ -1,135 +1,136 @@
-# Designentscheidungen (D2)
+# Design Decisions (D2)
 
-Architekturdokumentation des Modelling Bus. Diese Notizen halten fest, welche Entscheidungen wann und warum getroffen wurden, einschließlich verworfener Alternativen. Das Ziel ist, das Designkapitel der Thesis auf dieser Grundlage schreiben zu können und die typische Frage "warum nicht X stattdessen?" beantworten zu können.
-
----
-
-## 1. Systemüberblick
-
-Der Modelling Bus ist eine lose gekoppelte, agentenbasierte MDA-Pipeline. Die Grundidee, die von Blanc et al. [2] übernommen und erweitert wurde, besteht darin, die Transformationslogik jeder CIM-Sprache in einen eigenständigen Agenten auszulagern, der auf einem gemeinsamen Bus veröffentlicht. Beliebig viele Agenten können nebeneinander existieren. Der nachgelagerte Agent (`pim-to-mendix-agent`) abonniert PIM-Artefakte unabhängig davon, welcher vorgelagerte Agent sie veröffentlicht hat.
-
-Das System hat drei Schichten. Die CIM-Schicht enthält formatspezifische Agenten, die CIM-Modelle einlesen und PIM-Modelle ausgeben. Die Bus-Schicht ist der MQTT-Broker (Eclipse Mosquitto), über den schema-validierte PIM-Nachrichten fließen. Die PSM-Schicht besteht aus dem `pim-to-mendix-agent`, der PIM-Modelle konsumiert und Mendix-SDK-Aufrufe erzeugt.
-
-Was diesen Ansatz von bisherigen Arbeiten unterscheidet: Bzowski [4] hat das pimUML-Vokabular und die A-Regeln theoretisch definiert, aber die Pipeline nie automatisiert. Krouwel et al. [11] haben eine Pipeline automatisiert, aber DEMO als einzige Eingabe hartcodiert und kein explizites PIM verwendet. Diese Thesis automatisiert Bzowskis Pipeline und erweitert sie auf mehrere Eingabesprachen, indem das PIM zum Vertrag zwischen den Schichten wird.
+Architectural documentation of the Modelling Bus. These notes record which decisions were made, when and why, including the alternatives that were rejected. I kept them during the design phase so that I could later explain why the bus looks the way it does and not differently.
 
 ---
 
-## 2. Entscheidungsprotokoll
+## 1. System Overview
 
-### DD1 - MQTT als Nachrichtenbus
+The Modelling Bus is a loosely coupled, agent-based MDA pipeline. The basic idea, which was adopted and extended by Blanc et al. [2], is to externalise the transformation logic of each CIM language into a standalone agent that publishes to a shared bus. Any number of agents can co-exist. The downstream agent (`pim-to-mendix-agent`) subscribes to PIM artefacts regardless of which upstream agent published them.
 
-Eclipse Mosquitto (MQTT 3.1.1) wurde als Broker gewählt, nachdem mehrere Ansätze verglichen wurden.
+The system has three layers. The CIM layer contains format-specific agents that read in CIM models and output PIM models. The bus layer is the MQTT broker (Eclipse Mosquitto), through which schema-validated PIM messages flow. The PSM layer consists of the `pim-to-mendix-agent`, which consumes PIM models and generates Mendix SDK calls.
 
-REST/HTTP scheidet aus, weil es synchron und eng gekoppelt ist: Agent B müsste Agents A Adresse kennen, was AR6 verletzt. Eine geteilte Datenbank wäre ebenfalls möglich, würde aber mehr Kopplung einführen und es schwerer machen, Agenten unabhängig zu starten. Apache Kafka wäre leistungsfähiger, aber für einen Forschungsprototyp deutlich überdimensioniert; das Consumer-Group-Modell bringt hier keinen Mehrwert, weil keine Partitionierung benötigt wird.
-
-MQTT ist leichtgewichtig, publish/subscribe-basiert und für verteilte Agentenarchitekturen gut geeignet. Eclipse Mosquitto läuft trivial als Docker-Container. Das entscheidende Feature ist die Retained-Message-Funktion: jeder Agent, der sich verbindet, erhält sofort den letzten bekannten Zustand jedes Topics, ohne auf eine Neuveröffentlichung warten zu müssen. Das macht den Broker zu einem persistenten Zustandsspeicher, was die Entwicklung und das Debugging erheblich vereinfacht. Das Publish/Subscribe-Modell setzt die Entkopplung von AR2 auf natürliche Weise um.
-
-Bekannte Einschränkungen: MQTT garantiert keine geordnete Auslieferung über verschiedene Topics hinweg, und der Broker ist ein Single Point of Failure. Beides ist für einen Forschungsprototyp akzeptabel.
-
-### DD2 - JSON Schema als PIM-Metasprache
-
-Das pimUML-PIM wird als JSON-Schema-validiertes JSON-Dokument repräsentiert. Bzowski [4] definierte pimUML als UML-Profil, aber für die Automatisierung der Pipeline wird ein konkretes Serialisierungsformat benötigt. Das Proposal verweist explizit auf Colantoni et al. [5], die zeigen, dass JSON Schema als Metasprache für MDE-Artefakte geeignet ist.
-
-XMI als Standard-UML-Format scheidet aus, weil es eine schwere Toolchain (Eclipse, Ecore-Metamodelle) erfordert und schlecht zur TypeScript-nativen Mendix-SDK-Umgebung passt. YAML ist menschenlesbar, hat aber keine bessere Tooling-Unterstützung für Schema-Validierung als JSON. Reine TypeScript-Interfaces verlieren die Sprachneutralität und erlauben keine programmatische Schema-Compliance-Prüfung.
-
-JSON ist im Mendix-SDK nativ, wird nativ über MQTT transportiert und lässt sich direkt mit AJV validieren. Die `additionalProperties: false`-Enforcement ist genau das, was gebraucht wird, um stilles Schema-Drift zu verhindern. Dieses Designprinzip kommt bereits von Bzowski.
-
-### DD3 - pimUML als PIM-Sprache
-
-Die Thesis baut direkt auf Bzowski [4] auf. Er hat die A-Regeln von DEMO Fact Model zu pimUML und die B-Regeln von pimUML zu Mendix definiert. Die Aufgabe hier ist, diese Regeln zu automatisieren und pimUML auf MERODE zu erweitern.
-
-Ein vollständig neues PIM zu definieren wäre ein größerer Beitrag, würde aber auch erfordern, jede Designentscheidung eigenständig zu rechtfertigen. Das Aufbauen auf Bzowski verankert das PIM in vorhandener akademischer Arbeit und erlaubt es, den Thesis-Beitrag auf Pipelinearchitektur und MERODE-Erweiterung zu konzentrieren, nicht auf das PIM-Sprachdesign selbst.
-
-pimUML deckt drei UML-Diagrammtypen ab: Klassendiagramm (strukturell), Zustandsmaschinendiagramm (verhaltensbezogen) und Aktivitätsdiagramm (Operationen). Im Prototyp werden Klassen- und Zustandsmaschinendiagramme vollständig genutzt; das Aktivitätsdiagramm wird teilweise genutzt (Aktivitäten werden als typisierte Objekte im PIM erfasst, aber nicht als vollständige UML-Aktivitätsdiagramme dargestellt).
-
-### DD4 - Sequenzielle FSM für MERODE-Lebenszyklen
-
-MERODE-Objektlebenszyklen werden als sequenzielle Zustandsmaschinen mit benannten, geordneten Zuständen und einem finalen Zustand repräsentiert, nicht als orthogonale boolesche Regionen wie bei DEMO.
-
-Das war die folgenreichste Designentscheidung in der MERODE-Erweiterung. Drei Optionen standen zur Wahl.
-
-Option A hätte die boolesche Regionenkodierung von DEMO wiederverwendet: jeder Geschäftsereignistyp als orthogonale Region mit `false`/`true`-Zuständen, unabhängig von der Quellsprache. Das hätte maximale Schema-Wiederverwendung bedeutet, wäre aber semantisch falsch. MERODE-Lebenszykluszustände schließen sich gegenseitig aus (ein Objekt ist entweder `active` oder `completed`, nie beides), boolesche Regionen repräsentieren aber unabhängige Flags in beliebiger Kombination. Das hätte strukturell invalide Modelle erzeugt, und die Thesis könnte für MERODE keine semantische Korrektheit beanspruchen.
-
-Option C hätte MERODE-FSMs komplett aus dem Scope herausgenommen. Das hätte die Extensibilitätseigenschaft des Schemas unangetastet gelassen, würde aber bedeuten, für MERODE nur strukturelle Transformation zu beanspruchen, nicht verhaltensbezogene. Das würde den Heterogenitätsanspruch der Thesis untergraben.
-
-Option B wurde gewählt: eine Region, ein initialer Pseudozustand, benannte Lebenszykluszustände (kind: `simple`), ein finaler Zustand. Das entspricht Snoecks Beschreibung in Kapitel 6: "life cycle states are successive phases of the object's life" (S. 127). Der Preis ist eine minimale PIM-Erweiterung. Der Gewinn ist semantische Treue. Dass diese Option eine Erweiterung erzwingt, ist selbst ein Befund: das für DEMO entworfene pimUML-Schema ist fast, aber nicht vollständig, ausreichend für MERODE. Genau das zu dokumentieren ist ein Beitrag zur Frage, was ein "gemeinsames PIM" für heterogene Enterprise-Modelle leisten muss.
-
-### DD5 - Additive, rückwärtskompatible PIM-Schema-Erweiterung
-
-`pimuml-schema.json` wurde minimal erweitert, sodass alle DEMO-erzeugten PIM-Instanzen weiterhin ohne Änderungen am DEMO-Agenten validieren.
-
-Drei Änderungen wurden vorgenommen. `State.kind` wurde von `["initial","false","true"]` auf `["initial","false","true","simple","final"]` erweitert, wobei DEMO-Zustände nur `initial`, `false`, `true` verwenden und MERODE-Zustände `initial`, `simple`, `final`, kein Konflikt. `Activity.kind` wurde von `["set","create"]` auf `["set","create","end"]` erweitert, weil MERODE `end`-Aktivitäten für Beendigungsereignisse benötigt; der DEMO-Agent erzeugt keine `end`-Aktivitäten, also ändert sich dort nichts. `Region.forEvent` wurde von de facto verpflichtend auf optional geändert, weil MERODE-Regionen keine Pro-Ereignis-Annotation haben.
-
-Der debattierbare Punkt ist die Optionalisierung von `forEvent`: das ist technisch eine Lockerung einer Beschränkung, nicht eine rein additive Ergänzung. In der Praxis schlägt kein DEMO-generiertes PIM deshalb fehl, alle setzen dieses Feld weiterhin. Konzeptuell ist es aber eine Relaxierung, die in LIMITATIONS.md dokumentiert ist.
-
-### DD6 - Der `isMerodeFSM()`-Unterscheider im PSM-Agenten
-
-Der `pim-to-mendix-agent` nutzt eine Hilfsfunktion `isMerodeFSM(sm)`, um MERODE-Zustandsmaschinen von DEMO-Zustandsmaschinen zu unterscheiden und entsprechend verschiedene B-Regeln anzuwenden.
-
-Wenn das PIM beim Mendix-Agenten ankommt, trägt es keine Metadaten mehr über die Quellsprache. Aber die B-Regeln für DEMO-FSMs (B11-B12: Workflow-Generierung) und MERODE-FSMs (B13-B16: Status-Enum und Microflows) sind verschieden.
-
-Die Unterscheidungsfunktion gibt `true` zurück, wenn alle Regionen in der Zustandsmaschine keine `forEvent`-Annotation tragen. DEMO-FSMs setzen `forEvent` immer (eine Region pro Ereignis). MERODE-FSMs tun es nie (eine Region pro Objekttyp, keine Ereignisannotation). Das ist eine strukturelle Eigenschaft der PIM-Kodierung, kein explizites Sprach-Tag.
-
-Ein explizites `sourceLanguage`-Tag im PIM würde AR2 verletzen, weil das PIM ein sprachneutrales Zwischenformat sein soll. Wenn der nachgelagerte Agent wüsste, welche CIM-Sprache das Modell erzeugt hat, würde das die Sprachenisolation aufheben. Die Verwendung einer strukturellen PIM-Eigenschaft als Unterscheidungsmerkmal hält die Isolation intakt.
-
-Bekannte Einschränkung: der Ansatz ist elegant, aber fragil, wenn eine dritte Sprache eine ähnliche FSM-Struktur ohne Ereignisannotationen verwendet. Für den aktuellen Scope (DEMO und MERODE) ist der Diskriminator eindeutig. Ein robusteres Design würde ein explizites `fsmStyle: "orthogonal" | "sequential"`-Feld in der StateMachine-Definition verwenden, was aber eine intrusivere Schema-Änderung wäre.
-
-### DD7 - TypeScript/Node.js für alle Agenten
-
-Alle Agenten sind in TypeScript auf Node.js implementiert. Das Mendix Platform SDK ist TypeScript-nativ, was für den Agenten, der das SDK aufruft, keine echte Alternative lässt. Dieselbe Sprache für alle Agenten zu verwenden reduziert den kognitiven Overhead und ermöglicht das Teilen von Hilfscode (`bus-client.ts`, `agent-utils.ts`). Bzowski [4] hat TypeScript für seine manuellen Transformationen genutzt, was die Anknüpfung an frühere Arbeiten erleichtert. AJV als JSON-Schema-Validator ist im TypeScript-Ökosystem ausgezeichnet.
-
-Python hat gute NLP/KI-Bibliotheken, aber kein Mendix-SDK. Java und Go scheiden aus demselben Grund aus.
-
-### DD8 - Docker Compose für das Deployment
-
-Alle Dienste (MQTT-Broker, API-Server, Agenten) laufen als Docker-Container, orchestriert durch Docker Compose auf einem Raspberry Pi 4. Docker Compose liefert eine reproduzierbare, versionierte Deployment-Konfiguration. Einen neuen Agenten hinzuzufügen bedeutet, einen Service-Block in `docker-compose.yml` einzufügen. Das ist ein konkreter Indikator für den Aufwand "neue Sprache hinzufügen".
-
-Der Raspberry Pi als Zielplattform demonstriert, dass das System leichtgewichtig ist und keine schwere Infrastruktur erfordert.
-
-### DD9 - Retained MQTT-Nachrichten
-
-Alle veröffentlichten Artefakte verwenden das MQTT-Flag `retain: true`. Ohne Retained Messages würde ein Agent, der sich nach einer Veröffentlichung verbindet, nichts empfangen und den aktuellen Busstatus nicht kennen. Mit Retained Messages wirkt der Broker wie ein persistenter Zustandsspeicher. Ein frisch gestarteter `pim-to-mendix-agent` empfängt sofort das aktuelle PIM für jedes Artefakt. Das macht den Bus semantisch bedeutsam: er repräsentiert den zuletzt vereinbarten Zustand jedes Artefakts, nicht nur einen flüchtigen Kommunikationskanal.
-
-### DD10 - `X-Input-Format`-Header für die Sprachauswahl
-
-Der API-Server dispatcht basierend auf dem Header `X-Input-Format` (Werte: `demo` oder `merode`) an den richtigen CIM-Schema-Validator und das richtige MQTT-Topic. Eine automatische Spracherkennung aus der Modellstruktur wurde verworfen, weil zwei Sprachen strukturelle Gemeinsamkeiten haben können, die eine zuverlässige Erkennung erschweren. Ein expliziter Header ist einfacher und klarer.
-
-### DD11 - Mehrfach-Abonnement im Mendix-Agenten
-
-Der `pim-to-mendix-agent` abonniert PIM-Artefakte von allen CIM-Agenten, nicht nur vom DEMO-Agenten. Der ursprüngliche Prototyp hatte `SOURCE_AGENT_ID = "demo-to-pim-agent"` hartcodiert. Als MERODE hinzugefügt wurde, empfing der Mendix-Agent zwar MERODE-PIM-Nachrichten, ignorierte sie aber, weil er nur das DEMO-Agenten-Topic abonniert hatte.
-
-Die Lösung war eine Umgebungsvariable `PIM_PUBLISHER_AGENT_IDS` (Standardwert: `"demo-to-pim-agent,merode-to-pim-agent"`), aus der beim Start alle Agenten-IDs ausgelesen werden. Das ist eine Änderung am Mendix-Agenten und damit für die Extensibilitätsbehauptung relevant, was in EXTENSIBILITY_EVIDENCE.md diskutiert wird.
-
-### DD12 - Hard-Delete für MERODE-Beendigungsereignisse
-
-Das pimUML-Konstrukt `activity.kind = "end"` (M8) wird auf einen Mendix-`DeleteObjectAction`-Microflow abgebildet: das Objekt wird physisch aus der Datenbank gelöscht.
-
-Snoeck verlangt das nicht. Ein beendendes Ereignis bringt das Objekt in einen finalen Zustand, "ending an object is not the same as physically removing the object, but it only means that a physical removal is allowed" (Abschnitt 5.2.1, S. 113). Physisches Löschen ist damit zulässig, aber eine Entscheidung des Generators. Drei Alternativen wurden erwogen.
-
-Soft-Delete (Status-Attribut auf `final` setzen): Das Status-Attribut aus B13 würde als "Tombstone" genutzt. Vorteil: Datenverlust durch versehentliches Löschen vermeidbar, historische Daten bleiben erhalten. Nachteil: alle Abfragen müssten um `status != final`-Filter erweitert werden; das erfordert Applikationslogik, die über den Prototyp-Scope hinausgeht.
-
-Archivierung (in Archivtabelle verschieben): In produktiven Mendix-Apps gängige Praxis. Erfordert eine Archiv-Entity pro Objekttyp - zu aufwändig für den Prototyp.
-
-Hard-Delete über `DeleteAction` wurde gewählt, weil Snoeck es zulässt und es keine zusätzliche Infrastruktur erfordert. Der Preis: der Generator setzt kein Delete-Behavior an den Assoziationen, es gilt der Mendix-Standard `DeleteMeButKeepReferences`. Das Löschen eines Masters wird weder blockiert noch kaskadiert, abhängige Objekte (z. B. RentalLines eines gelöschten Rental) bleiben ohne Referenz zurück. Die Existenzabhängigkeit wird beim Löschen also nicht durchgesetzt. Eine Durchsetzung wäre über `DeleteMeIfNoReferences` auf der Master-Seite möglich, ist aber nicht implementiert.
-
-Für eine produktive Applikation wäre Soft-Delete oder Archivierung die bessere Wahl. Die Einschränkung ist in LIMITATIONS.md dokumentiert.
-
-### DD13 - ACR-Microflow als After-Create-Handler mit vorgezogenem Commit
-
-Nach pimUML-Semantik startet eine StateMachine, sobald die Klasse instanziiert wird. Bzowski [4] (Abschnitt 11.2.3) setzt das mit einem After-Create-Event-Handler `ACR_<Entity>` um, der die Region-Workflows startet. Der Agent registriert `ACR_<Entity>` deshalb seit 2026-09-14 als `EventHandler` (Moment After, Event Create, Objekt wird übergeben) am Entity.
-
-Problem: After Create läuft, bevor das Objekt zum ersten Mal committet ist. Mendix startet Workflows aber nur für committete Objekte ("Only committed persistent objects can be used to start a workflow", beobachtet am 2026-08-21). Drei Varianten wurden erwogen.
-
-After Create ohne Commit: formal identisch mit Bzowski, scheitert aber zur Laufzeit beim ersten Workflow-Aufruf.
-
-After Commit: das Objekt ist sicher committet, aber der Handler läuft bei jedem Commit und würde die Region-Workflows mehrfach starten. Ein Schutz dagegen bräuchte ein zusätzliches Attribut, das im PIM nicht vorkommt.
-
-After Create mit Commit als erster Aktion im ACR-Microflow wurde gewählt. Es hält Bzowskis Zeitpunkt (Instanziierung) ein und startet die Workflows genau einmal. Der Preis: ein neu angelegtes Objekt steht sofort in der Datenbank, auch wenn der Nutzer das Formular danach abbricht. Die Einschränkung ist in LIMITATIONS.md dokumentiert.
+What distinguishes this approach from previous work is that Bzowski [4] defined the pimUML vocabulary and the A-rules theoretically, but never automated the pipeline. Krouwel et al. [11] automated a pipeline, but hard-coded DEMO as the sole input and did not use an explicit PIM. This thesis automates Bzowski's pipeline and extends it to support multiple input languages by making the PIM the contract between the layers.
 
 ---
 
-## 3. Implementierungsdetails ohne Architekturcharakter
+## 2. Decision Protocol
 
-Einige Entscheidungen sind pragmatisch und brauchen keine Thesis-Level-Rechtfertigung, werden aber der Vollständigkeit halber festgehalten.
+### DD1 - MQTT as a message bus
 
-Der logische Bezeichner heißt `${ot.name}ID` statt `id`, weil Mendix `id` als reservierten Systemfeldnamen behandelt (CE7247). Enum-Literale in Microflow-Ausdrücken werden ohne Anführungszeichen geschrieben (`Module.Enum.Value`), weil Mendix keine gequoteten Enum-Referenzen akzeptiert (CE0117). Enum-Werte bekommen automatisch einen englischen Caption mit großgeschriebenem ersten Buchstaben, weil Mendix mindestens einen Sprachcaption verlangt und sonst CW0263 wirft. Für MERODE-FSMs wird keine Mendix-Workflow-Generierung durchgeführt, weil MERODE-Regionen kein `forEvent` tragen und die Workflow-Generierung sonst `Wait_undefined` produziert.
+Eclipse Mosquitto (MQTT 3.1.1) was chosen as the broker after comparing several approaches.
+
+REST/HTTP is ruled out because it is synchronous and tightly coupled: Agent B would need to know Agent A's address, which violates AR6. A shared database would also be possible, but would introduce more coupling and make it harder to start agents independently. Apache Kafka would be more powerful, but significantly over-engineered for a research prototype; the consumer group model offers no added value here, as no partitioning is required.
+
+MQTT is lightweight, publish/subscribe-based and well-suited to distributed agent architectures. Eclipse Mosquitto runs effortlessly as a Docker container. The key feature is the retained message function: every agent that connects immediately receives the last known state of each topic without having to wait for a republish. This makes the broker a persistent state store, which considerably simplifies development and debugging. The publish/subscribe model naturally implements the decoupling of AR2.
+
+Known limitations: MQTT does not guarantee ordered delivery across different topics, and the broker is a single point of failure. Both are acceptable for a research prototype.
+
+### DD2 - JSON Schema as a PIM metalanguage
+
+The pimUML-PIM is represented as a JSON Schema-validated JSON document.
+Bzowski [4] defined pimUML as a UML profile, but a specific serialisation format is required for pipeline automation. The proposal explicitly refers to Colantoni et al. [5], who demonstrate that JSON Schema is suitable as a meta-language for MDE artefacts.
+
+XMI, as the standard UML format, is ruled out because it requires a heavy toolchain (Eclipse, Ecore metamodels) and is poorly suited to the TypeScript-native Mendix SDK environment. YAML is human-readable, but offers no better tooling support for schema validation than JSON. Pure TypeScript interfaces lose language neutrality and do not allow for programmatic schema compliance checks.
+
+JSON is native to the Mendix SDK, is transported natively via MQTT, and can be validated directly with AJV. The `additionalProperties: false` enforcement is exactly what is needed to prevent silent schema drift. This design principle is already derived from Bzowski.
+
+### DD3 - pimUML as a PIM language
+
+The thesis builds directly on Bzowski [4]. He defined the A-rules from the DEMO Fact Model to pimUML and the B-rules from pimUML to Mendix. The task here is to automate these rules and extend pimUML to MERODE.
+
+Defining a completely new PIM would be a more significant contribution, but would also require justifying every design decision independently. Building on Bzowski's work anchors the PIM in existing academic research and allows the thesis to focus on pipeline architecture and the MERODE extension, rather than on the PIM language design itself.
+
+pimUML covers three types of UML diagram: class diagram (structural), state machine diagram (behavioural) and activity diagram (operations). In the prototype, class and state machine diagrams are utilised in full; the activity diagram is utilised in part (activities are recorded as typed objects in the PIM, but are not represented as complete UML activity diagrams).
+
+### DD4 - Sequential FSMs for MERODE lifecycles
+
+MERODE object lifecycles are represented as sequential finite-state machines with named, ordered states and a final state, rather than as orthogonal Boolean regions as in DEMO.
+
+This was the most significant design decision in the MERODE extension. Three options were available.
+
+Option A would have reused DEMO's Boolean region encoding: each business event type as an orthogonal region with `false`/`true` states, regardless of the source language. This would have meant maximum schema reuse, but would have been semantically incorrect. MERODE lifecycle states are mutually exclusive (an object is either `active` or `completed`, never both), whereas Boolean regions represent independent flags in any combination. This would have produced structurally invalid models, and the thesis could not have claimed semantic correctness for MERODE.
+
+Option C would have removed MERODE FSMs from the scope entirely. This would have left the schema's extensibility property unaffected, but would have meant claiming only structural transformation for MERODE, not behavioural transformation. This would undermine the thesis's claim to heterogeneity.
+
+Option B was chosen: one region, one initial pseudo-state, named life-cycle states (kind: `simple`), one final state. This corresponds to Snoeck's description in Chapter 6: "life cycle states are successive phases of the object's life" (p. 127). The cost is a minimal PIM extension. The benefit is semantic fidelity. The fact that this option necessitates an extension is in itself a finding: the pimUML schema designed for DEMO is almost, but not entirely, sufficient for MERODE. Documenting precisely this contributes to the question of what a "common PIM" must achieve for heterogeneous enterprise models.
+
+### DD5 - Additive, backwards-compatible PIM schema extension
+
+`pimuml-schema.json` has been minimally extended so that all DEMO-generated PIM instances continue to validate without any changes to the DEMO agent.
+
+Three changes were made. `State.kind` was extended from `["initial","false","true"]` to `["initial","false","true","simple","final"]`, whereby DEMO states use only `initial`, `false`, `true`, and MERODE states use `initial`, `simple`, `final` - no conflict. `Activity.kind` has been extended from `["set","create"]` to `["set","create","end"]`, because MERODE requires `end` activities for termination events; the DEMO agent does not generate any `end` activities, so nothing changes there. `Region.forEvent` has been changed from de facto mandatory to optional, because MERODE regions do not have a per-event annotation.
+
+The point of debate is the optionalisation of `forEvent`: technically, this is a relaxation of a restriction, not a purely additive extension. In practice, no DEMO-generated PIM therefore fails; all continue to set this field. Conceptually, however, it is a relaxation, which is documented in LIMITATIONS.md.
+
+### DD6 - The `isMerodeFSM()` discriminator in the PSM agent
+
+The `pim-to-mendix-agent` uses a helper function `isMerodeFSM(sm)` to distinguish between MERODE state machines and DEMO state machines and to apply different B-rules accordingly.
+
+When the PIM arrives at the Mendix agent, it no longer carries any metadata about the source language. However, the B-rules for DEMO FSMs (B11-B12: workflow generation) and MERODE FSMs (B13-B16: status enum and microflows) are different.
+
+The differentiation function returns `true` if none of the regions in the state machine carry a `forEvent` annotation. DEMO-FSMs always set `forEvent` (one region per event). MERODE-FSMs never do so (one region per object type, no event annotation). This is a structural property of the PIM encoding, not an explicit language tag.
+
+An explicit `sourceLanguage` tag in the PIM would violate AR2, as the PIM is intended to be a language-neutral intermediate format. If the downstream agent knew which CIM language had generated the model, this would break language isolation. Using a structural PIM property as a distinguishing feature keeps the isolation intact.
+
+Known limitation: the approach is elegant, but fragile if a third language uses a similar FSM structure without event annotations. For the current scope (DEMO and MERODE), the discriminator is unambiguous. A more robust design would use an explicit `fsmStyle: "orthogonal" | "sequential"` field in the StateMachine definition, but this would constitute a more intrusive schema change.
+
+### DD7 - TypeScript/Node.js for all agents
+
+All agents are implemented in TypeScript on Node.js. The Mendix Platform SDK is native to TypeScript, which leaves no real alternative for the agent calling the SDK. Using the same language for all agents reduces cognitive overhead and enables the sharing of utility code (`bus-client.ts`, `agent-utils.ts`). Bzowski [4] used TypeScript for his manual transformations, which makes it easier to build on previous work. AJV, as a JSON Schema validator, is excellent within the TypeScript ecosystem.
+
+Python has good NLP/AI libraries, but no Mendix SDK. Java and Go are ruled out for the same reason.
+
+### DD8 - Docker Compose for deployment
+
+All services (MQTT broker, API server, agents) run as Docker containers, orchestrated by Docker Compose on a Raspberry Pi 4. Docker Compose provides a reproducible, versioned deployment configuration. Adding a new agent simply involves inserting a service block into `docker-compose.yml`. This is a concrete indicator of the effort involved in "adding a new language".
+
+The Raspberry Pi as the target platform demonstrates that the system is lightweight and does not require heavy infrastructure.
+
+### DD9 - Retained MQTT Messages
+
+All published artefacts use the MQTT flag `retain: true`. Without retained messages, an agent connecting after a publication would receive nothing and would not know the current bus status. With retained messages, the broker acts as a persistent state store. A freshly started `pim-to-mendix-agent` immediately receives the current PIM for each artefact. This makes the bus semantically significant: it represents the most recently agreed state of each artefact, not just a transient communication channel.
+
+### DD10 - `X-Input-Format` header for language selection
+
+The API server routes requests to the correct CIM schema validator and the correct MQTT topic based on the `X-Input-Format` header (values: `demo` or `merode`). Automatic language detection based on the model structure was discarded because two languages may share structural similarities that make reliable detection difficult. An explicit header is simpler and clearer.
+
+### DD11 - Multiple subscriptions in the Mendix agent
+
+The `pim-to-mendix-agent` subscribes to PIM artefacts from all CIM agents, not just the DEMO agent. The original prototype had `SOURCE_AGENT_ID = "demo-to-pim-agent"` hard-coded. When MERODE was added, the Mendix agent did receive MERODE PIM messages but ignored them because it had only subscribed to the DEMO agent topic.
+
+The solution was an environment variable `PIM_PUBLISHER_AGENT_IDS` (default value: `"demo-to-pim-agent,merode-to-pim-agent"`), from which all agent IDs are read at start-up. This is a change to the Mendix agent and is therefore relevant to the extensibility claim, as discussed in EXTENSIBILITY_EVIDENCE.md.
+
+### DD12 - Hard Delete for MERODE termination events
+
+The pimUML construct `activity.kind = "end"` (M8) is mapped to a Mendix `DeleteObjectAction` microflow: the object is physically deleted from the database.
+
+Snoeck does not require this. An ending event brings the object into a final state: "ending an object is not the same as physically removing the object, but it only means that a physical removal is allowed" (Section 5.2.1, p. 113). Physical deletion is therefore permissible, but is a decision for the generator. Three alternatives were considered.
+
+Soft delete (set status attribute to `final`): The status attribute from B13 would be used as a "tombstone". Advantage: Data loss due to accidental deletion can be prevented; historical data is retained. Disadvantage: All queries would need to be extended to include a `status != final` filter; this requires application logic that goes beyond the scope of the prototype.
+
+Archiving (moving to an archive table): Common practice in production Mendix apps. Requires one archive entity per object type - too complex for the prototype.
+
+Hard delete via `DeleteAction` was chosen because Snoeck permits it and it requires no additional infrastructure. The trade-off: the generator does not apply any delete behaviour to the associations; the Mendix standard `DeleteMeButKeepReferences` applies. Deleting a master is neither blocked nor cascaded; dependent objects (e.g. RentalLines of a deleted Rental) are left behind without a reference. Existence dependency is therefore not enforced during deletion. Enforcement would be possible via `DeleteMeIfNoReferences` on the master side, but this has not been implemented.
+
+For a production application, soft delete or archiving would be the better choice. This restriction is documented in LIMITATIONS.md.
+
+### DD13 - ACR microflow as an after-create handler with early commit
+
+According to pimUML semantics, a StateMachine starts as soon as the class is instantiated. Bzowski [4] (section 11.2.3) implements this using an After-Create event handler `ACR_<Entity>`, which starts the region workflows. The agent has therefore been registering `ACR_<Entity>` since 2026-09-14 as an `EventHandler` (Moment After, Event Create, object is passed) on the entity.
+
+Problem: After Create runs before the object has been committed for the first time. However, Mendix only starts workflows for committed objects ("Only committed persistent objects can be used to start a workflow", observed on 2026-08-21). Three variants were considered.
+
+After Create without commit: formally identical to Bzowski, but fails at runtime upon the first workflow call.
+
+After Commit: the object is definitely committed, but the handler runs with every commit and would start the region workflows multiple times. A safeguard against this would require an additional attribute that does not exist in the PIM.
+
+After Create with Commit as the first action in the ACR microflow was chosen. It adheres to Bzowski's timing (instantiation) and starts the workflows exactly once. The cost: a newly created object is immediately present in the database, even if the user subsequently aborts the form. This restriction is documented in LIMITATIONS.md.
+
+---
+
+## 3. Implementation details not related to architecture
+
+Some decisions are pragmatic and do not require thesis-level justification, but are recorded here for the sake of completeness.
+
+The logical identifier is called `${ot.name}ID` instead of `id`, because Mendix treats `id` as a reserved system field name (CE7247). Enum literals in microflow expressions are written without quotation marks (`Module.Enum.Value`), because Mendix does not accept quoted enum references (CE0117). Enum values are automatically assigned an English caption with an uppercase first letter, because Mendix requires at least one language caption and otherwise throws CW0263. No Mendix workflow generation is performed for MERODE FSMs, because MERODE regions do not contain a `forEvent` and workflow generation would otherwise produce `Wait_undefined`.
