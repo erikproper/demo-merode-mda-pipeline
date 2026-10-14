@@ -1,169 +1,178 @@
-# Einschränkungen und Scopegrenzen
+# Limitations and Scope Boundaries
 
-Dieses Dokument hält fest, was der Prototyp nicht kann und warum. Für die Thesis gehört dieses Material in einen Limitations-Abschnitt und einen Future-Work-Abschnitt. Der Unterschied: eine Einschränkung ist etwas, das das System innerhalb des definierten Scopes nicht leistet; Future Work liegt außerhalb des Scopes und wäre ein natürlicher nächster Schritt. Jede Einschränkung sollte mit einer Begründung (warum akzeptabel) und einem kurzen Ausblick (was es bräuchte, um sie zu beheben) dargestellt werden.
-
----
-
-## 1. Implementierte M-Regeln (ehemals Lücken)
-
-### M3 - Attributdomänen OK implementiert (2026-08-03)
-
-`merode-schema.json` wurde um ein `domainTypes`-Array erweitert. `MerodeDomainType`-Interface in `types.ts`. Kategorische Domänen (z.B. `CarGroup`) werden zu pimUML-Enumerationen; nicht-kategorische (z.B. `MoneyAmount`) zu pimUML-DataTypes, die im PSM-Agenten als Mendix-Entity mit Association umgesetzt werden. Vollständig im Rent-A-Car-Fixture getestet.
-
-Verbleibende Einschränkung: der Attributtyp verweist auf den Domänennamen als String - der Zusammenhang wird erst durch das `domainTypes`-Array im selben Modell aufgelöst. Für die Evaluation kein Problem, da das Fixture explizite `domainTypes`-Einträge enthält.
-
-### M9 - Gemeinsame Ereignisbeteiligung und Propagierung OK implementiert (2026-08-03)
-
-Die Propagierungshülle wird aus dem EDG berechnet (`allTransitiveDependents()`). Für jedes Master-OT, dessen Dependents Ereignisse besitzen, werden Self-Transitionen auf allen aktiven Lebenszykluszuständen eingefügt (Trigger = Ereignisname). Zusätzlich wird eine `Set_<Master>_<evt>`-Aktivität erzeugt, die im PSM-Agenten zu einem ChangeObjectAction-Microflow wird.
-
-Verbleibende Einschränkung: die Propagierung erzeugt immer Self-Transitionen auf allen Zuständen des Masters, auch wenn das OET für bestimmte Zustandskombinationen keine Beteiligung vorsieht. Das ist eine Überapproximation. Bei Car, Branch, Person und RentalLine (je ein Lebenszykluszustand) wirkt sie sich nicht aus. Rental hat vier Zustände und erhält die sechs propagierten Ereignisse auf allen vier (25 Self-Transitionen inkl. `extendRental`), z. B. `addRentalLine` auch in `invoicePaid`. Ob das OET das zulässt, prüft der Agent nicht.
+This document sets out what the prototype cannot do and why. I distinguish between two cases: a limitation is something the system does not do within the defined scope; Future Work lies outside the scope and would be a natural next step. For each limitation, I note why I accept it and what would be required to resolve it.
 
 ---
 
-## 2. Lücken bei den B-Regeln
+## 1. Implemented M-rules (formerly gaps)
 
-### B16 - End-Microflow OK implementiert (2026-08-03)
+### M3 - Attribute domains implemented correctly (2026-08-03)
 
-Der `End_<Entity>`-Microflow generiert: MicroflowParameterObject (Entitätsobjekt) -> `DeleteAction` -> EndEvent. Die Designentscheidung fiel auf Hard-Delete, weil Snoeck physisches Entfernen nach dem beendenden Ereignis zulässt (Abschnitt 5.2.1, S. 113, Beenden ist dort aber nicht gleich Löschen) und eine Soft-Delete-Variante eine zusätzliche Filterlogik in allen Abfragen erfordern würde, die über den Prototyp-Scope hinausgeht (DD12 in DESIGN_DECISIONS.md).
+`merode-schema.json` has been extended to include a `domainTypes` array. `MerodeDomainType` interface in `types.ts`. Categorical domains (e.g. `CarGroup`) become pimUML enumerations; non-categorical ones (e.g. `MoneyAmount`) become pimUML data types, which are implemented in the PSM agent as a Mendix entity with an association. Fully tested in the Rent-A-Car fixture.
 
-Verbleibende Einschränkung: der Generator setzt kein Delete-Behavior an den Assoziationen, es gilt der Mendix-Standard `DeleteMeButKeepReferences`. `End_Rental` löscht ein Rental daher auch dann, wenn noch RentalLines existieren, und diese bleiben ohne Referenz zurück. Die Existenzabhängigkeit aus dem EDG wird beim Löschen weder durch Blockieren noch durch Kaskadieren durchgesetzt. Außerdem prüft `End_<Entity>` nicht, ob sich das Objekt im letzten Lebenszykluszustand befindet (wie B15 ohne Ausgangszustands-Prüfung).
+Remaining limitation: the attribute type refers to the domain name as a string - the relationship is only resolved via the `domainTypes` array in the same model. This is not a problem for evaluation, as the fixture contains explicit `domainTypes` entries.
 
-### B15 - Status bei Self-Transitionen OK behoben (2026-09-14)
+### M9 - Shared event participation and propagation implemented correctly (2026-08-03)
 
-Der `Set_<Entity>_<evt>`-Microflow setzte den Status auf das Ziel der ersten Transition mit passendem Trigger. Bei M9-propagierten Ereignissen ist das die Self-Transition des ersten Zustands, für Rental also immer `active`, unabhängig vom tatsächlichen Zustand. Jetzt werden Self-Transitionen ignoriert (`resolveStatusTarget()`), und der Status bleibt bei reinen Self-Transitionen unverändert. Test: `mda-agents/tests/test-mendix-status.ts`.
+The propagation envelope is calculated from the EDG (`allTransitiveDependents()`). For every master OT whose dependents have events, self-transitions are inserted on all active lifecycle states (trigger = event name) . In addition, a `Set_<Master>_<evt>` activity is generated, which becomes a ChangeObjectAction microflow in the PSM agent.
 
-Verbleibende Einschränkungen:
-- Der Microflow prüft den Ausgangszustand nicht. `Set_Rental_payDeposit` setzt `depositPaid` auch dann, wenn die Miete bereits `returned` ist. MERODEs Sequenzbedingung wird also in Mendix nicht erzwungen. Behebung: Decision-Element vor der ChangeObjectAction, das `status` gegen die `from`-Zustände der Transitionen prüft.
-- Führt ein Trigger in verschiedene Zielzustände (z. B. aus zwei Zuständen in zwei unterschiedliche Folgezustände), wird nur der erste verwendet und eine Warnung geloggt. Im Rent-A-Car-Modell tritt das nicht auf.
-- Effects auf DataType-typisierte Attribute (`Set_Rental_payDeposit.depositAmount`, `Set_Rental_payInvoice.invoiceAmount`, beide `MoneyAmount`) werden nicht gesetzt. Der Parameter `new<Attr>` entsteht als String, das Attribut existiert in Mendix aber nur als Association auf die DataType-Entity (B5), daher loggt der Agent `effect attribute ... not found` und erzeugt keinen `MemberChange`. Behebung: DataType-Werte inline als Attribut abbilden oder im Microflow ein DataType-Objekt anlegen und verknüpfen.
-- Dass Studio Pro eine `ChangeObjectAction` ohne `MemberChange` (propagierter Microflow ohne Effects) ohne Warnung akzeptiert, ist durch den QR3-Check am 2026-09-17 bestätigt.
-
-### B11/B12 - Ein Workflow je DEMO-Region OK behoben (2026-09-14)
-
-Vorher wurden alle Regionen einer DEMO-StateMachine in einem einzigen Workflow `WF_<Entity>` hintereinander verkettet. Damit mussten die Ereignisse in Regionsreihenfolge eintreten, was der Orthogonalität der Regionen widerspricht. Jetzt entsteht je Region ein Workflow `WF_<Entity>_<forEvent>`, und `ACR_<Entity>` startet alle (wie bei Bzowski [4], Abschnitt 11.2.3). Test: `mda-agents/tests/test-mendix-workflows.ts`.
-
-Verbleibende Einschränkungen:
-- CE0049 wurde in einem früheren Implementierungsstand für jede `WorkflowCallAction` im ACR-Microflow beobachtet ("No variable name specified", weil das SDK keine logische `MicroflowParameter` anlegen kann). Beim QR3-Check am 2026-09-17 trat der Fehler in keiner der vier erzeugten Apps mehr auf, alle vier öffnen mit 0 Errors und 0 Warnings. Der im Agenten hinterlegte Umweg über `MicroflowParameterObject` genügt in der verwendeten Studio-Pro-Version offenbar. Die Warnzeile, die `pim-to-mendix-agent.ts` beim Erzeugen jedes Set-Microflows ausgibt, ist damit überholt und beschreibt einen Zustand, der sich nicht mehr reproduzieren lässt.
-- Dass Mendix mehrere parallel laufende Workflows mit demselben Context-Objekt ohne Warnung zulässt, ist durch den QR3-Check am 2026-09-17 bestätigt (0 Warnings bei 17 Workflows und 5 ACR-Microflows im Regelabdeckungs-DEMO).
-- `ACR_<Entity>` ist seit 2026-09-14 als After-Create-Handler registriert und committet das Objekt vor dem Workflow-Start (DD13). Folge: ein neu angelegtes Objekt steht sofort in der Datenbank, auch wenn der Nutzer das Formular abbricht. Behebung: Workflows erst beim ersten regulären Commit starten, geschützt durch ein Kennzeichen am Objekt.
-
-### Workflow-Generierung für MERODE entfällt
-
-Die DEMO-Pipeline erzeugt für jede Region einer Entitytyp-FSM einen Mendix-Workflow mit einer WaitForNotification-Aktivität (B12). Die MERODE-Pipeline tut das nicht. Der `isMerodeFSM()`-Check im `pim-to-mendix-agent` überspringt die Workflow-Generierung für MERODE-Zustandsmaschinen.
-
-Mendix-Workflows sind für langläufige Prozesse mit menschlichen Interaktionspunkten konzipiert. Sie passen gut zu DEMOs booleschen Regionen, weil jede Region eine Workflow-Warteaktivität werden kann. MERODEs sequenzielle FSMs lassen sich nicht so direkt auf Mendix-Workflows abbilden: die Lebenszykluszustände würden zu Workflow-Aktivitäten, aber die Trigger-und-Übergangs-Struktur ist grundlegend anders.
-
-Konkret: Als der Workflow-Generator auf einen MERODE-FSM traf, versuchte er eine `WaitForNotification`-Aktivität namens `Wait_<forEvent>` anzulegen. MERODE-Regionen haben aber kein `forEvent`, was den Namen `Wait_undefined` erzeugte. Das war der Fehler, der zum `isMerodeFSM()`-Skip geführt hat.
-
-Möglicher Lösungsansatz: jeden Lebenszykluszustand auf einen Workflow-Aktivitätstyp abbilden und jeden Übergang auf die Fortschrittslogik. Das würde neue B-Regel-Definitionen erfordern und ist als Future Work vorgesehen.
+Remaining limitation: propagation always generates self-transitions on all states of the master, even if the OET does not specify participation for certain state combinations. This is an over-approximation. For Car, Branch, Person and RentalLine (one lifecycle state each), this has no effect. Rental has four states and receives the six propagated events across all four (25 self-transitions including `extendRental`), e.g. `addRentalLine` also in `invoicePaid`. The agent does not check whether the OET permits this.
 
 ---
 
-## 3. Nicht abgedeckte MERODE-Konzepte
+## 2. Gaps in the B-rules
 
-Die folgenden MERODE-Konzepte aus Snoeck [21] sind explizit nicht im Scope.
+### B16 - End microflow implemented correctly (2026-08-03)
 
-### Vererbung (Kapitel 8)
+The `End_<Entity>` microflow generates: MicroflowParameterObject (entity object) -> `DeleteAction` -> EndEvent. The design decision was to use a hard delete, because Snoeck permits physical removal after the terminating event
+(Section 5.2.1, p. 113; however, "termination" is not the same as "deletion" there) and a soft-delete variant would require additional filter logic in all queries that extends beyond the prototype scope (DD12 in DESIGN_DECISIONS.md).
 
-Snoeck widmet der Vererbung in MERODE ein vollständiges Kapitel. Objekttypen können durch Attribute (attribut-definierte Unterklasse), Existenz (existenz-definierte Unterklasse) oder Zustand (zustands-definierte Unterklasse) spezialisiert werden. Jede Form hat andere Implikationen für Ereignisbeteiligung und Lebenszyklus-Modellierung.
+Remaining restriction: the generator does not apply any delete behaviour to the associations; the Mendix standard `DeleteMeButKeepReferences` applies. `End_Rental` therefore deletes a `Rental` even if `RentalLines` still exist, and these are left behind without a reference. The existence dependency from the EDG is not enforced during deletion, either by blocking or by cascading. Furthermore, `End_<Entity>` does not check whether the object is in its final lifecycle state (as in B15 without an initial state check).
 
-Die aktuelle Implementierung behandelt Vererbung nicht. Das Rent-A-Car-Fallbeispiel benötigt sie nicht, und das Proposal listet sie nicht als erforderliches Lieferobjekt. Vererbung könnte durch M-Regeln analog zu A10 umgesetzt werden und wäre in der Thesis als natürliche Erweiterung zu dokumentieren.
+### B15 - Status issue with self-transitions resolved (2026-09-14)
 
-### Constraints (Kapitel 7.2)
+The `Set_<Entity>_<evt>` microflow set the status to the target of the first transition with a matching trigger. For M9-propagated events, this is the self-transition of the first state; for Rental, this is always `active`, regardless of the actual state. Self-transitions are now ignored (`resolveStatusTarget()`), and the status remains unchanged for pure self-transitions. Test: `mda-agents/tests/test-mendix-status.ts`.
 
-Snoeck definiert Eindeutigkeitsbedingungen, Attributbeschränkungen, Methodenbedingungen (Vorbedingungen für Ereignisse), referenzielle Integritätsbedingungen und Sequenzbeschränkungen. Nichts davon wird aktuell in `merode-schema.json` erfasst oder vom Agenten verarbeitet. Das korrekte Erfassen von Constraints würde das Schema erheblich erweitern und entsprechende Mendix-Logik erfordern.
+Remaining limitations:
 
-### IS-Service-Schicht und Business-Process-Schicht (Kapitel 9 und 10)
+- The microflow does not check the source state. `Set_Rental_payDeposit` sets `depositPaid` even if the rental has already been `returned`. MERODE's sequence condition is therefore not enforced in Mendix. Fix: Add a Decision element before the ChangeObjectAction that checks `status` against the `from` states of the transitions.
+- If a trigger leads to different target states (e.g. from two states to two different subsequent states), only the first is used and a warning is logged. This does not occur in the Rent-A-Car model.
+- Effects on DataType-typed attributes (`Set_Rental_payDeposit.depositAmount`, `Set_Rental_payInvoice. invoiceAmount`, both `MoneyAmount`) are not set. The parameter `new<Attr>` is created as a string, but the attribute exists in Mendix only as an association to the DataType entity (B5); therefore, the agent logs `effect attribute ... not found` and does not generate a `MemberChange`. Resolution: Map DataType values inline as attributes, or create and link a DataType object within the microflow.
+- The fact that Studio Pro accepts a `ChangeObjectAction` without a `MemberChange` (propagated microflow without effects) without issuing a warning has been confirmed by the QR3 check on 2026-09-17.
 
-Snoecks IS-Service-Schicht beschreibt Eingabedienste (Ereigniserzeugung) und Ausgabedienste (Informationsabruf). Die Business-Process-Schicht zeigt, wie Geschäftsprozesse mit dem Domänenmodell verknüpft werden. Beides liegt außerhalb des Scopes. Der Fokus liegt auf dem Domänenmodell (EDG, OET und FSMs) als CIM-Eingabe.
+### B11/B12 - One workflow per DEMO region resolved (2026-09-14)
 
----
+Previously, all regions of a DEMO StateMachine were chained together sequentially in a single `WF_<Entity>` workflow. This meant that events had to occur in the order of the regions, which contradicts the orthogonality of the regions.
+Now, a separate workflow `WF_<Entity>_<forEvent>` is created for each region, and `ACR_<Entity>` initiates them all (as in Bzowski [4], Section 11.2.3). Test: `mda-agents/tests/test-mendix-workflows.ts`.
 
-## 4. Architektonische Einschränkungen
+Remaining limitations:
 
-### Der `isMerodeFSM()`-Diskriminator ist fragil
+- CE0049 was observed in an earlier implementation stage for every `WorkflowCallAction` in the ACR microflow ("No variable name specified", because the SDK cannot create a logical `MicroflowParameter`). During the QR3 check on 2026-09-17, the error no longer occurred in any of the four generated apps; all four open with 0 errors and 0 warnings. The workaround via `MicroflowParameterObject` stored in the agent appears to be sufficient in the version of Studio Pro used. The warning line output by `pim-to-mendix-agent.ts` when generating each set microflow is therefore obsolete and describes a state that can no longer be reproduced.
+- The fact that Mendix permits multiple workflows running in parallel with the same context object without issuing a warning has been confirmed by the QR3 check on 2026-09-17 (0 warnings with 17 workflows and 5 ACR microflows in the rule coverage DEMO).
+- `ACR_<Entity>` has been registered as an after-create handler since 2026-09-14 and commits the object before the workflow starts (DD13). Consequence: a newly created object is immediately present in the database, even if the user aborts the form. Remedy: start workflows only upon the first regular commit, protected by a flag on the object.
 
-Der Mechanismus, der DEMO-FSMs von MERODE-FSMs im nachgelagerten Agenten unterscheidet, basiert darauf, dass DEMO-Regionen immer `forEvent` setzen und MERODE-Regionen das nie tun. Das ist eine Eigenschaft der PIM-Kodierung, kein explizites Sprach-Tag.
+### Workflow generation for MERODE is omitted
 
-Eine dritte Sprache, die FSMs ohne Ereignisannotationen verwendet, würde vom Diskriminator falsch als "MERODE-artig" klassifiziert. Der sauberere Ansatz wäre ein explizites `fsmStyle: "orthogonal" | "sequential"`-Feld in der StateMachine-Definition. Aber für den aktuellen Scope (DEMO und MERODE) ist der strukturelle Diskriminator ausreichend.
+The DEMO pipeline generates a Mendix workflow for each region of an entity type FSM, containing a `WaitForNotification` activity (B12). The MERODE pipeline does not do this. The `isMerodeFSM()` check in the `pim-to-mendix-agent` skips workflow generation for MERODE state machines.
 
-### Einzelne Fallstudie begrenzt den Evaluationsumfang
+Mendix workflows are designed for long-running processes with human interaction points. They are well suited to DEMO's Boolean regions, as each region can become a workflow wait activity. MERODE's sequential FSMs cannot be mapped so directly to Mendix workflows: the lifecycle states would become workflow activities, but the trigger-and-transition structure is fundamentally different.
 
-Die Evaluation (D7) gilt nur für das Rent-A-Car-Fallbeispiel. Snoeck nutzt eine Bibliotheks-Fallstudie als laufendes Beispiel, Bzowski nutzt Rent-A-Car. Der direkte Vergleich mit Bzowskis Ergebnissen ist damit möglich.
+Specifically: when the workflow generator encountered a MERODE FSM, it attempted to create a `WaitForNotification` activity named `Wait_<forEvent>`. However, MERODE regions do not have a `forEvent`, which resulted in the name `Wait_undefined` being generated. This was the error that led to the `isMerodeFSM()` skip.
 
-Innerhalb dieses einen Falls deckt die Evaluation seit dem 2026-09-17 zwei Modellpaare und damit vier Untersuchungseinheiten ab: ein Regelabdeckungspaar, das jede A- und jede M-Regel mindestens einmal auslöst, und ein fallnahes Paar nach Bzowski. Zwei früher hier genannte Lücken sind dadurch geschlossen. Vererbung ist über die A10-Generalisierung `Vehicle`/`Car` abgedeckt, mehrstufige Ereignispropagierung über die 3-Hop-M9-Kette `Invoice -> RentalLine -> Rental -> {Car, Person, Branch}`.
-
-Nicht abgedeckt bleiben Constraints, mehrere erzeugende Ereignistypen je Objekttyp und alles, was außerhalb der Rent-A-Car-Domäne liegt. Eine vollständigere Evaluation würde mehrere Fallstudien verwenden.
-
-### Mendix-Applikation braucht Cloud-Lizenz zum Ausführen
-
-Die Ausgabe ist ein valides Mendix-Modell, das in Mendix Studio Pro geöffnet werden kann. Das tatsächliche Ausführen der Applikation erfordert eine Mendix-Cloud-Umgebung oder eine lokale Runtime-Lizenz. Die Evaluation bewertet daher die strukturelle Validität des generierten Modells (keine Mendix-Fehler/Warnungen), nicht das Laufzeitverhalten.
-
-### pimUML-Schema approximiert UML-Metaclasses vereinfacht
-
-Das `pimuml-schema.json` bildet das pimUML-Metamodell (Bzowski, Figure C.2-C.3) nicht in voller UML-2.5.1-Treue ab. Alle Pattern-relevanten Metaclasses (grün in der Legende) sind vorhanden: `Class`, `Property`, `Association`, `AssociationClass`, `Generalization`, `Enumeration`, `StateMachine`, `Region`, `Transition`, `State`, `Pseudostate`, `Trigger`. Folgende Vereinfachungen wurden zugunsten von JSON-Serialisierbarkeit vorgenommen:
-
-- `AggregationKind` (none/shared/composite auf `Property`) -> `isAggregation: boolean` auf `PimAssociation`. Nur der Composite-Fall wird unterschieden; shared Aggregation ist im Prototyp-Scope nicht nötig.
-- `ValueSpecification`-Hierarchie (`LiteralInteger`, `LiteralBoolean`, `LiteralUnlimitedNatural`) -> `defaultValue?: string`. Literalwerte werden als plain Strings serialisiert statt als typisierte Objekt-Instanzen.
-- `PrimitiveType` als formaler Typ-Knoten -> Typ-Strings (`"String"`, `"Integer"`, ...). Der Typ eines Attributs wird als String referenziert, nicht als eigenständiges Metamodell-Objekt.
-- `InstanceSpecification` -> nicht implementiert. Im Prototyp-Scope nicht benötigt.
-- `Trigger` als benanntes Objekt -> `trigger?: string` auf `PimTransition`. Nur der Name wird serialisiert.
-- `Transition.effect -> Behavior` -> `alfExpression?: string`. Übergangseffekte werden als ALF-Ausdrucks-String dargestellt, nicht als vollständiges Behavior-Objekt.
-- `State.entry -> Behavior` -> `entryActivity?: string`. Entry-Aktivitäten werden als Name-String referenziert.
-- `PseudostateKind` mit 10 UML-Werten -> `kind: "initial" | "false" | "true" | "simple" | "final"`. Nur die für DEMO und MERODE relevanten Zustände sind definiert.
-
-Das Aktivitätsdiagramm (drittes Teil des pimUML-Metamodells) wird durch das vereinfachte `PimActivity`-Konstrukt (`kind` + `effects`) approximiert - komplexe Kontrollflüsse innerhalb von Aktivitäten sind bewusst ausgeklammert, da sie auf Mendix-Ebene nicht generierbar sind ohne einen eigenen Ausdrucks-Parser. Siehe auch DD3 in DESIGN_DECISIONS.md.
-
-### Konfigurationsabhängigkeit bei PIM-Quellagenten
-
-Der `pim-to-mendix-agent` abonniert PIM-Topics von den Agenten, die in der Umgebungsvariable `PIM_PUBLISHER_AGENT_IDS` aufgelistet sind. Wenn ein dritter Agent hinzugefügt wird, muss diese Variable aktualisiert werden. Das ist eine Konfigurationsänderung, kein Codechange, aber der nachgelagerte Agent ist dadurch nicht vollständig oblivious gegenüber der Menge der vorgelagerten Agenten. Für das Extensibilitätskriterium ist das ein Grenzfall, der in EXTENSIBILITY_EVIDENCE.md diskutiert wird.
+Possible solution: map each lifecycle state to a workflow activity type and each transition to the progress logic. This would require new B-rule definitions and is planned as future work.
 
 ---
 
-## 4a. Einschränkungen der S-Regeln (pim-to-sql-agent)
+## 3. MERODE concepts not covered
 
-Der SQL-Agent ist ein reiner Downstream-Konsument von `pimuml-schema.json` (siehe `SqlMappingRules.md` Abschnitt 4) und teilt daher viele der oben genannten pimUML-Limitationen unverändert. Zusätzlich hat die SQL-Zielplattform selbst einige spezifische Konsequenzen.
+The following MERODE concepts from Snoeck [21] are explicitly outside the scope.
 
-### S7 - keine geteilte Primärschlüssel-Konvention bei Generalisierung
+### Inheritance (Chapter 8)
 
-Jede Klasse erhält im pimUML-Metamodell ihr eigenes, unabhängiges `isID`-Attribut, auch eine Generalisierungs-Kind-Klasse. `pim-to-sql-agent.ts` bildet Generalisierung deshalb auf eine Pflicht-FK-Spalte (`<parent>_id`, `ON DELETE CASCADE`) statt auf eine relational übliche PK-Sharing-Konvention (Kind-Tabellen-PK = Eltern-Tabellen-PK) ab. Das ist funktional korrekt (referenzielle Integrität ist gewährleistet), aber relational nicht die eleganteste Lösung: eine Kind-Instanz hat zwei unabhängige Integer-Identitäten (ihre eigene `isID`-Spalte und die FK auf den Elternteil) statt einer geteilten. Eine PK-Sharing-Variante würde eine pimUML-seitige Konvention voraussetzen, die es aktuell nicht gibt (z. B. eine explizite Markierung, dass eine Generalisierungs-Kind-Klasse kein eigenes `isID`-Attribut trägt, sondern das des Elternteils übernimmt). Für die Rent-A-Car-Fixture (Car->Vehicle) unproblematisch, da keine Abfrage von der PK-Teilung abhängt.
+Snoeck devotes an entire chapter to inheritance in MERODE. Object types can be specialised by attributes (attribute-defined subclass), existence (existence-defined subclass) or state (state-defined subclass). Each form has different implications for event participation and lifecycle modelling.
 
-### S2/S6 - DataType-Tabelle spiegelt eine PIM-Limitation, statt sie zu beheben
+The current implementation does not handle inheritance. The Rent-A-Car case study does not require it, and the proposal does not list it as a required deliverable. Inheritance could be implemented using M-rules analogous to A10 and would need to be documented in the thesis as a natural extension.
 
-Wie bereits für den Mendix-Pfad dokumentiert (Abschnitt 4, "pimUML-Schema approximiert UML-Metaclasses vereinfacht"), trägt ein pimUML-DataType keine eigene Struktur. `pim-to-sql-agent.ts` erzeugt deshalb für jeden DataType eine Tabelle mit ausschließlich einer `id`-Spalte und verweist per FK darauf (S2/S6), statt den DataType als Inline-Spaltentyp zu behandeln. Das ist bewusst keine SQL-spezifische Verbesserung der PIM-Limitation, sondern deren getreue Spiegelung - eine Begründung dazu in `SqlMappingRules.md` Abschnitt 3. Konsequenz: ein DataType wie `MoneyAmount` erzeugt eine praktisch leere Tabelle, die in einer echten Datenbank überflüssig wirkt, bis pimUML DataTypes eine eigene Basistyp-Eigenschaft bekommt.
+### Constraints (Chapter 7.2)
 
-### S12 - Zyklen brechen die Erzeugung vollständig ab
+Snoeck defines uniqueness constraints, attribute constraints, method constraints (preconditions for events), referential integrity constraints and sequence constraints. None of these are currently recorded in `merode-schema.json` or processed by the agent. The correct recording of constraints would significantly extend the schema and require corresponding Mendix logic.
 
-`topoSortTables()` (Kahn-Algorithmus) wirft bei einer zirkulären Pflicht-FK-Abhängigkeit zwischen zwei oder mehr Tabellen eine Exception und erzeugt gar keine DDL-Datei, statt eine unvollständige oder mit `ALTER TABLE`-Nachträgen aufgelöste Teillösung auszugeben. Das ist eine bewusste Fail-fast-Entscheidung (ein Zyklus würde beim tatsächlichen Ausführen der DDL ohnehin scheitern), bedeutet aber, dass der Agent für ein zyklisches PIM-Modell keinerlei Output produziert - auch nicht für die zyklusfreien Teile des Modells. Eine vollständigere Lösung würde zyklische FKs automatisch als `ALTER TABLE ... ADD CONSTRAINT` nach den `CREATE TABLE`-Anweisungen nachziehen (deferred FK), was den Zyklus auflösen würde, ist aber als Future Work eingestuft, da im Rent-A-Car-Fixture kein solcher Zyklus auftritt.
+### IS Service Layer and Business Process Layer (Chapters 9 and 10)
 
-### S4 - unbekannter PIM-Typ fällt auf TEXT zurück
-
-`sqlType()` mappt einen unbekannten oder nicht deklarierten `Property.type`-String stillschweigend auf `TEXT`, statt einen Fehler zu werfen. Das verhindert, dass ein Tippfehler oder ein noch nicht unterstützter PIM-Typ die gesamte DDL-Erzeugung blockiert, kann aber echte Modellierungsfehler maskieren (ein falsch geschriebener Enum-Name würde z. B. zu einer `TEXT`-Spalte statt zu einem Enum-Typ führen, ohne Warnung). Dieselbe Fallback-Strategie nutzt auch der Mendix-Agent (B7) für den analogen Fall.
-
-### S8/S9 - keine UNIQUE-Constraints, Spaltennamen teils aus der Association
-
-S8 setzt bei 1:1-Assoziationen kein `UNIQUE` auf die FK-Spalte, und S9 setzt kein `UNIQUE` auf das FK-Paar der Junction-Tabelle. Die Datenbank erzwingt daher weder die Obergrenze 1 auf der zweiten Seite einer 1:1-Beziehung noch die Mengensemantik einer n:m-Beziehung. Kollidieren Rollennamen innerhalb einer Tabelle, heißt die FK-Spalte nach der Association (`rental_depends_on_car_id`), sonst nach der Rolle (`master_id`). Innerhalb eines MERODE-PIMs entstehen dadurch zwei Namensschemata nebeneinander. Nicht behandelt ist eine n:m-Selbstassoziation mit gleichem Rollennamen an beiden Enden, bei der S9 dieselbe Spalte zweimal in die Junction-Tabelle schreiben würde. Keines der beiden EVAL-PIMs enthält einen solchen Fall.
+Snoeck's IS Service Layer describes input services (event generation) and output services (information retrieval). The Business Process Layer shows how business processes are linked to the domain model. Both are outside the scope. The focus is on the domain model (EDG, OET and FSMs) as CIM input.
 
 ---
 
-## 5. Behobene Implementierungsfehler
+## 4. Architectural constraints
 
-Diese werden dokumentiert, falls Gutachter danach fragen.
+### The `isMerodeFSM()` discriminator is fragile
 
-**CE7247:** Der anfängliche M1-Code nutzte `name: "id"` für den logischen Bezeichner. Mendix reserviert `id` als Systemattributname. Behoben durch Verwendung von `name: \`${ot.name}ID\`` (z.B. `RentalID`).
+The mechanism that distinguishes DEMO FSMs from MERODE FSMs in the downstream agent is based on the fact that DEMO regions always set `forEvent`, whilst MERODE regions never do so. This is a property of the PIM encoding, not an explicit language tag.
 
-**CE0117:** Die anfängliche B14-Implementierung umschloss Enum-Literal-Ausdrücke in einfache Anführungszeichen (`'Module.Enum.Value'`). Mendix-Microflow-Ausdrücke verwenden Enum-Referenzen ohne Anführungszeichen (`Module.Enum.Value`). Behoben durch Entfernen der Anführungszeichen aus dem `MemberChange.value`-String.
+A third language that uses FSMs without event annotations would be incorrectly classified as "MERODE-like" by the discriminator. The cleaner approach would be an explicit `fsmStyle: "orthogonal" | "sequential"` field in the StateMachine definition. However, for the current scope (DEMO and MERODE), the structural discriminator is sufficient.
 
-**CW0263:** Mendix verlangt mindestens einen sprachspezifischen Caption für jeden Enum-Wert. Die anfängliche Implementierung erstellte Enum-Werte ohne Captions. Behoben durch automatisches Hinzufügen eines englischen Captions (erster Buchstabe großgeschrieben) über `texts.Text.createInEnumerationValueUnderCaption(v)`.
+### Single case study limits the scope of the evaluation
 
-Diese Korrektur deckte zunächst nur den B13-Pfad ab, der die Status-Enumerationen der MERODE-Lebenszyklen erzeugt. Der B4-Pfad für die fachlichen Enumerationen setzte weiterhin ausschließlich den Namen, weshalb CW0263 in allen vier Untersuchungseinheiten je dreimal auf der Enumeration `CarGroup` auftrat. Am 2026-09-19 wurde der B4-Pfad an den B13-Pfad angeglichen, beide Pfade setzen jetzt denselben Caption. Der Vorgang ist in `EVAL/FRAMEWORK.md` Abschnitt 5 unter Korrektur (2026-09-19) protokolliert, weil er den dort festgehaltenen Befund 0 Warnings betrifft.
+The evaluation (D7) applies only to the Rent-A-Car case study. Snoeck uses a library case study as an ongoing example, whilst Bzowski uses Rent-A-Car. This allows for a direct comparison with Bzowski's results.
 
-**CE6685** ("Parameters of the selected microflow have changed"): `CallMicroflowTask`-Schritte im generierten Workflow hatten keine `parameterMappings`-Einträge, weil `MicroflowCallParameterMapping.parameter` einen `MicroflowParameter`-Verweis erfordert, der scheinbar nicht per SDK erstellt werden kann. Behoben (2026-08-25) durch: `MicroflowCallParameterMapping.create(model)`, `expression = "$WorkflowContext"`, und `__parameter.updateWithRawValue("Modul.MicroflowName.parameterName")`. Der Mendix-Modellserver erstellt `MicroflowParameter` beim Flush automatisch aus `MicroflowParameterObject` - die Qualified-Name-Referenz löst sich daher korrekt auf.
+Within this single case, the evaluation has, since 2026-09-17, covered two model pairs and thus four units of analysis: a rule coverage pair that triggers every A-rule and every M-rule at least once, and a case-based pair according to Bzowski. This closes two gaps previously mentioned here.
+Inheritance is covered via the A10 generalisation `Vehicle`/`Car`, whilst multi-level event propagation is covered via the 3-hop M9 chain `Invoice -> RentalLine -> Rental -> {Car, Person, Branch}`.
 
-**Falsche Association-Kardinalität** (Rental(1)->Person(\*) statt Rental(\*)->Person(1)): `mxAssoc.parent` und `mxAssoc.child` waren vertauscht. Im Mendix SDK gilt: `parent` = Many-Seite (FK-Halter, zeigt als \*), `child` = One-Seite (Referenz, zeigt als 1) - entgegen der intuitiven relational-ORM-Konvention. Behoben (2026-08-25) an allen drei Stellen im Agenten (reguläre Associations, DataType-Associations, AssociationClass-Approximationen).
+Constraints, multiple generating event types per object type, and anything outside the Rent-A-Car domain remain unaddressed. A more comprehensive evaluation would utilise several case studies.
 
-**Wait_undefined im Workflow-Generator:** Der Workflow-Generator versuchte eine WaitForNotification-Aktivität namens `Wait_${region.forEvent}` anzulegen. Für MERODE-Regionen, wo `forEvent` undefined ist, ergab das `Wait_undefined`. Behoben durch den `isMerodeFSM()`-Check, der die Workflow-Generierung für MERODE-FSMs überspringt.
+### Mendix application requires a cloud licence to run
 
-**S8 - doppelte FK-Spalten bei gleichen Rollennamen** (behoben 2026-09-14): S8 benannte jede FK-Spalte `<Rolle>_id`. Das DEMO-PIM erzeugte dadurch `branch_id` zweimal auf `rental`, das MERODE-PIM `master_id` dreimal. PostgreSQL lehnt beide Skripte ab. Der Ausführungsnachweis lief bis dahin nur gegen die Fixture `rent-a-car-pim-full.json`, die keinen solchen Fall enthält. Behoben durch eine Kollisionsregel (kollidierende Spalten heißen `<Association>_id`) und einen Test gegen beide EVAL-PIMs (`SqlMappingRules.md` Abschnitt 5a).
+The output is a valid Mendix model that can be opened in Mendix Studio Pro. Actually running the application requires a Mendix Cloud environment or a local runtime licence. The evaluation therefore assesses the structural validity of the generated model (no Mendix errors/warnings), not its runtime behaviour.
 
-**MERODE-PIM erreichte den Mendix-Agenten nicht:** Der `pim-to-mendix-agent` war darauf hardcodiert, nur das MQTT-Topic des DEMO-Agenten zu abonnieren. MERODE-PIM-Nachrichten wurden stillschweigend ignoriert. Behoben durch Umstellung auf den `PIM_SOURCE_AGENTS`-Mehrfach-Abonnement-Ansatz.
+### The pimUML schema approximates UML metaclasses in a simplified manner
+
+The `pimuml-schema.json` file does not map the pimUML metamodel (Bzowski, Figures C.2-C.3) with full UML 2.5.1 fidelity. All pattern-relevant metaclasses (shown in green in the legend) are present: `Class`, `Property`, `Association`, `AssociationClass`, `Generalization`, `Enumeration`, `StateMachine`, `Region`, `Transition`, `State`, `Pseudostate`, `Trigger`. The following simplifications have been made to facilitate JSON serialisation:
+
+- `AggregationKind` (none/shared/composite on `Property`) → `isAggregation: boolean` on `PimAssociation`. Only the composite case is distinguished; shared aggregation is not required within the prototype scope.
+- `ValueSpecification` hierarchy (`LiteralInteger`, `LiteralBoolean`, `LiteralUnlimitedNatural`) → `defaultValue?: string`. Literal values are serialised as plain strings rather than as typed object instances.
+- `PrimitiveType` as a formal type node -> type strings (`"String"`, `"Integer"`, ...). The type of an attribute is referenced as a string, not as a standalone metamodel object.
+- `InstanceSpecification` -> not implemented. Not required in the prototype scope.
+- `Trigger` as a named object -> `trigger?: string` on `PimTransition`. Only the name is serialised.
+- `Transition.effect -> Behavior` -> `alfExpression?: string`. Transition effects are represented as an ALF expression string, not as a complete `Behavior` object.
+- `State.entry -> Behaviour` -> `entryActivity?: string`. Entry activities are referenced as a name string.
+- `PseudostateKind` with 10 UML values -> `kind: "initial" | "false" | "true" | "simple" | "final"`. Only the states relevant to DEMO and MERODE are defined.
+
+The activity diagram (third part of the pimUML metamodel) is approximated by the simplified `PimActivity` construct (`kind` + `effects`) - complex control flows within activities have been deliberately omitted, as they cannot be generated at the Mendix level without a dedicated expression parser. See also DD3 in DESIGN_DECISIONS.md.
+
+### Configuration dependency for PIM source agents
+
+The `pim-to-mendix-agent` subscribes to PIM topics from the agents listed in the environment variable `PIM_PUBLISHER_AGENT_IDS`. If a third agent is added, this variable must be updated. This is a configuration change, not a code change, but as a result, the downstream agent is not entirely oblivious to the set of upstream agents. For the extensibility criterion, this is a borderline case discussed in EXTENSIBILITY_EVIDENCE.md.
+
+---
+
+## 4a. Limitations of the S-rules (pim-to-sql-agent)
+
+The SQL agent is purely a downstream consumer of `pimuml-schema.json` (see `SqlMappingRules.md`, Section 4) and therefore shares many of the aforementioned pimUML limitations unchanged. In addition, the SQL target platform itself has some specific implications.
+
+### S7 - no shared primary key convention for generalisation
+
+In the pimUML metamodel, every class is assigned its own independent `isID` attribute, including a generalisation child class. `pim-to-sql-agent.ts` therefore maps generalisation to a mandatory foreign key column (`<parent>_id`, `ON DELETE CASCADE`) rather than to the conventional relational primary key sharing convention (child table PK = parent table PK). This is functionally correct (referential integrity is guaranteed), but not the most elegant solution from a relational perspective: a child instance has two independent integer identities (its own `isID` column and the foreign key to the parent) instead of a shared one. A primary key sharing variant would require a convention on the pimUML side that does not currently exist (e.g. an explicit marker indicating that a generalisation child class does not have its own `isID` attribute, but instead adopts that of the parent). This is not an issue for the Rent-A-Car fixture (Car->Vehicle), as no query depends on the primary key sharing.
+
+### S2/S6 - The DataType table reflects a PIM limitation rather than resolving it
+
+As previously documented for the Mendix path (Section 4, "pimUML schema approximates UML metaclasses in a simplified manner"), a pimUML DataType does not have its own structure. `pim-to-sql-agent.ts` therefore generates a table for each DataType containing only an `id` column and references it via a foreign key (S2/S6),
+rather than treating the DataType as an inline column type. This is deliberately not an SQL-specific improvement to the PIM limitation, but rather a faithful reflection of it - the rationale for this is set out in `SqlMappingRules.md`, Section 3. Consequence: a DataType such as `MoneyAmount` generates a practically empty table, which appears superfluous in a real database until pimUML DataTypes are given their own base type property.
+
+### S12 - Cycles completely abort generation
+
+`topoSortTables()` (Kahn algorithm) throws an exception in the event of a circular mandatory foreign key dependency between two or more tables and does not generate a DDL file at all, rather than outputting an incomplete solution or one resolved with `ALTER TABLE` additions. This is a deliberate fail-fast decision (a cycle would fail anyway when the DDL is actually executed), but it means that the agent produces no output whatsoever for a cyclic PIM model - not even for the cycle-free parts of the model. A more comprehensive solution would automatically append cyclic FKs as `ALTER TABLE ... ADD CONSTRAINT` after the `CREATE TABLE` statements (deferred FK), which would resolve the cycle; however, this is classified as Future Work, as no such cycle occurs in the Rent-A-Car fixture.
+
+### S4 - unknown PIM type falls back to TEXT
+
+`sqlType()` silently maps an unknown or undeclared `Property. type` string implicitly to `TEXT` instead of throwing an error. This prevents a typo or an unsupported PIM type from blocking the entire DDL generation, but it can mask genuine modelling errors (for example, a misspelt enum name would result in a `TEXT` column instead of an enum type, without a warning) . The Mendix agent (B7) also uses the same fallback strategy for the analogous case.
+
+### S8/S9 - no UNIQUE constraints, column names partly derived from the association
+
+S8 does not set a `UNIQUE` constraint on the foreign key column for 1:1 associations, and S9 does not set a `UNIQUE` constraint on the foreign key pair in the junction table. The database therefore enforces neither the upper limit of 1 on the second side of a 1:1 relationship nor the set semantics of an n:m relationship. If role names conflict within a table, the foreign key column is named after the association (`rental_depends_on_car_id`); otherwise, it is named after the role (`master_id`). Within a MERODE PIM, this results in two naming schemes coexisting side by side.
+
+Not covered is an n:m self-association with the same role name at both ends, in which case S9 would write the same column twice to the junction table. Neither of the two EVAL-PIMs contains such a case.
+
+---
+
+## 5. Fixed implementation errors
+
+These are documented in case reviewers ask for them.
+
+**CE7247:** The initial M1 code used `name: "id"` for the logical identifier. Mendix reserves `id` as a system attribute name. Fixed by using `name: \`${ot.name}ID\``(e.g.`RentalID`).
+
+**CE0117:** The initial B14 implementation enclosed enum literal expressions in single quotes (`"Module.Enum.Value"`). Mendix microflow expressions use enum references without quotes (`Module.Enum.Value`). Fixed by removing the quotes from the `MemberChange.value` string.
+
+**CW0263:** Mendix requires at least one language-specific caption for each enum value. The initial implementation created enum values without captions. Fixed by automatically adding an English caption (with the first letter capitalised) via `texts.Text.createInEnumerationValueUnderCaption(v)`.
+
+This correction initially only covered the B13 path, which generates the status enumerations for the MERODE lifecycles. The B4 path for the business-specific enumerations continued to set only the name, which is why CW0263 occurred three times in each of the four test units on the `CarGroup` enumeration. On 2026-09-19, the B4 path was aligned with the B13 path; both paths now set the same caption. The process is documented in `EVAL/FRAMEWORK.md`, Section 5, under Correction (2026-09-19), as it relates to the finding 0 warnings recorded there.
+
+**CE6685** ("Parameters of the selected microflow have changed"): `CallMicroflowTask` steps in the generated workflow lacked `parameterMappings` entries because `MicroflowCallParameterMapping.parameter` requires a `MicroflowParameter` reference, which apparently cannot be created via the SDK. Resolved (2026-08-25) by: `MicroflowCallParameterMapping.create(model)`, `expression = "$WorkflowContext"`, and `__parameter.updateWithRawValue("Module.MicroflowName.parameterName")`. The Mendix Model Server automatically creates `MicroflowParameter` objects from `MicroflowParameterObject` during a flush - the qualified name reference therefore resolves correctly.
+
+**Incorrect association cardinality** (Rental(1)->Person(\*) instead of Rental(\*)->Person(1)): `mxAssoc.parent` and `mxAssoc.child` were swapped.
+In the Mendix SDK, the following applies: `parent` = many side (foreign key holder, shown as \*), `child` = one side (reference, shown as 1) - contrary to the intuitive relational ORM convention. Fixed (2026-08-25) in all three places in the agent (regular associations, DataType associations, AssociationClass approximations).
+
+\*_Wait_undefined in the Workflow Generator:_ \* The workflow generator attempted to create a WaitForNotification activity named `Wait_${region.forEvent}`. For MERODE regions, where `forEvent` is undefined, this resulted in `Wait_undefined`. Fixed by the `isMerodeFSM()` check, which skips workflow generation for MERODE FSMs.
+
+**S8 - duplicate FK columns with identical role names** (fixed 2026-09-14): S8 named every FK column `<Role>_id`. As a result, the DEMO PIM generated `branch_id` twice on `rental`, whilst the MERODE PIM generated `master_id` three times. PostgreSQL rejects both scripts. Until then, the execution test had only been run against the fixture `rent-a-car-pim-full.json`, which does not contain such a case. Fixed by introducing a collision rule (conflicting columns are named `<Association>_id`) and a test against both EVAL-PIMs (`SqlMappingRules.md` section 5a).
+
+**MERODE-PIM did not reach the Mendix agent:** The `pim-to-mendix-agent` was hard-coded to subscribe only to the DEMO agent's MQTT topic. MERODE-PIM messages were silently ignored. Resolved by switching to the `PIM_SOURCE_AGENTS` multi-subscription approach.
