@@ -1,264 +1,222 @@
-# Prototype ToDo-Liste
+# Prototype To-Do List
 
-Stand: 2026-09-17. Priorisiert nach Relevanz für die Thesis (Kap. 8 + 9 benötigen Evaluation).
-
----
-
-## Priorität 1 - Evaluation (Blocker für Thesis-Kapitel 8 + 9)
-
-- [x] **DEMO-Evaluation (QR1 Completeness, QR2 Validity)** - Live-Lauf am 2026-09-07 über
-  die echte Pipeline durchgeführt (`curl` gegen `https://mda.tlolab.com/api/model` vom Mac,
-  PIM-Payload per `mosquitto_sub` vom retained MQTT-Topic auf dem Pi gelesen, archiviert in
-  `EVAL/demo-pim-output.json`). Struktur (12 Klassen, 11 Assoziationen, 1 Enum, 1 DataType,
-  1 AssociationClass, 1 Generalisierung, 12 State Machines, 108 Trace-Einträge) und Inhalt
-  gegen Ground Truth und `EVAL/FRAMEWORK.md` Abschnitt 3 geprüft: C=66, M=0, I=0 -
-  **Completeness 100 %, Validity 100 %**. Identisch zum vorab verifizierten
-  Direktaufruf-Testlauf. Ergebnis in `EVAL/FRAMEWORK.md` Abschnitt 1 und 8 dokumentiert.
-
-- [x] **MERODE-Evaluation (QR1 Completeness, QR2 Validity)** - Live-Lauf am 2026-09-07
-  analog zur DEMO-Evaluation (`EVAL/merode-pim-output.json`). Struktur (6 Klassen,
-  5 Assoziationen, 1 Enum, 1 DataType, 6 State Machines, 100 Trace-Einträge, davon 45
-  M9-propagierte Self-Transitionen) und Inhalt gegen Ground Truth und `EVAL/FRAMEWORK.md`
-  Abschnitt 2 geprüft: C=104, M=0, I=0 - **Completeness 100 %, Validity 100 %**. Identisch
-  zum vorab verifizierten Direktaufruf-Testlauf. Ergebnis in `EVAL/FRAMEWORK.md` Abschnitt 1
-  und 8 dokumentiert.
-
-- [x] **Zweite Untersuchungseinheit: fallnahes Modellpaar (QR1, QR2, QR4)** - Lauf am
-  2026-09-17 mit `rent-a-car-case-demo.json` und `rent-a-car-case-merode.json` gegen die
-  unveränderten Produktionsagenten (lokaler Broker, weil der Pi nicht erreichbar war).
-  DEMO: C=64, M=0, I=0 - **100 % / 100 %**, Traceability **96,1 %** (103 Trace-Einträge,
-  4 NotMapped für A7-Trigger). MERODE: C=117, M=0, I=0 - **100 % / 100 %**, Traceability
-  **100 %** (112 Trace-Einträge, 0 NotMapped). PIM-Payloads archiviert in
-  `EVAL/demo-case-pim-output.json` und `EVAL/merode-case-pim-output.json`, Ground Truth und
-  Ergebnisse in `EVAL/FRAMEWORK.md` Abschnitt 4 und 8.
-
-- [x] **Live-Pipeline-Lauf aller vier Untersuchungseinheiten** - am 2026-09-17 wurden
-  `rent-a-car-demo`, `rent-a-car-merode`, `rent-a-car-case-demo` und
-  `rent-a-car-case-merode` nacheinander über `https://mda.tlolab.com/api/model` gegen die
-  auf dem Pi laufende Pipeline geschickt. Alle vier Läufe enden mit `committed to branch`.
-  Die über den Bus gelesenen PIM-Nutzlasten sind byte-identisch mit den zuvor archivierten
-  Direktaufruf-Ergebnissen (Trace 108/100/103/112). Damit entfällt die frühere Asymmetrie,
-  dass das fallnahe Paar nur gegen einen lokalen Broker gelaufen war. Rohbelege unter
-  `EVAL/Eval_new/`, Auswertung in `EVAL/FRAMEWORK.md` Abschnitt 8.1 inklusive der
-  Mendix-Artefaktzahlen je Lauf, die Thesis-Abschnitt 8.3 benötigt.
-
-- [x] **PostgreSQL-Ausführungsnachweis für alle vier DDL-Dateien** - am 2026-09-17 gegen
-  `postgres:16-alpine` mit `ON_ERROR_STOP=1` eingespielt, alle vier fehlerfrei. Gegenprüfung
-  am Systemkatalog: 14/7/17/13 Tabellen, 1/7/1/11 Enum-Typen und 16/8/31/20 Fremdschlüssel
-  tatsächlich angelegt. Damit ist auch S12 (topologische Sortierung nach Kahn) belegt, und
-  der Rollennamen-Kollisionsfall `TransportStartsAt`/`TransportEndsAt` im Case-DEMO-PIM läuft
-  nachweislich durch. Details: `EVAL/FRAMEWORK.md` Abschnitt 8.2.
-
-- [x] **Mendix Studio Pro - Schema Validation Rate (QR3, binär, muss 100% sein)** - am
-  2026-09-17 für alle vier Fälle geprüft, jeweils **0 Errors und 0 Warnings**. QR3 ist damit
-  für beide CIM-Sprachen und beide Modellpaare erfüllt. Die Prüfung erfolgte zwischen den
-  Läufen, weil `pim-to-mendix-agent` das Zielmodell vor jedem Lauf leert.
-  - **Geklärt dazu (2026-09-17):** CE0049 trat nicht auf, obwohl das Regelabdeckungs-DEMO
-    17 Workflows und 5 ACR-Microflows erzeugt. Die ältere Notiz "je WorkflowCallAction" in
-    `EVAL/FRAMEWORK.md` Abschnitt 5 stützte sich nicht auf eine Rückmeldung aus Studio Pro,
-    sondern auf die Zeile `[warn] CE0049: click OK once in Studio Pro`, die
-    `pim-to-mendix-agent.ts` beim Erzeugen jedes Set-Microflows fest verdrahtet ausgibt. Sie
-    beschreibt einen Implementierungsstand vor dem Umweg über `MicroflowParameterObject`.
-    Maßgeblich ist die Messung: alle vier Apps öffnen mit 0 Errors und 0 Warnings. CE0049
-    wird nicht mehr als Einschränkung geführt (`LIMITATIONS.md`, `EVAL/FRAMEWORK.md`
-    Abschnitt 5). Die Thesis-Abschnitte 6.4.5 und 7.4.5 behaupten den Fehler noch und sind
-    zu korrigieren.
-
-- [x] **Unabhängige Gegenprobe des Mendix-Ergebnisses (Rücklesen über das Platform SDK)** -
-  die Artefaktzahlen in `EVAL/FRAMEWORK.md` Abschnitt 8.1 stammten aus dem Log des erzeugenden
-  Agenten selbst, der Agent berichtete dort also seine eigene Sicht. Erledigt am 2026-09-17 für
-  **alle vier Untersuchungseinheiten**, Belege in `EVAL/Eval_new/<Modell>.mendix.json`,
-  Auswertung in `EVAL/FRAMEWORK.md` Abschnitt 8.1.1.
-  - **Zwei Skripte:** `mda-agents/tests/dump-mendix-domain.ts` liest den Zielzustand rein lesend
-    aus dem Team Server zurück. `mda-agents/tests/check-mendix-against-input.ts` stellt diesen
-    Dump gegen das **Eingabemodell** und nicht gegen das PIM, prüft damit also die vollständige
-    Kette CIM -> PIM -> PSM statt nur ihres letzten Schritts. Geprüft werden Entities,
-    Attributnamen und -typen, Vorgabewerte, Enum-Literale samt Reihenfolge, Generalisierungen,
-    Status-Enums, Pages, die Verhaltensartefakte (`WF_<Entity>_<Ereignis>`,
-    `Set<Entity>_<Ereignis>`, `Create_<OT>`, `End_<OT>`, `Set_<OT>_<Ereignis>`) und vor allem
-    die **Richtung jeder Assoziation** - in Mendix hält die `parent`-Seite den Verweis, sie muss
-    also die Viele-Seite sein. Vertauschte Seiten werden ausdrücklich als "Fremdschlüssel liegt
-    auf der falschen Entity" gemeldet. Exit-Code 1 bei jeder Abweichung, damit auch als
-    Regressionstest nutzbar. Prozedur: `mda-agents/tests/README.md`.
-  - **Ergebnis:** 104 / 73 / 99 / 112 bestandene Prüfungen für DEMO, MERODE, DEMO Case und
-    MERODE Case, **null Abweichungen**. Keine Assoziation ist verdreht, kein Eingabeelement
-    bleibt ohne Entsprechung und kein Mendix-Artefakt ohne Ursprung. Einzige begründete
-    Auslassung über alle vier Modelle: `Rental.totalDays` (abgeleitet, kein OCL-Äquivalent).
-  - **Zwei Zählkonventionen des Agenten-Logs aufgedeckt:** die Logzeile "Attribute (B6)" zählt
-    die Status-Attribute aus B13 nicht mit (MERODE +6, MERODE Case +10), und die beiden
-    Member-End-Assoziationen sowie die Attribute einer Association Class protokolliert der Agent
-    nicht einzeln (DEMO +2 Attribute, +2 Assoziationen). Belegter Wert für das
-    Regelabdeckungs-DEMO sind damit **15 Assoziationen und 44 Attribute**, nicht 13 und 42.
-    Alle übrigen Zahlen decken sich rechnerisch exakt mit dem Log. In Abschnitt 8.1.1
-    dokumentiert.
-  - **Daraus korrigiert:** die Zeilen "Assoziationen gesamt (B9)" und "davon
-    DataType-Assoziationen (B5)" in `EVAL/FRAMEWORK.md` Abschnitt 8.1 waren nicht ineinander
-    enthalten, sondern disjunkt - die Gesamtzahl war dadurch zu niedrig ausgewiesen. Korrigiert
-    auf 13 / 8 / 31 / 20 (Logsicht), im Rücklesen 15 / 8 / 31 / 20. **Falls die Thesis dieselbe
-    Tabelle führt, ist sie dort ebenfalls zu korrigieren.**
-  - **Offener Nebenbefund:** das Modul enthält eine Page `Rental_Detail`, die der Agent nicht
-    erzeugt (`pim-to-mendix-agent.ts` kennt kein `_Detail`) und die sein Aufräumschritt auch
-    nicht entfernt, weil dieser nur Pages mit der Endung `_Overview` löscht. Rest aus einer
-    früheren manuellen Bearbeitung, bewusst ignoriert und in den Page-Zahlen nicht mitgezählt.
-    Kann bei Gelegenheit in Studio Pro gelöscht werden.
-
-- [x] **Traceability Coverage (QR4)** - Aus den beiden Live-Läufen oben berechnet:
-  **DEMO 95,4 %** (103/108, 5 gerechtfertigte NotMapped-Einträge für A7-SM-Trigger-Semantik),
-  **MERODE 100 %** (100/100, keine NotMapped-Einträge). Ergebnis in `EVAL/FRAMEWORK.md`
-  Abschnitt 6 und 8 dokumentiert. Implementiert/ausgewertet 2026-09-07.
-
-- [ ] **Test-Fidelity-Lücke: Offline-Tests testen nicht die echte Produktionslogik**
-  - **Was:** `mda-agents/tests/test-transform.ts` und `mda-agents/tests/smoke-m9-m3.ts` sind
-    beide eigenständige, handgeschriebene Teilreimplementierungen der jeweiligen
-    Transformationslogik - sie rufen **nicht** die echten `transform()`-Funktionen aus
-    `demo-to-pim-agent.ts` bzw. `merode-to-pim-agent.ts` auf. `test-transform.ts` deckt nur
-    A3/A5/A12 ab (3 von 12 A-Regeln), nicht A1/A2/A4/A6-A11. `smoke-m9-m3.ts` hat eine
-    bekannte Abweichung (`markInvoicePaid` wird fälschlich als Selbst-Transition gerendert).
-    Es gibt aktuell **kein** dauerhaft im Repo verankertes Testskript, das die tatsächliche
-    Produktionslogik (voller A1-A12- bzw. M1-M9-Funktionsumfang) offline gegen die Fixtures
-    validiert - die einzige vollständige Verifikation lief bislang über einmalige,
-    session-lokale Wegwerf-Skripte, die nicht committet wurden.
-  - **Warum wichtig:** Die in `EVAL/FRAMEWORK.md` dokumentierten Zahlen (z. B. die
-    45/63-M9-Propagation) sind zwar korrekt verifiziert, aber die Reproduzierbarkeit dieser
-    Verifikation für Dritte (Gutachter, spätere Weiterentwicklung) hängt aktuell nicht an
-    einem committeten, wiederholbar ausführbaren Test, sondern an dieser Dokumentation
-    selbst. Das ist ein Risiko für die methodische Nachvollziehbarkeit (Kap. 9).
-  - **Nächster Schritt (Entscheidung offen):** `transform()` in `demo-to-pim-agent.ts` und
-    `merode-to-pim-agent.ts` dauerhaft exportieren (falls noch nicht der Fall) und ein neues,
-    committetes Testskript schreiben, das diese echten Funktionen gegen die aktuellen
-    Fixtures aufruft und gegen `pimuml-schema.json` validiert - als Ersatz/Ergänzung zu den
-    bestehenden Smoke-Tests. Umfang und Zeitpunkt (jetzt vs. erst nach den Live-Evaluationen
-    oben) noch nicht entschieden.
-  - **Nachtrag (2026-09-07, Diskussion):** Der Live-Pipeline-Lauf (Abschnitt oben, DEMO/MERODE-
-    Evaluation) ist der stärkere *Korrektheits*-Nachweis, weil er den echten deployten
-    `transform()`-Code über den echten Bus testet, nicht einen Nachbau. Die eigentliche Lücke
-    ist *Reproduzierbarkeit für Dritte*: ein Gutachter kann den Live-Lauf ohne Zugriff auf den
-    Pi/Docker-Stack nicht selbst wiederholen, ein committeter Test schon. Zweiter Aspekt:
-    Regressionssicherheit bei künftigen Änderungen an den Agenten (zeigt sofort, welche
-    einzelne Regel kaputtgeht, statt nur "Gesamtergebnis jetzt anders"). Abwägung: lohnt sich
-    nur, wenn an den Agenten noch weitergearbeitet wird - noch zu entscheiden.
-
-- [ ] **QR1/QR2-Scoping für den pim-to-sql-agent klären und dokumentieren**
-  - **Was:** QR1 (Completeness) und QR2 (Validity) sind laut `REQUIREMENTS.md` §4 als
-    Quellaussage-Klassifikation für den CIM->PIM-Schritt definiert (DEMO/MERODE -> pimUML),
-    nicht für PSM-Outputs - das gilt für Mendix genauso, dessen Korrektheitsnachweis
-    stattdessen über QR3 (Schema Validation Rate / Studio-Pro-Check) läuft, nicht über
-    C/M/I-Klassifikation. Für SQL existiert mit dem Postgres-Ausführbarkeitsnachweis das
-    strukturelle Analogon zu QR3. Dieser Nachweis liegt seit 2026-09-17 für alle vier
-    Live-Pipeline-DDLs vor (`EVAL/FRAMEWORK.md` Abschnitt 8.2) und nicht mehr nur für die
-    synthetische Vollständigkeits-Fixture `rent-a-car-pim-full.json`.
-  - **Was noch fehlt:** eine ausdrückliche Scoping-Aussage in `EVAL/FRAMEWORK.md`, die
-    festhält, warum der SQL-Agent nicht mit QR1/QR2 bewertet wird. Der Ausführungsnachweis
-    steht dort inzwischen, die methodische Begründung dafür nicht.
-  - **Warum wichtig:** Ohne eine explizite Scoping-Aussage in `FRAMEWORK.md` wirkt es wie eine
-    Lücke, wenn ein Gutachter fragt, warum der zweite PSM-Agent nicht mit denselben Metriken
-    wie DEMO/MERODE bewertet wurde - dabei ist die Antwort methodisch sauber (andere
-    Pipeline-Stufe, andere passende Metrik), sie steht nur noch nirgends geschrieben.
-  - **Nächster Schritt (Entscheidung offen):** (a) minimal: kurzen Scoping-Absatz in
-    `FRAMEWORK.md` ergänzen, der erklärt warum QR1/QR2 auf PIM->PSM nicht angewendet werden und
-    stattdessen auf den Postgres-Ausführbarkeitsnachweis verweist; (b) optional zusätzlich: den
-    SQL-Agent explizit gegen die bereits archivierten Live-PIM-Outputs laufen lassen (er läuft
-    als `sql-agent`-Service auf dem Pi ohnehin mit und hat bei den DEMO/MERODE-`curl`-Testläufen
-    vermutlich bereits `.sql`-Dateien erzeugt - prüfen, ob diese auf dem Pi noch vorliegen).
+As of 2026-09-17. Prioritized by relevance to the thesis (Chapters 8 and 9 require evaluation).
 
 ---
 
-## Priorität 2 - Implementierung (verbessert Evaluationsergebnis)
+## Priority 1 - Evaluation (Blockers for Thesis Chapters 8 and 9)
 
-- [x] **pim-to-sql-agent - PostgreSQL DDL als zweiter PSM-Output** - neuer Agent (`mda-agents/pim-to-sql-agent.ts`), der dasselbe `model.pim.created`-Topic subscribed wie der Mendix-Agent und daraus PostgreSQL-DDL generiert (S1-S12, vollständige Regeltabelle: `thesis-notes/SqlMappingRules.md`). Kein bestehender Core-Code geändert (`bus-client.ts`, `agent-utils.ts`, `demo-to-pim-agent.ts`, `merode-to-pim-agent.ts`, `pim-to-mendix-agent.ts`, `pimuml-schema.json` - 0 Änderungen), realer Extensibilitätsnachweis für QR5 (`thesis-notes/EXTENSIBILITY_EVIDENCE.md` Abschnitt 5). Output: `mda-agents/output/<modelname>.sql`, Ausführbarkeitsnachweis gegen echtes PostgreSQL via Wegwerf-Docker-Container (Prozedur: `mda-agents/tests/README.md`). Bus-Anbindung (`docker-compose.yml`-Service, `package.json`-Script) implementiert 2026-08-31.
+- [x] **DEMO Evaluation (QR1 Completeness, QR2 Validity)** - Live run on 2026-09-07 via
+      the actual pipeline (`curl` against `https://mda.tlolab.com/api/model` from a Mac,
+      PIM payload read via `mosquitto_sub` from the retained MQTT topic on the Pi, archived in
+      `EVAL/demo-pim-output.json`). Structure (12 classes, 11 associations, 1 enum, 1 data type,
+      1 AssociationClass, 1 generalization, 12 state machines, 108 trace entries) and content
+      verified against ground truth and `EVAL/FRAMEWORK.md` Section 3: C=66, M=0, I=0 -
+      **Completeness 100%, Validity 100%**. Identical to the previously verified
+      direct call test run. Result documented in `EVAL/FRAMEWORK.md`, Sections 1 and 8.
 
-- [x] **M9 - Ereignispropagierung** - Propagierungshülle aus EDG aufgebaut, Self-Transitionen in Master-FSMs eingefügt (`Set_<Master>_<evt>` Aktivitaten). Erhebt MERODE-Completeness auf ~100%. Implementiert 2026-08-03.
-- [x] **B16 - End-Microflow** - Hard-Delete via `DeleteObjectAction`: Parameter (Entität) -> DeleteAction -> End. Design-Entscheidung: physische Löschung als bewusste Vereinfachung für den Prototyp (DD12 in DESIGN_DECISIONS.md). Implementiert 2026-08-03.
-- [x] **M3 - Attributdomänen** - `merode-schema.json` um `domainTypes`-Array erweitert, `MerodeDomainType`-Interface in `types.ts`, kategorische Domänen -> Enumeration, nicht-kategorische -> DataType. `CarGroup`-Beispiel im Rent-A-Car-Fixture. Implementiert 2026-08-03.
-- [x] **Bug: doppelte Create_OT/End_OT-Aktivitäten** - Dedup-Guard in M6/M8 (`smActivities.some(...)`) verhindert Mehrfacheinträge wenn ein OT mehrere C- oder E-Ereignisse hat. Behoben 2026-08-03.
-- [x] **Bug: nicht-kategorischer DataType -> String-Fallback** - DataType-typisierte Attribute werden jetzt als Associations statt als String-Attribute umgesetzt (B5). Behoben 2026-08-03.
-- [x] **DEMO/MERODE-Fixtures angereichert** - `rent-a-car-demo.json`/`rent-a-car-merode.json` so erweitert, dass jede A-/M-Regel mindestens einmal ausgelöst wird (Grundlage für die Priorität-1-Evaluationsläufe oben). Implementiert 2026-08-31.
+- [x] **MERODE Evaluation (QR1 Completeness, QR2 Validity)** - Live run on 2026-09-07
+      similar to the DEMO evaluation (`EVAL/merode-pim-output.json`). Structure (6 classes,
+      5 associations, 1 enum, 1 data type, 6 state machines, 100 trace entries, of which 45
+      are M9-propagated self-transitions) and content checked against ground truth and `EVAL/FRAMEWORK.md`
+      Section 2 verified: C=104, M=0, I=0 - **Completeness 100%, Validity 100%**. Identical
+      to the previously verified direct-call test run. Result documented in `EVAL/FRAMEWORK.md`, Sections 1
+      and 8.
+
+- [x] **Second test unit: case-specific model pair (QR1, QR2, QR4)** - Run on
+      2026-09-17 with `rent-a-car-case-demo.json` and `rent-a-car-case-merode.json` against the
+      unmodified production agents (local broker, because the Pi was unreachable).
+      DEMO: C=64, M=0, I=0 - **100% / 100%**, traceability **96.1%** (103 trace entries,
+      4 NotMapped for A7 triggers). MERODE: C=117, M=0, I=0 - **100% / 100%**, traceability
+      **100%** (112 trace entries, 0 NotMapped). PIM payloads archived in
+      `EVAL/demo-case-pim-output.json` and `EVAL/merode-case-pim-output.json`; ground truth and
+      results in `EVAL/FRAMEWORK.md`, sections 4 and 8.
+
+- [x] **Live pipeline run of all four test units** - On 2026-09-17,
+      `rent-a-car-demo`, `rent-a-car-merode`, `rent-a-car-case-demo`, and
+      `rent-a-car-case-merode` were sent one after another via `https://mda.tlolab.com/api/model` against the
+      pipeline running on the Pi. All four runs ended with `committed to branch`.
+      The PIM payloads read via the bus are byte-for-byte identical to the previously archived
+      direct-call results (Trace 108/100/103/112). This eliminates the previous asymmetry,
+      where the case-specific pair had only run against a local broker. Raw logs under
+      `EVAL/Eval_new/`, evaluation in `EVAL/FRAMEWORK.md` Section 8.1, including the
+      Mendix artifact counts per run, which are required for Thesis Section 8.3.
+
+- [x] **PostgreSQL execution verification for all four DDL files** - imported on 2026-09-17 against
+      `postgres:16-alpine` with `ON_ERROR_STOP=1`; all four passed without errors. Cross-check
+      against the system catalog: 14/7/17/13 tables, 1/7/1/11 enum types, and 16/8/31/20 foreign keys
+      were indeed created. This also verifies S12 (topological sorting according to Kahn), and
+      the role name collision case `TransportStartsAt`/`TransportEndsAt` in the Case-DEMO-PIM
+      has been verified to run through successfully. Details: `EVAL/FRAMEWORK.md`, Section 8.2.
+
+- [x] **Mendix Studio Pro - Schema Validation Rate (QR3, binary, must be 100%)** - checked on
+      2026-09-17, for all four cases; **0 errors and 0 warnings** in each case. QR3 is thus
+      met for both CIM languages and both model pairs. The test was performed between
+      runs because `pim-to-mendix-agent` clears the target model before each run.
+  - **Clarification (2026-09-17):** CE0049 did not occur, even though the rule coverage DEMO
+    generates 17 workflows and 5 ACR microflows. The older note "per WorkflowCallAction" in
+    `EVAL/FRAMEWORK.md` Section 5 was not based on feedback from Studio Pro,
+    but on the line `[warn] CE0049: click OK once in Studio Pro`, which
+    is hard-coded in `pim-to-mendix-agent.ts` and output when each set microflow is generated. It
+    describes an implementation state prior to the workaround via `MicroflowParameterObject`.
+    The decisive factor is the measurement: all four apps open with 0 errors and 0 warnings. CE0049
+    is no longer listed as a limitation (`LIMITATIONS.md`, `EVAL/FRAMEWORK.md`
+    Section 5). Sections 6.4.5 and 7.4.5 of the thesis still mention this error and must
+    be corrected.
+
+- [x] **Independent cross-check of the Mendix result (retrieved via the Platform SDK)** -
+      The artifact counts in `EVAL/FRAMEWORK.md`, Section 8.1, came from the log of the generating
+      agent itself; in other words, the agent reported its own perspective there. Completed on 2026-09-17 for
+      **all four test units**; evidence in `EVAL/Eval_new/<Model>.mendix.json`,
+      analysis in `EVAL/FRAMEWORK.md`, Section 8.1.1.
+  - **Two scripts:** `mda-agents/tests/dump-mendix-domain.ts` reads the target state by retrieving it
+    from the Team Server. `mda-agents/tests/check-mendix-against-input.ts` compares this
+    dump against the **input model** rather than the PIM, thereby verifying the entire
+    chain CIM -> PIM -> PSM instead of just its final step. The following are checked: entities,
+    attribute names and types, default values, enum literals including their order, generalizations,
+    status enums, pages, behavior artifacts (`WF_<Entity>_<Event>`,
+    `Set<Entity>_<Event>`, `Create_<OT>`, `End_<OT>`, `Set_<OT>_<Event>`) and, most importantly,
+    the **direction of each association** - in Mendix, the `parent` side holds the reference, so it must
+    be the "many" side. Swapped sides are explicitly reported as "Foreign key is
+    on the wrong entity." Exit code 1 is returned for every deviation, making this
+    usable as a regression test. Procedure: `mda-agents/tests/README.md`.
+  - **Result:** 104 / 73 / 99 / 112 tests passed for DEMO, MERODE, DEMO Case, and
+    MERODE Case, **zero discrepancies**. No association is inverted, no input element
+    is left without a corresponding element, and no Mendix artifact is left without an origin. The only justified
+    omission across all four models: `Rental.totalDays` (derived, no OCL equivalent).
+  - **Two counting conventions in the agent log identified:** the log line "Attribute (B6)" does not count
+    the status attributes from B13 (MERODE +6, MERODE Case +10), and the agent logs the two
+    Member-End associations as well as the attributes of an Association Class
+    individually (DEMO +2 attributes, +2 associations). The verified value for the
+    rule coverage DEMO is therefore **15 associations and 44 attributes**, not 13 and 42.
+    All other numbers match the log exactly when calculated. Documented in Section 8.1.1.
+  - **Corrected as follows:** The rows "Total associations (B9)" and "of which
+    DataType associations (B5)" in `EVAL/FRAMEWORK.md`, Section 8.1, were not nested
+    within each other but were disjoint - as a result, the total count was reported as too low. Corrected
+    to 13 / 8 / 31 / 20 (log view); upon review, 15 / 8 / 31 / 20. **If the thesis includes the same
+    table, it must also be corrected there.**
+  - **Open issue:** The module contains a page named `Rental_Detail` that the agent does not
+    generate (`pim-to-mendix-agent.ts` does not recognize `_Detail`) and which its cleanup step also
+    does not remove, because it only deletes pages ending in `_Overview`. This is a remnant from
+    a previous manual edit, intentionally ignored and not included in the page counts.
+    Can be deleted in Studio Pro when the opportunity arises.
+
+- [x] **Traceability Coverage (QR4)** - Calculated from the two live runs above:
+      **DEMO 95.4%** (103/108, 5 justified NotMapped entries for A7-SM trigger semantics),
+      **MERODE 100%** (100/100, no NotMapped entries). Results documented in `EVAL/FRAMEWORK.md`,
+      Sections 6 and 8. Implemented/evaluated on 2026-09-07.
+
+- [ ] **Test-Fidelity Gap: Offline tests do not test the actual production logic**
+  - **What:** `mda-agents/tests/test-transform.ts` and `mda-agents/tests/smoke-m9-m3.ts` are
+    both standalone, hand-written partial reimplementations of the respective
+    transformation logic - they **do not** call the actual `transform()` functions
+    in `demo-to-pim-agent.ts` or `merode-to-pim-agent.ts`, respectively. `test-transform.ts` covers only
+    A3/A5/A12 (3 out of 12 A rules), not A1/A2/A4/A6-A11. `smoke-m9-m3.ts` has a
+    known discrepancy (`markInvoicePaid` is incorrectly rendered as a self-transition).
+    There is currently **no** test script permanently committed to the repo that validates the actual
+    production logic (full A1-A12 or M1-M9 functionality) offline against the fixtures - the only complete verification to date has been performed using one-time,
+    session-local disposable scripts that were not committed.
+- **Why it's important:** The figures documented in `EVAL/FRAMEWORK.md` (e.g., the
+  45/63-M9 propagation) have been correctly verified, but the reproducibility of this
+  verification for third parties (reviewers, future developers) does not currently depend on
+  a committed, repeatable test, but rather on this documentation
+  itself. This poses a risk to methodological traceability (Chapter 9).
+- **Next step (decision pending):** Permanently export `transform()` in `demo-to-pim-agent.ts` and
+  `merode-to-pim-agent.ts` (if not already done) and write a new,
+  committed test script that calls these actual functions against the current
+  fixtures and validates them against `pimuml-schema.json` - as a replacement for or supplement to the
+  existing smoke tests. Scope and timing (now vs. only after the live evaluations
+  mentioned above) have not yet been decided.
+  - **Addendum (2026-09-07, Discussion):** The live pipeline run (section above, DEMO/MERODE
+    evaluation) provides stronger proof of _correctness_ because it tests the actual deployed
+    `transform()` code over the actual bus, not a replica. The actual shortcoming
+    is _reproducibility for third parties_: a reviewer cannot repeat the live run themselves without access to the
+    Pi/Docker stack, whereas they can repeat a committed test. Second aspect:
+    Regression testing for future changes to the agents (immediately shows which
+    individual rule breaks, rather than just "the overall result is now different"). Consideration: only worthwhile
+    if work on the agents continues - still to be decided.
+
+- [ ] **Clarify and document QR1/QR2 scoping for the pim-to-sql agent**
+  - **What:** According to `REQUIREMENTS.md` §4, QR1 (Completeness) and QR2 (Validity) are defined as
+    source statement classifications for the CIM->PIM step (DEMO/MERODE -> pimUML),
+    not for PSM outputs - this also applies to Mendix, whose correctness proof
+    is instead based on QR3 (Schema Validation Rate / Studio Pro Check), not on
+    the C/M/I classification. For SQL, the Postgres executability proof serves as the
+    structural analogue to QR3. This proof has been available since 2026-09-17 for all four
+    Live Pipeline DDLs (see `EVAL/FRAMEWORK.md`, Section 8.2) and is no longer limited to the
+    synthetic completeness fixture `rent-a-car-pim-full.json`.
+  - **What's still missing:** an explicit scoping statement in `EVAL/FRAMEWORK.md` that
+    explains why the SQL agent is not evaluated using QR1/QR2. The proof of execution
+    is now included there, but the methodological justification for it is not.
+  - **Why it's important:** Without an explicit scoping statement in `FRAMEWORK.md`, it appears to be a
+    gap when a reviewer asks why the second PSM agent was not evaluated using the same metrics
+    as DEMO/MERODE - even though the answer is methodologically sound (different
+    pipeline stage, different appropriate metric), it's just not written down anywhere.
+  - **Next step (decision pending):** (a) minimal: add a short scoping paragraph to
+    `FRAMEWORK.md` explaining why QR1/QR2 are not applied to PIM->PSM and
+    referring instead to the Postgres proof of concept; (b) optional addition: run the
+    run the SQL Agent explicitly against the already archived live PIM outputs (it's
+    running as the `sql-agent` service on the Pi anyway and has likely already generated `.sql` files
+    during the DEMO/MERODE `curl` test runs - check whether these are still available on the Pi).
 
 ---
 
-## Housekeeping / Doku-Konsistenz
+## Priority 2 - Implementation (improves evaluation results)
 
-- [x] **`mda-agents/README.md` war stark veraltet** - zeigte nur `demo-to-pim-agent.ts` als
-  implementiert, `pim-to-mendix-agent.ts` als "[geplant]", MERODE/SQL-Agenten fehlten
-  komplett; A2 fälschlich als `PrimitiveType` statt `DataType` gemappt. Korrigiert
-  2026-09-01, Regeltabellen jetzt nur noch zentral in `MAPPING_NOTES.md` gepflegt.
-- [x] **`mda-agents/tests/README.md` beschrieb eine obsolete DEMO-Fixture** - "Abdeckung"-
-  und "Bekannte Abweichungen"-Abschnitte bezogen sich auf eine strukturell andere,
-  frühere Fixture-Iteration (u. a. Entities `Year`, `RentalYear`, `ManagingDay`,
-  `YearlyCarGroup`, die im aktuellen Fixture nicht mehr existieren). Korrigiert 2026-09-01
-  mit den aktuellen, verifizierten Fixture-Kennzahlen.
-- [ ] **Lokale Projektnotiz referenziert eine nicht existierende `BUILD_FAHRPLAN.md`** -
-  eine lokale, nicht versionierte Notizdatei verweist auf `./BUILD_FAHRPLAN.md` als
-  "Detaillierter Bauplan", diese Datei existiert aber nirgends im Repo (geprüft per
-  `find`, 2026-09-01). Die tatsächlich gepflegte Planungsdatei ist diese hier
-  (`thesis-notes/PROTOTYPE_TODOS.md`). Betrifft nur lokale Arbeitsorganisation, nicht das
-  Repo selbst - Referenz bei Gelegenheit entfernen oder auf `PROTOTYPE_TODOS.md` umbiegen.
+- [x] **pim-to-sql-agent - PostgreSQL DDL as a second PSM output** - new agent (`mda-agents/pim-to-sql-agent.ts`) that subscribes to the same `model.pim.created` topic as the Mendix agent and generates PostgreSQL DDL from it (S1-S12, complete rule table: `thesis-notes/SqlMappingRules.md`). No existing core code modified (`bus-client.ts`, `agent-utils.ts`, `demo-to-pim-agent.ts`, `merode-to-pim-agent.ts`, `pim-to-mendix-agent.ts`, `pimuml-schema.json` - 0 changes), actual extensibility proof for QR5 (`thesis-notes/EXTENSIBILITY_EVIDENCE.md` Section 5). Output: `mda-agents/output/<modelname>.sql`, proof of executability against a real PostgreSQL instance via disposable Docker containers (procedure: `mda-agents/tests/README.md`). Bus integration (`docker-compose.yml` service, `package.json` script) implemented on 2026-08-31.
+
+- [x] **M9 - Event Propagation** - Propagation envelope built from EDG; self-transitions inserted into master FSMs (`Set_<Master>_<evt>` activities). Raises MERODE completeness to ~100%. Implemented 2026-08-03.
+- [x] **B16 - End Microflow** - Hard delete via `DeleteObjectAction`: Parameter (entity) -> DeleteAction -> End. Design decision: physical deletion as a deliberate simplification for the prototype (DD12 in DESIGN_DECISIONS.md). Implemented 2026-08-03.
+- [x] **M3 - Attribute Domains** - `merode-schema.json` extended with `domainTypes` array; `MerodeDomainType` interface in `types.ts`; categorical domains -> enumeration, non-categorical -> DataType. `CarGroup` example in the Rent-A-Car fixture. Implemented on 2026-08-03.
+- [x] **Bug: duplicate Create_OT/End_OT activities** - Dedup guard in M6/M8 (`smActivities.some(...)`) prevents duplicate entries when an OT has multiple C or E events. Fixed on 2026-08-03.
+- [x] **Bug: non-categorical DataType -> string fallback** - DataType-typed attributes are now implemented as associations instead of string attributes (B5). Fixed on 2026-08-03.
+- [x] **DEMO/MERODE fixtures enhanced** - `rent-a-car-demo.json`/`rent-a-car-merode.json` have been expanded so that every A/M rule is triggered at least once (basis for the Priority-1 evaluation runs above). Implemented 2026-08-31.
 
 ---
 
-## Future Work (kein Scope mehr für diese Thesis)
+## Housekeeping / Documentation Consistency
 
-- [ ] **Tool-Anbindung** - Konverter von realen Tool-Exporten nach `demo-schema.json` / `merode-schema.json`:
-  - **YADM-Export** - Marien schickt Export-Format, ggf. Konverter von YADM-JSON nach `demo-schema.json` bauen.
-  - **Sparx XMI** - Social Housing und Desperados als zusätzliche Testfälle, Marienschen Rekonstruktionsskript prüfen.
-  - **Merlin .mxp** - Format analysieren, ggf. Konverter nach `merode-schema.json` bauen.
-
-- [ ] **Dritter CIM-Agent (ER-Diagramm)** - ursprünglich als formaler Extensibilitätsnachweis E1-E2 geplant, aber durch den tatsächlich gebauten `pim-to-sql-agent` (siehe oben, Priorität 2) als realen PSM-seitigen Extensibilitätsnachweis ersetzt (`thesis-notes/EXTENSIBILITY_EVIDENCE.md` Abschnitt 5). Ein zusätzlicher dritter CIM-Agent bliebe als natürlicher nächster Schritt, ist aber kein Scope mehr für diese Thesis.
-
-- [ ] **B-neu: Generische Page-Inhalte** - Aktuell werden Overview-Pages nur als leeres Gerüst (Name + Layout + Navigation-Eintrag) generiert. Folgendes soll automatisch aus dem PIM-Modell abgeleitet werden, ohne Hardcoding auf ein konkretes Beispiel:
-
-  - **Overview-Page je Entity:** DataGrid mit allen nicht-abgeleiteten Attributen als Spalten. Kein manueller Aufbau nötig.
-  - **Detail-Page je Entity:** DataView (Datenquelle: Objekt aus Navigation-Kontext) mit einem Input-Widget pro Attribut (TextBox für String/Integer, DatePicker für Date, Dropdown für Enum-Attribute). Save-Button der ein Commit ausführt.
-  - ~~**Workflow-Trigger-Button je Entity mit FSM**~~ - entfällt seit 2026-09-14: `ACR_<EntityName>` ist als After-Create-Handler registriert und committet selbst (DD13). Ein zusätzlicher Button würde die Region-Workflows doppelt starten. Ursprünglicher Plan: Auf der Detail-Page einen Button "Start [EntityName] Workflow" generieren, der:
-    1. Zuerst ein `CommitObjectAction` ausführt (Fix für "Only committed persistent objects can be used to start a workflow")
-    2. Dann den generierten `ACR_<EntityName>`-Microflow aufruft
-    Der Button soll nur generiert werden wenn für die Entity Region-Workflows (`WF_<EntityName>_<forEvent>`) existieren - also bei DEMO-Entities mit `stateMachines`-Eintrag. Kein Button für Entities ohne FSM.
-  - **Neue-Objekt-Button auf Overview-Page:** "New [EntityName]"-Button der ein leeres Objekt erstellt, committed und zur Detail-Page navigiert.
-
-  **Warum:** Getestet am 2026-08-21. Pages waren zwar technisch korrekt im Modell vorhanden, aber vollständig leer - kein Inhalt, keine Interaktion möglich ohne manuellen Aufbau in Studio Pro.
+- [x] **`mda-agents/README.md` was severely out of date** - it listed only `demo-to-pim-agent.ts` as
+      implemented, `pim-to-mendix-agent.ts` as "[planned]," and MERODE/SQL agents were
+      completely missing; A2 was incorrectly mapped as `PrimitiveType` instead of `DataType`. Corrected
+      2026-09-01; mapping tables are now maintained centrally only in `MAPPING_NOTES.md`.
+- [x] **`mda-agents/tests/README.md` described an obsolete DEMO fixture** - The "Coverage"
+      and "Known Deviations" sections referred to a structurally different,
+      earlier fixture iteration (including entities `Year`, `RentalYear`, `ManagingDay`,
+      `YearlyCarGroup`, which no longer exist in the current fixture). Corrected on 2026-09-01
+      with the current, verified fixture metrics.
+- [ ] **Local project note references a nonexistent `BUILD_FAHRPLAN.md`** -
+      a local, unversioned note file refers to `./BUILD_FAHRPLAN.md` as
+      "Detailed Construction Plan," but this file does not exist anywhere in the repo (verified via
+      `find`, 2026-09-01). The planning file that is actually maintained is this one
+      (`thesis-notes/PROTOTYPE_TODOS.md`). This only affects local work organization, not the
+      repo itself - remove the reference when possible or update it to point to `PROTOTYPE_TODOS.md`.
 
 ---
 
-## Thesis-Entscheidungen (2026-09-17)
+## Future Work (no longer within the scope of this thesis)
 
-Festlegungen zu den offenen Punkten aus der Draft-Durchsicht (MasterthesisDraft-36). Sie
-betreffen nur den Thesis-Text, nicht den Prototyp. Der Thesis-Text wird nicht aus diesem
-Repo heraus geändert, die Umsetzung erfolgt in der Arbeitskopie des Autors.
+- [ ] **Tool Integration** - Converter from real tool exports to `demo-schema.json` / `merode-schema.json`:
+  - **YADM Export** - Marien will send the export format; build a converter from YADM-JSON to `demo-schema.json` if necessary.
+  - **Sparx XMI** - Use Social Housing and Desperados as additional test cases; check Marien's reconstruction script.
+  - **Merlin .mxp** - Analyze the format; if necessary, build a converter to `merode-schema.json`.
 
-- [x] **§9.3 Performance entfällt.** Es existiert keine Zeitmessung und keine der
-  Anforderungen QR1-QR5 fordert eine. Der Abschnitt wird aus Kapitel 9 gestrichen, damit
-  bleiben 9.1 Semantics, 9.2 Architecture, 9.3 Limitations.
-- [x] **CE0049 wird aus der Thesis entfernt.** Siehe die Klärung oben unter QR3. Betrifft
-  die Abschnitte 6.4.5 und 7.4.5, die die Meldung bisher als beobachtete Einschränkung
-  führen. Die SDK-Limitation selbst (keine logische `MicroflowParameter` über das SDK)
-  bleibt bestehen und wird weiterhin genannt, nur ohne die Fehlermeldung und ohne den
-  Dialogklick.
-- [x] **Sprache Kapitel 8 und 9: Deutsch**, Fachbegriffe bleiben englisch. Damit wie
-  Kapitel 6 und 7. Überschriften bleiben englisch, ebenfalls wie in Kapitel 6 und 7.
-- [ ] **Screenshots zu Kapitel 8** liefert der Autor selbst nach (Studio Pro). Im Repo
-  liegen keine.
-- [ ] **QR4-Definition (Empfehlung: NotMapped im Nenner belassen).** Thesis §4.4 nimmt
-  NotMapped-Elemente aus dem Nenner, damit kann die Kennzahl nie unter 100 % fallen und
-  misst nichts. Die EVAL-Zahlen rechnen NotMapped mit (DEMO 95,4 % / 96,1 %, MERODE
-  100 % / 100 %). Empfehlung: §4.4 an die EVAL-Rechnung angleichen und beide Werte
-  ausweisen, statt die Messung an die Definition anzupassen. Entscheidung des Autors steht
-  noch aus.
-- [ ] **D7 und Yins unit of analysis (Empfehlung: single case, embedded units).** §1.3 D7
-  und §1.4 sind im Singular formuliert, evaluiert wurden aber vier Untersuchungseinheiten
-  (zwei CIM-Sprachen mal zwei Modellpaare). Empfehlung: die Fallstudie bleibt ein
-  Einzelfall (Rent-A-Car) und bekommt nach Yin vier embedded units of analysis.
-  Entscheidung des Autors steht noch aus.
-- [ ] **Artefakttabelle für §8.3.** In der Thesis existiert noch keine, §6.6.4 verweist nur
-  voraus ("Die Stückzahlen der erzeugten Artefakte weist Abschnitt 8.3 aus."). Zu
-  korrigieren ist daher nichts, die Zahlen aus `EVAL/FRAMEWORK.md` Abschnitt 8.1.1
-  (Rücklesen über das SDK, nicht die Agenten-Logs) sind beim Schreiben von §8.3 zu
-  übernehmen. Beim Schreiben ist die PIM-Sicht in §6.6.1 (elf bzw. fünf Associations) von
-  der Mendix-Sicht (15 bzw. 8) zu trennen, die Differenz entsteht durch
-  DataType-Assoziationen und die Association Class.
+- [ ] **Third CIM Agent (ER Diagram)** - Originally planned as formal extensibility proof E1-E2, but replaced by the actually built `pim-to-sql-agent` (see above, Priority 2) as a real PSM-side extensibility proof (`thesis-notes/EXTENSIBILITY_EVIDENCE.md` Section 5). An additional third CIM agent would be the natural next step, but is no longer within the scope of this thesis.
+
+- [ ] **B-new: Generic Page Content** - Currently, overview pages are generated only as an empty skeleton (name + layout + navigation entry). The following should be automatically derived from the PIM model, without hard-coding a specific example:
+  - **Overview page for each entity:** DataGrid with all non-derived attributes as columns. No manual setup required.
+  - **Detail page for each entity:** DataView (data source: object from navigation context) with one input widget per attribute (TextBox for string/integer, DatePicker for date, dropdown for enum attributes). Save button that executes a commit.
+  - ~~**Workflow trigger button per entity with FSM**~~ - No longer applicable as of 2026-09-14: `ACR_<EntityName>` is registered as an after-create handler and commits on its own (DD13). An additional button would cause the region workflows to start twice. Original plan: Generate a "Start [EntityName] Workflow" button on the detail page that:
+    1. First executes a `CommitObjectAction` (fix for "Only committed persistent objects can be used to start a workflow")
+    2. Then calls the generated `ACR_<EntityName>` microflow
+       The button should only be generated if region workflows (`WF_<EntityName>_<forEvent>`) exist for the entity - i.e., for DEMO entities with a `stateMachines` entry. No button for entities without an FSM.
+  - **New Object Button on the Overview Page:** "New [EntityName]" button that creates an empty object, commits it, and navigates to the detail page.
+
+  **Why:** Tested on 2026-08-21. Although the pages were technically present in the model, they were completely empty - no content, and no interaction was possible without manual setup in Studio Pro.
 
 ---
 
-## Testbefehl
+## Test command
 
 ```bash
 # DEMO
