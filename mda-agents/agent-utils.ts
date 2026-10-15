@@ -22,7 +22,7 @@ export interface PipelineMeta {
     moduleName?: string;
     branch?:     string;
   };
-  _trace?: TraceEntry[];         // transformation trace for evaluation (RQ4)
+  _trace?: TraceEntry[];         // transformation trace for evaluation (QR4)
 }
 
 export function getBusConfig(agentId: string): BusConfig & { loadDelayMs: number } {
