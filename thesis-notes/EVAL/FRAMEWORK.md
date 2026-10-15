@@ -78,9 +78,9 @@ Agent: `merode-to-pim-agent.ts`, rules M1-M9.
 | M2-11 | Attribute: Rental.depositAmount (MoneyAmount) | Property "depositAmount" (type: "MoneyAmount") on Rental | Correct        |
 | M2-12 | Attribute: Rental.invoiceAmount (MoneyAmount) | Property "invoiceAmount" (type: "MoneyAmount") on Rental | Correct        |
 | M2-13 | Attribute: RentalLine.quantity (Integer)      | Property "quantity" on RentalLine                        | Correct        |
-| M2-14 | Attribut: RentalLine.description (String)     | Eigenschaft „description" auf RentalLine                 | Korrekt        |
-| M2-15 | Attribut: Invoice.amount (MoneyAmount)        | Eigenschaft „amount" (Typ: „MoneyAmount") auf Invoice    | Korrekt        |
-| M2-16 | Attribut: Invoice.paidOn (String)             | Eigenschaft „paidOn" auf Invoice                         | Korrekt        |
+| M2-14 | Attribute: RentalLine.description (String)    | Property "description" on RentalLine                     | Correct        |
+| M2-15 | Attribute: Invoice.amount (MoneyAmount)       | Property "amount" (type: "MoneyAmount") on Invoice       | Correct        |
+| M2-16 | Attribute: Invoice.paidOn (String)            | Property "paidOn" on Invoice                             | Correct        |
 
 ### Existence dependencies (M4)
 
