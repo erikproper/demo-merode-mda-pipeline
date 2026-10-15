@@ -58,3 +58,6 @@ Desktop.ini
 # -- Logs ----------------------------------------------------------------------
 *.log
 npm-debug.log*
+
+# Exception: the agent logs of the live pipeline run are evaluation evidence
+!thesis-notes/EVAL/Eval_new/*.log

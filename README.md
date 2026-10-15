@@ -70,7 +70,7 @@ A running instance can be accessed at `https://mda.tlolab.com`.
 ## Generated and versioned artefacts
 
 **Important for traceability:** The folder `thesis-notes/EVAL/`
-(approx. 3.4 MB, 17 files) does not contain any handwritten documents,
+(approx. 640 KB, 25 files) does not contain any handwritten documents,
 but rather **outputs from the pipeline**. These files have been deliberately
 checked in so that the figures in the thesis remain verifiable without having to run the pipeline
 yourself. They are regenerated with every run.
@@ -82,6 +82,7 @@ yourself. They are regenerated with every run.
 | `thesis-notes/EVAL/Eval_new/*-pim.json`    | pimUML models, second measurement run             | generated   |
 | `thesis-notes/EVAL/Eval_new/*.mendix.json` | Target state read back from Mendix                | generated   |
 | `thesis-notes/EVAL/Eval_new/*.sql`         | PostgreSQL DDL for the four test cases            | generated   |
+| `thesis-notes/EVAL/Eval_new/*.log`         | Agent logs of the live run, cumulative            | generated   |
 
 By contrast, `mda-agents/output/*.sql`,
 `mda-agents/tests/rent-a-car-pim.json` and

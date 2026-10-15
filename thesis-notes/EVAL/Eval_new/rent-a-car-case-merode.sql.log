@@ -1,0 +1,18 @@
+[pim-to-sql] starting
+[pim-to-sql] output directory: /app/output
+[pim-to-sql] connected to mqtt-broker:1883
+[pim-to-sql] subscribed to PIM from "demo-to-pim-agent"
+[pim-to-sql] subscribed to PIM from "merode-to-pim-agent"
+[pim-to-sql] listening ... (Ctrl+C to stop)
+[pim-to-sql] received model at 2026-09-17T07:34:56.199Z
+[pim-to-sql] wrote /app/output/rent_a_car_case_demo_pim_uml.sql
+[pim-to-sql] received model at 2026-09-17T07:46:47.831Z
+[pim-to-sql] wrote /app/output/rent_a_car_case_demo_pim_uml.sql
+[pim-to-sql] received model at 2026-09-17T08:33:34.378Z
+[pim-to-sql] wrote /app/output/rent_a_car_demo_pim_uml.sql
+[pim-to-sql] received model at 2026-09-17T08:42:48.516Z
+[pim-to-sql] wrote /app/output/rent_a_car_merode_pim_uml.sql
+[pim-to-sql] received model at 2026-09-17T08:48:34.830Z
+[pim-to-sql] wrote /app/output/rent_a_car_case_demo_pim_uml.sql
+[pim-to-sql] received model at 2026-09-17T08:53:11.138Z
+[pim-to-sql] wrote /app/output/rent_a_car_case_merode_pim_uml.sql
