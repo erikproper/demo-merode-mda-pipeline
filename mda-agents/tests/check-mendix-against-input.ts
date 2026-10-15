@@ -1,21 +1,21 @@
 // check-mendix-against-input
-// Prueft das zurueckgelesene Mendix-Modell (dump-mendix-domain.ts) gegen das
-// DEMO- bzw. MERODE-Eingabemodell - also gegen den Anfang der Kette, nicht gegen
-// das PIM. Damit wird die gesamte Pipeline geprueft und nicht nur ihr letzter Schritt.
+// Checks the Mendix model read back by dump-mendix-domain.ts against the
+// DEMO or MERODE input model - that is, against the start of the chain, not against
+// the PIM. This verifies the entire pipeline and not just its last step.
 //
-// Geprueft wird unter anderem:
-//   - jeder EntityType / ObjectType hat eine Mendix-Entity
-//   - jeder kategoriale ValueType / DomainType hat eine Enumeration mit denselben Literalen
-//   - jeder nicht-kategoriale ValueType / DomainType hat eine eigene Entity
-//   - jedes Attribut hat eine Mendix-Spalte des erwarteten Typs bzw. eine Assoziation
-//   - jeder FactType / jede ExistenceDependency hat eine Assoziation MIT KORREKTER RICHTUNG
-//     (Mendix parent = Viele-Seite, child = Eins-Seite)
-//   - jede Spezialisierung ist Generalisierung oder ereignisgetriggerte Assoziation
-//   - jeder Lebenszyklus hat einen Status-Enum mit denselben Zustaenden
-//   - jeder EventType / BusinessEventType hat ein Verhaltensartefakt
-//   - kein Mendix-Artefakt ohne Ursprung im Eingabemodell
+// Among the things checked:
+//   - every EntityType / ObjectType has a Mendix entity
+//   - every categorical ValueType / DomainType has an enumeration with the same literals
+//   - every non-categorical ValueType / DomainType has an entity of its own
+//   - every attribute has a Mendix column of the expected type, or an association
+//   - every FactType / ExistenceDependency has an association WITH THE CORRECT DIRECTION
+//     (Mendix parent = many-side, child = one-side)
+//   - every specialization is a generalization or an event-triggered association
+//   - every lifecycle has a status enum with the same states
+//   - every EventType / BusinessEventType has a behaviour artefact
+//   - no Mendix artefact without an origin in the input model
 //
-// Aufruf:  npx ts-node tests/check-mendix-against-input.ts <basisname>
+// Usage:  npx ts-node tests/check-mendix-against-input.ts <basename>
 
 import * as fs from "fs";
 import * as path from "path";
@@ -34,9 +34,9 @@ const add = (kind: Kind, rule: string, text: string) => findings.push({ kind, ru
 let checks = 0;
 const ok = () => { checks++; };
 
-// ---------------------------------------------------------------- Hilfsfunktionen
+// ---------------------------------------------------------------- Helper functions
 
-// Spiegelt makeAttributeType() aus pim-to-mendix-agent.ts
+// Mirrors makeAttributeType() from pim-to-mendix-agent.ts
 function expectedPrimitive(typeName: string | undefined): string {
   switch ((typeName ?? "").toLowerCase()) {
     case "integer":  return "Integer";
@@ -53,9 +53,9 @@ function sameLiterals(a: string[], b: string[]): boolean {
 }
 
 interface ExpectedAssoc {
-  parent: string;   // Viele-Seite, haelt den Verweis
-  child:  string;   // Eins-Seite
-  origin: string;   // Ursprung im Eingabemodell, fuer die Meldung
+  parent: string;   // many-side, holds the reference
+  child:  string;   // one-side
+  origin: string;   // origin in the input model, for the message
   rule:   string;
 }
 
@@ -117,7 +117,7 @@ function expectFromDemo(demo: any): Expectation {
 
   for (const et of demo.entityTypes ?? []) {
     const e = entityOf(exp, et.name, `EntityType "${et.name}"`);
-    e.attributes.set(`${et.name}ID`, { type: "Integer" });           // A3 bzw. A9: fachlicher Identifikator
+    e.attributes.set(`${et.name}ID`, { type: "Integer" });           // A3 and A9: business identifier
     exp.pages.add(`${et.name}_Overview`);
 
     for (const a of et.attributes ?? []) {
@@ -136,7 +136,7 @@ function expectFromDemo(demo: any): Expectation {
     }
   }
 
-  // Spezialisierungen
+  // Specializations
   for (const et of demo.entityTypes ?? []) {
     if (et.parent === undefined) continue;
     if (et.triggerEventType) {
@@ -154,7 +154,7 @@ function expectFromDemo(demo: any): Expectation {
     }
   }
 
-  // FactTypes -> Assoziationen, Richtung aus den Rollenmultiplizitaeten
+  // FactTypes -> associations, direction taken from the role multiplicities
   for (const ft of demo.factTypes ?? []) {
     const [r0, r1] = ft.roles;
     const isMany = (r: any) => r.upper === "*" || (typeof r.upper === "number" && r.upper > 1);
@@ -175,11 +175,11 @@ function expectFromDemo(demo: any): Expectation {
     }
   }
 
-  // A6: jeder EventType wird ein Boolean-Attribut auf seiner Entity
+  // A6: every EventType becomes a Boolean attribute on its entity
   for (const ev of demo.eventTypes ?? []) {
     entityOf(exp, ev.entityType, `EntityType "${ev.entityType}"`)
       .attributes.set(ev.name, { type: "Boolean", def: "false" });
-    // B11/B12: eine Workflow je orthogonaler Region, B15: der zugehoerige Set-Microflow
+    // B11/B12: one workflow per orthogonal region, B15: the corresponding Set microflow
     exp.behaviour.push({
       artefacts: [`WF_${ev.entityType}_${ev.name}`, `Set${ev.entityType}_${ev.name}`],
       origin: `EventType "${ev.name}" auf "${ev.entityType}"`,
@@ -250,7 +250,7 @@ function expectFromMerode(merode: any): Expectation {
   return exp;
 }
 
-// ---------------------------------------------------------------- Vergleich
+// ---------------------------------------------------------------- Comparison
 
 function compare(exp: Expectation, dump: any): void {
   const mxEntities = new Map<string, any>(dump.entities.map((e: any) => [e.name, e]));
@@ -259,7 +259,7 @@ function compare(exp: Expectation, dump: any): void {
   const mxPages    = new Set<string>(dump.pages);
   const behaviourNames = [...dump.microflows.map((m: any) => m.name), ...dump.workflows];
 
-  // Entities + Attribute
+  // Entities + attributes
   for (const [name, e] of exp.entities) {
     const mx = mxEntities.get(name);
     if (!mx) { add("MISSING", "B2/B5", `${e.origin} hat keine Mendix-Entity "${name}"`); continue; }
@@ -298,7 +298,7 @@ function compare(exp: Expectation, dump: any): void {
     if (!exp.enums.has(name)) add("EXTRA", "B4", `Mendix-Enumeration "${name}" hat keinen Ursprung im Eingabemodell`);
   }
 
-  // Assoziationen samt Richtung
+  // Associations including direction
   for (const [name, a] of exp.assocs) {
     const mx = mxAssocs.get(name);
     if (!mx) { add("MISSING", a.rule, `${a.origin} hat keine Assoziation "${name}"`); continue; }
@@ -320,7 +320,7 @@ function compare(exp: Expectation, dump: any): void {
     if (!exp.assocs.has(name)) add("EXTRA", "B9", `Mendix-Assoziation "${name}" hat keinen Ursprung im Eingabemodell`);
   }
 
-  // Generalisierungen
+  // Generalizations
   for (const [child, parent] of exp.generalizations) {
     const mx = mxEntities.get(child);
     if (!mx) continue;
@@ -345,12 +345,12 @@ function compare(exp: Expectation, dump: any): void {
     if (!exp.pages.has(page)) add("EXTRA", "B14", `Mendix-Page "${page}" hat keinen Ursprung im Eingabemodell`);
   }
 
-  // Verhalten
+  // Behaviour
   const behaviourSet = new Set<string>(behaviourNames);
   for (const b of exp.behaviour) {
-    const fehlend = b.artefacts.filter(a => !behaviourSet.has(a));
-    if (fehlend.length > 0) {
-      add("MISSING", "B11/B12/B15/B16", `${b.origin}: ${fehlend.map(f => `"${f}"`).join(" und ")} fehlt`);
+    const missing = b.artefacts.filter(a => !behaviourSet.has(a));
+    if (missing.length > 0) {
+      add("MISSING", "B11/B12/B15/B16", `${b.origin}: ${missing.map(f => `"${f}"`).join(" und ")} fehlt`);
       continue;
     }
     ok();

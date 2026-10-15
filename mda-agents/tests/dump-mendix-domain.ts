@@ -1,15 +1,15 @@
 // dump-mendix-domain
-// Read-only Gegenprobe zum pim-to-mendix-agent: oeffnet dieselbe Mendix-App ueber das
-// Platform SDK und serialisiert den aktuellen Stand des Moduls nach JSON.
+// Read-only counter-check to pim-to-mendix-agent: opens the same Mendix app via the
+// Platform SDK and serializes the module's current state to JSON.
 //
-// Zweck: die Artefaktzahlen in thesis-notes/EVAL/FRAMEWORK.md stammen bisher aus dem
-// Log des erzeugenden Agenten selbst. Dieses Skript liest den Zielzustand unabhaengig
-// aus dem Team Server zurueck und macht ihn damit maschinell nachpruefbar.
+// Purpose: the artefact counts in thesis-notes/EVAL/FRAMEWORK.md have so far been taken
+// from the log of the generating agent itself. This script reads the target state back
+// from the Team Server independently and thereby makes it machine-verifiable.
 //
-// Es wird nichts geschrieben und nichts committed - die temporaere Working Copy wird
-// nur gelesen.
+// Nothing is written and nothing is committed - the temporary working copy is
+// only read.
 //
-// Aufruf:  npx ts-node -r dotenv/config tests/dump-mendix-domain.ts <basisname> [--deep]
+// Usage:  npx ts-node -r dotenv/config tests/dump-mendix-domain.ts <basename> [--deep]
 
 import { IModel } from "mendixmodelsdk";
 import { MendixPlatformClient } from "mendixplatformsdk";
@@ -50,7 +50,7 @@ function defaultValue(attr: any): string | undefined {
 }
 
 function enumName(e: any): string {
-  // AbstractEnum-Instanzen tragen ihren Namen in .name, sonst String-Fallback
+  // AbstractEnum instances carry their name in .name, otherwise String fallback
   return e?.name ?? String(e);
 }
 
@@ -84,7 +84,7 @@ async function readModule(model: IModel, moduleName: string) {
 
   const associations = domainModel.associations.map(a => ({
     name: a.name,
-    // Mendix SDK: parent = Viele-Seite (haelt den Verweis), child = Eins-Seite
+    // Mendix SDK: parent = many-side (holds the reference), child = one-side
     parent: (a.parent as any)?.name ?? null,
     child: (a.child as any)?.name ?? null,
     type: enumName(a.type),
