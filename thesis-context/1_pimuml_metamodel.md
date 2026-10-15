@@ -1,74 +1,74 @@
 # Metamodel: pimUML
 
-Das pimUML-Metamodel basiert auf UML Version 2.5.1 und gliedert sich in drei Teile: Klassendiagramm, Zustandsmaschinendiagramm und Aktivitätsdiagramm.
+The pimUML metamodel is based on UML version 2.5.1 and is divided into three parts: class diagram, state machine diagram, and activity diagram.
 
 ---
 
-## Legende (Figure C.1)
+## Legend (Figure C.1)
 
-| Darstellung                           | Bedeutung                                                                                        |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **Metaclass** (grün hinterlegt, fett) | Konkrete Klasse, in mindestens einer gematchten Pattern-Regel enthalten                          |
-| **Metaclass** (weiß, fett)            | Konkrete Klasse, in keiner gematchten Pattern-Regel enthalten                                    |
-| _Metaclass_ (grün hinterlegt, kursiv) | Abstrakt, führt keine Attribute oder Referenzen ein, die von konkreten Metaklassen geerbt werden |
-| _Metaclass_ (weiß, kursiv)            | Abstrakt, führt Attribute oder Referenzen ein, die von konkreten Metaklassen geerbt werden       |
+| Representation                         | Meaning                                                                            |
+| -------------------------------------- | ---------------------------------------------------------------------------------- |
+| **Metaclass** (green background, bold) | Concrete class, contained in at least one matched pattern rule                     |
+| **Metaclass** (white, bold)            | Concrete class, contained in no matched pattern rule                               |
+| _Metaclass_ (green background, italic) | Abstract, introduces no attributes or references inherited by concrete metaclasses |
+| _Metaclass_ (white, italic)            | Abstract, introduces attributes or references inherited by concrete metaclasses    |
 
 ---
 
-## Figure C.2 - Metamodel des pimUML-Klassenmodells
+## Figure C.2 - Metamodel of the pimUML class model
 
-### Vererbungshierarchie
+### Inheritance hierarchy
 
-| Klasse                      | Erbt von                                     | Typ               | Attribute                                                                                   |
-| --------------------------- | -------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------- |
-| _NamedElement_              | -                                            | abstrakt          | `+ name: String [0..1]`                                                                     |
-| _Namespace_                 | NamedElement                                 | abstrakt          | -                                                                                           |
-| _Type_                      | -                                            | abstrakt          | -                                                                                           |
-| _TypedElement_              | -                                            | abstrakt          | `+ type -> Type`                                                                             |
-| _MultiplicityElement_       | -                                            | abstrakt          | `+ /lower: Integer`, `+ /upper: UnlimitedNatural`                                           |
-| _ValueSpecification_        | -                                            | abstrakt          | -                                                                                           |
-| _Classifier_                | Namespace                                    | abstrakt          | -                                                                                           |
-| _StructuredClassifier_      | Classifier                                   | abstrakt          | -                                                                                           |
-| _EncapsulatedClassifier_    | StructuredClassifier                         | abstrakt          | -                                                                                           |
-| _BehavioredClassifier_      | Classifier                                   | abstrakt          | -                                                                                           |
-| _ConnectableElement_        | -                                            | abstrakt          | -                                                                                           |
-| _StructuralFeature_         | MultiplicityElement, TypedElement            | abstrakt          | -                                                                                           |
-| _Behavior_                  | Class                                        | abstrakt          | -                                                                                           |
-| _LiteralSpecification_      | ValueSpecification                           | abstrakt          | -                                                                                           |
-| _DataType_                  | Classifier                                   | abstrakt          | -                                                                                           |
-| **Class**                   | EncapsulatedClassifier, BehavioredClassifier | konkret (pattern) | `+ name: String [0..1]`, `+ isAbstract: Boolean`                                            |
-| **Generalization**          | -                                            | konkret (pattern) | -                                                                                           |
-| **Property**                | ConnectableElement, StructuralFeature        | konkret (pattern) | `+ name: String [0..1]`, `+ isID: Boolean = false`, `+ aggregation: AggregationKind = none` |
-| **Association**             | Classifier                                   | konkret (pattern) | `+ name: String [0..1]`                                                                     |
-| **AssociationClass**        | Association, Class                           | konkret (pattern) | `+ name: String [0..1]`                                                                     |
-| **PrimitiveType**           | DataType                                     | konkret (pattern) | -                                                                                           |
-| **Enumeration**             | DataType                                     | konkret (pattern) | -                                                                                           |
-| **EnumerationLiteral**      | -                                            | konkret (pattern) | `+ /qualifiedName: String [0..1] {readOnly}`                                                |
-| **InstanceSpecification**   | -                                            | konkret           | -                                                                                           |
-| **LiteralUnlimitedNatural** | LiteralSpecification                         | konkret           | -                                                                                           |
-| **LiteralBoolean**          | LiteralSpecification                         | konkret           | -                                                                                           |
-| **LiteralInteger**          | LiteralSpecification                         | konkret           | -                                                                                           |
+| Class                       | Inherits from                                | Type               | Attributes                                                                                  |
+| --------------------------- | -------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------- |
+| _NamedElement_              | -                                            | abstract           | `+ name: String [0..1]`                                                                     |
+| _Namespace_                 | NamedElement                                 | abstract           | -                                                                                           |
+| _Type_                      | -                                            | abstract           | -                                                                                           |
+| _TypedElement_              | -                                            | abstract           | `+ type -> Type`                                                                            |
+| _MultiplicityElement_       | -                                            | abstract           | `+ /lower: Integer`, `+ /upper: UnlimitedNatural`                                           |
+| _ValueSpecification_        | -                                            | abstract           | -                                                                                           |
+| _Classifier_                | Namespace                                    | abstract           | -                                                                                           |
+| _StructuredClassifier_      | Classifier                                   | abstract           | -                                                                                           |
+| _EncapsulatedClassifier_    | StructuredClassifier                         | abstract           | -                                                                                           |
+| _BehavioredClassifier_      | Classifier                                   | abstract           | -                                                                                           |
+| _ConnectableElement_        | -                                            | abstract           | -                                                                                           |
+| _StructuralFeature_         | MultiplicityElement, TypedElement            | abstract           | -                                                                                           |
+| _Behavior_                  | Class                                        | abstract           | -                                                                                           |
+| _LiteralSpecification_      | ValueSpecification                           | abstract           | -                                                                                           |
+| _DataType_                  | Classifier                                   | abstract           | -                                                                                           |
+| **Class**                   | EncapsulatedClassifier, BehavioredClassifier | concrete (pattern) | `+ name: String [0..1]`, `+ isAbstract: Boolean`                                            |
+| **Generalization**          | -                                            | concrete (pattern) | -                                                                                           |
+| **Property**                | ConnectableElement, StructuralFeature        | concrete (pattern) | `+ name: String [0..1]`, `+ isID: Boolean = false`, `+ aggregation: AggregationKind = none` |
+| **Association**             | Classifier                                   | concrete (pattern) | `+ name: String [0..1]`                                                                     |
+| **AssociationClass**        | Association, Class                           | concrete (pattern) | `+ name: String [0..1]`                                                                     |
+| **PrimitiveType**           | DataType                                     | concrete (pattern) | -                                                                                           |
+| **Enumeration**             | DataType                                     | concrete (pattern) | -                                                                                           |
+| **EnumerationLiteral**      | -                                            | concrete (pattern) | `+ /qualifiedName: String [0..1] {readOnly}`                                                |
+| **InstanceSpecification**   | -                                            | concrete           | -                                                                                           |
+| **LiteralUnlimitedNatural** | LiteralSpecification                         | concrete           | -                                                                                           |
+| **LiteralBoolean**          | LiteralSpecification                         | concrete           | -                                                                                           |
+| **LiteralInteger**          | LiteralSpecification                         | concrete           | -                                                                                           |
 
-### Assoziationen (Klassenmodell)
+### Associations (class model)
 
-| Von                  | Zu                   | Rolle (von)                                  | Rolle (zu)                              | Multiplizität |
-| -------------------- | -------------------- | -------------------------------------------- | --------------------------------------- | ------------- |
-| Classifier           | Generalization       | `+ specific`                                 | `+ generalization`                      | -             |
-| Classifier           | Generalization       | `+ general`                                  | `+ generalization`                      | -             |
-| MultiplicityElement  | ValueSpecification   | -                                            | `+ lowerValue`                          | -             |
-| MultiplicityElement  | ValueSpecification   | -                                            | `+ upperValue`                          | -             |
-| BehavioredClassifier | Behavior             | `+ behavioredClassifier` (subsets namespace) | `+ ownedBehavior` (subsets ownedMember) | `0..1` <-> `*`  |
-| Class                | Property             | `+ class`                                    | `+ ownedAttribute`                      | -             |
-| Property             | ValueSpecification   | -                                            | `+ defaultValue`                        | -             |
-| Property             | Association          | `+ memberEnd`                                | `+ association`                         | -             |
-| Property             | Association          | `+ navigableOwnedEnd` / `+ ownedEnd`         | `+ owningAssociation`                   | -             |
-| Property             | LiteralSpecification | `+ owningProperty`                           | -                                       | -             |
-| DataType             | Property             | -                                            | `+ ownedAttribute`                      | -             |
-| Property             | DataType             | -                                            | `+ datatype`                            | -             |
+| From                 | To                   | Role (from)                                  | Role (to)                               | Multiplicity   |
+| -------------------- | -------------------- | -------------------------------------------- | --------------------------------------- | -------------- |
+| Classifier           | Generalization       | `+ specific`                                 | `+ generalization`                      | -              |
+| Classifier           | Generalization       | `+ general`                                  | `+ generalization`                      | -              |
+| MultiplicityElement  | ValueSpecification   | -                                            | `+ lowerValue`                          | -              |
+| MultiplicityElement  | ValueSpecification   | -                                            | `+ upperValue`                          | -              |
+| BehavioredClassifier | Behavior             | `+ behavioredClassifier` (subsets namespace) | `+ ownedBehavior` (subsets ownedMember) | `0..1` <-> `*` |
+| Class                | Property             | `+ class`                                    | `+ ownedAttribute`                      | -              |
+| Property             | ValueSpecification   | -                                            | `+ defaultValue`                        | -              |
+| Property             | Association          | `+ memberEnd`                                | `+ association`                         | -              |
+| Property             | Association          | `+ navigableOwnedEnd` / `+ ownedEnd`         | `+ owningAssociation`                   | -              |
+| Property             | LiteralSpecification | `+ owningProperty`                           | -                                       | -              |
+| DataType             | Property             | -                                            | `+ ownedAttribute`                      | -              |
+| Property             | DataType             | -                                            | `+ datatype`                            | -              |
 
 ### Enumeration: AggregationKind
 
-| Wert      |
+| Value     |
 | --------- |
 | none      |
 | shared    |
@@ -76,31 +76,31 @@ Das pimUML-Metamodel basiert auf UML Version 2.5.1 und gliedert sich in drei Tei
 
 ---
 
-## Figure C.3 - Metamodel des pimUML-Zustandsmaschinenmodells
+## Figure C.3 - Metamodel of the pimUML state machine model
 
-### Vererbungshierarchie
+### Inheritance hierarchy
 
-| Klasse                   | Erbt von               | Typ               | Attribute                           |
-| ------------------------ | ---------------------- | ----------------- | ----------------------------------- |
-| _NamedElement_           | -                      | abstrakt          | `+ name: String [0..1]`             |
-| _Namespace_              | NamedElement           | abstrakt          | -                                   |
-| _Classifier_             | Namespace              | abstrakt          | -                                   |
-| _StructuredClassifier_   | Classifier             | abstrakt          | -                                   |
-| _EncapsulatedClassifier_ | StructuredClassifier   | abstrakt          | -                                   |
-| **Class**                | EncapsulatedClassifier | konkret           | -                                   |
-| _Behavior_               | Class                  | abstrakt          | -                                   |
-| _Vertex_                 | -                      | abstrakt          | -                                   |
-| **StateMachine**         | Behavior               | konkret (pattern) | `+ name: String [0..1]`             |
-| **Region**               | -                      | konkret (pattern) | `+ name: String [0..1]`             |
-| **Transition**           | -                      | konkret (pattern) | -                                   |
-| **Pseudostate**          | Vertex                 | konkret (pattern) | `+ kind: PseudostateKind = initial` |
-| **State**                | Vertex                 | konkret (pattern) | `+ name: String [0..1]`             |
-| **Trigger**              | -                      | konkret (pattern) | `+ name: String [0..1]`             |
+| Class                    | Inherits from          | Type               | Attributes                          |
+| ------------------------ | ---------------------- | ------------------ | ----------------------------------- |
+| _NamedElement_           | -                      | abstract           | `+ name: String [0..1]`             |
+| _Namespace_              | NamedElement           | abstract           | -                                   |
+| _Classifier_             | Namespace              | abstract           | -                                   |
+| _StructuredClassifier_   | Classifier             | abstract           | -                                   |
+| _EncapsulatedClassifier_ | StructuredClassifier   | abstract           | -                                   |
+| **Class**                | EncapsulatedClassifier | concrete           | -                                   |
+| _Behavior_               | Class                  | abstract           | -                                   |
+| _Vertex_                 | -                      | abstract           | -                                   |
+| **StateMachine**         | Behavior               | concrete (pattern) | `+ name: String [0..1]`             |
+| **Region**               | -                      | concrete (pattern) | `+ name: String [0..1]`             |
+| **Transition**           | -                      | concrete (pattern) | -                                   |
+| **Pseudostate**          | Vertex                 | concrete (pattern) | `+ kind: PseudostateKind = initial` |
+| **State**                | Vertex                 | concrete (pattern) | `+ name: String [0..1]`             |
+| **Trigger**              | -                      | concrete (pattern) | `+ name: String [0..1]`             |
 
-### Assoziationen (Zustandsmaschine)
+### Associations (state machine)
 
-| Von          | Zu         | Rolle (von)      | Rolle (zu)     | Multiplizität   |
-| ------------ | ---------- | ---------------- | -------------- | --------------- |
+| From         | To         | Role (from)      | Role (to)      | Multiplicity      |
+| ------------ | ---------- | ---------------- | -------------- | ----------------- |
 | StateMachine | Region     | `+ stateMachine` | `+ region`     | `0..1` <-> `1..*` |
 | Region       | Vertex     | `+ container`    | `+ subvertex`  | `0..1` <-> `*`    |
 | Region       | Transition | `+ container`    | `+ transition` | `1` <-> `*`       |
@@ -114,7 +114,7 @@ Das pimUML-Metamodel basiert auf UML Version 2.5.1 und gliedert sich in drei Tei
 
 ### Enumeration: PseudostateKind
 
-| Wert           |
+| Value          |
 | -------------- |
 | initial        |
 | deepHistory    |

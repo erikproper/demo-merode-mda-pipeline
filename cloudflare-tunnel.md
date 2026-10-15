@@ -1,59 +1,59 @@
 # Cloudflare Tunnel - mda.tlolab.com
 
-Da `books.tlolab.com` bereits läuft, muss nur ein neuer `ingress`-Eintrag in der
-bestehenden Tunnel-Config ergänzt werden.
+Since `books.tlolab.com` is already running, only a new `ingress` entry has to be
+added to the existing tunnel config.
 
-## 1. Bestehende Config finden
+## 1. Locate the existing config
 
 ```bash
-# Üblicherweise hier:
+# Usually here:
 cat ~/.cloudflared/config.yml
-# oder:
+# or:
 cat /etc/cloudflared/config.yml
 ```
 
-## 2. Eintrag ergänzen
+## 2. Add the entry
 
-Füge den `mda.tlolab.com`-Block **vor** dem catch-all `service: http_status:404` ein:
+Insert the `mda.tlolab.com` block **before** the catch-all `service: http_status:404`:
 
 ```yaml
-tunnel: <deine-tunnel-id>
+tunnel: <your-tunnel-id>
 credentials-file: /home/<user>/.cloudflared/<tunnel-id>.json
 
 ingress:
-  # Bestehend - books
+  # Existing - books
   - hostname: books.tlolab.com
     service: http://localhost:<books-port>
 
-  # Neu - MDA Pipeline API
+  # New - MDA pipeline API
   - hostname: mda.tlolab.com
     service: http://localhost:3000
 
-  # Catch-all (muss immer am Ende stehen)
+  # Catch-all (must always come last)
   - service: http_status:404
 ```
 
-## 3. DNS-Eintrag in Cloudflare anlegen
+## 3. Create the DNS entry in Cloudflare
 
 ```bash
-cloudflared tunnel route dns <tunnel-name-oder-id> mda.tlolab.com
+cloudflared tunnel route dns <tunnel-name-or-id> mda.tlolab.com
 ```
 
-Oder im Cloudflare Dashboard:
-- **Zero Trust -> Networks -> Tunnels -> dein Tunnel -> Public Hostname -> Add**
+Or in the Cloudflare dashboard:
+- **Zero Trust -> Networks -> Tunnels -> your tunnel -> Public Hostname -> Add**
 - Subdomain: `mda`, Domain: `tlolab.com`, Service: `HTTP`, URL: `localhost:3000`
 
-## 4. Tunnel neu starten
+## 4. Restart the tunnel
 
 ```bash
-# Als systemd-Service (wahrscheinlich dein Setup):
+# As a systemd service (probably your setup):
 sudo systemctl restart cloudflared
 
-# Oder falls als Docker-Container:
+# Or if running as a Docker container:
 docker restart cloudflared
 ```
 
-## 5. Testen
+## 5. Test
 
 ```bash
 curl https://mda.tlolab.com/health
