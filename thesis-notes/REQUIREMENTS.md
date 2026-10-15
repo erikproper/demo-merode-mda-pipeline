@@ -1,6 +1,6 @@
 # Requirements Catalog (D1)
 
-Working document on the requirements for the Modeling Bus. These requirements are derived from the proposal (listed there as RQ1 - RQ4, Section 2.3), from experience gained during the development of the prototype, and from the analysis of both source languages. Here, I not only document what is required, but also why, and where the relevant references can be found.
+Working document on the requirements for the Modeling Bus. These requirements are derived from the proposal (listed there as RQ1-RQ4, Section 2.3), from experience gained during the development of the prototype, and from the analysis of both source languages. Here, I not only document what is required, but also why, and where the relevant references can be found.
 
 ---
 
@@ -24,13 +24,13 @@ In the current prototype, both languages are implemented via separate agents: `d
 
 The transformation logic for each CIM language must be encapsulated in exactly one agent. No CIM-specific knowledge may appear outside of this agent. Specifically, this means: the MQTT bus carries only schema-validated PIM messages, never raw CIM data. The `pim-to-mendix-agent` must not contain any parsing logic for DEMO or MERODE. And the `demo-to-pim-agent` is completely unaware of MERODE, and vice versa.
 
-The extensibility experiment empirically verifies this requirement: the `pim-to-sql-agent` (S1 - S12) was built as a third, independent PSM agent without requiring any changes to `demo-to-pim-agent.ts`, `merode-to-pim-agent.ts`, `pim-to-mendix-agent.ts`, `bus-client.ts`, `agent-utils.ts`, or the bus infrastructure (evidence provided via a diff table in `EXTENSIBILITY_EVIDENCE.md`, §5). Thus, AR2 is satisfied.
+The extensibility experiment empirically verifies this requirement: the `pim-to-sql-agent` (S1-S12) was built as a third, independent PSM agent without requiring any changes to `demo-to-pim-agent.ts`, `merode-to-pim-agent.ts`, `pim-to-mendix-agent.ts`, `bus-client.ts`, `agent-utils.ts`, or the bus infrastructure (evidence provided via a diff table in `EXTENSIBILITY_EVIDENCE.md`, §5). Thus, AR2 is satisfied.
 
 ### AR3 - Additive Extensibility
 
 Adding a new CIM language must not require any changes to existing components. This is the central claim of the thesis and is operationalized in Section 2.3 of the proposal as a binary criterion according to ISO/IEC 25010 [8].
 
-Specifically, "existing components" are: `bus-client.ts`, `agent-utils.ts`, `demo-to-pim-agent.ts`, `pim-to-mendix-agent.ts` in its core logic, and `pimuml-schema.json`, provided that existing DEMO-generated fields remain valid. When MERODE was added, no existing agent's transformation logic was modified. The `pim-to-mendix-agent.ts` file was given additional B-rules (B13 - B16), but the DEMO path through this agent remained behaviorally identical. Subsequent bug fixes to the DEMO path (B11/B12, 2026-09-14) are separate from this and are not a result of the MERODE integration. A detailed discussion of this distinction can be found in EXTENSIBILITY_EVIDENCE.md.
+Specifically, "existing components" are: `bus-client.ts`, `agent-utils.ts`, `demo-to-pim-agent.ts`, `pim-to-mendix-agent.ts` in its core logic, and `pimuml-schema.json`, provided that existing DEMO-generated fields remain valid. When MERODE was added, no existing agent's transformation logic was modified. The `pim-to-mendix-agent.ts` file was given additional B-rules (B13-B16), but the DEMO path through this agent remained behaviorally identical. Subsequent bug fixes to the DEMO path (B11/B12, 2026-09-14) are separate from this and are not a result of the MERODE integration. A detailed discussion of this distinction can be found in EXTENSIBILITY_EVIDENCE.md.
 
 ### AR4 - Schema-Validated Intermediate Format
 
@@ -60,7 +60,7 @@ The PIM is the central design challenge of this thesis. It must be expressive en
 
 ### PR1 - Structural Expressiveness
 
-This is the straightforward part. Both languages describe business objects using attributes and relationships. pimUML already covers this through Class, Property, and Association. The DEMO rules A3, A5, A11 - A12 and the MERODE rules M1, M2, M4 all map to the same pimUML structural constructs. This is the area of overlap between the two languages: what Snoeck refers to as the "data model view" (EDG) is structurally comparable to the DEMO Fact Model.
+This is the straightforward part. Both languages describe business objects using attributes and relationships. pimUML already covers this through Class, Property, and Association. The DEMO rules A3, A5, A11-A12 and the MERODE rules M1, M2, M4 all map to the same pimUML structural constructs. This is the area of overlap between the two languages: what Snoeck refers to as the "data model view" (EDG) is structurally comparable to the DEMO Fact Model.
 
 ### PR2 - Behavioral Expressiveness (Life Cycle FSMs)
 
