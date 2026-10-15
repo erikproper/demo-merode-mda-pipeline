@@ -1,180 +1,186 @@
 # mda-agents
 
-TypeScript-Agenten für die MDA-Transformationspipeline der Masterarbeit.
+TypeScript agents for the MDA transformation pipeline described in the Master's thesis.
 
-Implementiert zwei CIM-Sprachen und zwei PSM-Zielplattformen über eine gemeinsame,
-schema-validierte PIM-Zwischenschicht (pimUML):
+Implements two CIM languages and two PSM target platforms via a common,
+schema-validated PIM intermediate layer (pimUML):
 
 ```
-DEMO Fact Model (CIM)  --  demo-to-pim-agent.ts    (Regeln A1-A12)  --+
+DEMO Fact Model (CIM)  --  demo-to-pim-agent.ts    (Rules A1-A12)  --+
                                                                        |
-MERODE Domain Model (CIM) -- merode-to-pim-agent.ts (Regeln M1-M9) --+--> pimUML (PIM)
+MERODE Domain Model (CIM) -- merode-to-pim-agent.ts (Rules M1-M9) --+--> pimUML (PIM)
                                                                        |
-                                                                       +--> pim-to-mendix-agent.ts (Regeln B1-B16) --> Mendix (PSM)
-                                                                       +--> pim-to-sql-agent.ts    (Regeln S1-S12) --> PostgreSQL-DDL (PSM)
+                                                                       +--> pim-to-mendix-agent.ts (Rules B1-B16) --> Mendix (PSM)
+                                                                       +--> pim-to-sql-agent.ts    (Rules S1-S12) --> PostgreSQL DDL (PSM)
 ```
 
-Alle Agenten kommunizieren über den **BIG Modelling Bus** (MQTT, Eclipse Mosquitto/HiveMQ CE).
-Details zu den Mapping-Regeln: `thesis-notes/MAPPING_NOTES.md` (DEMO/MERODE->pimUML) und
-`thesis-notes/MAPPING_NOTES.md`-S-Regeln-Abschnitt (pimUML->SQL). Diese README hält bewusst
-keine eigene Kopie der Regeltabellen mehr, um Doku-Drift zu vermeiden.
+All agents communicate via the **BIG Modelling Bus** (MQTT, Eclipse Mosquitto/HiveMQ CE).
+Details on the mapping rules: `thesis-notes/MAPPING_NOTES.md` (DEMO/MERODE->pimUML) and
+the "S-Rules" section of `thesis-notes/MAPPING_NOTES.md` (pimUML->SQL). This README deliberately
+no longer contains its own copy of the rule tables in order to avoid documentation drift.
 
 ---
 
-## Projektstruktur
+## Project structure
 
 ```
 mda-agents/
-+-- bus-client.ts           # MQTT-Client (Layer 1-3, spiegelt Go-Bus-Architektur)
-+-- agent-utils.ts          # Gemeinsame Helfer: Bus-Config, Ajv-Validierung, Meta-Extraktion
-+-- demo-publisher.ts       # Liest rent-a-car-demo.json -> publiziert auf Bus
-+-- demo-to-pim-agent.ts    # Abonniert DEMO-Modell -> transformiert (A1-A12) -> publiziert PIM
-+-- merode-to-pim-agent.ts  # Abonniert MERODE-Modell -> transformiert (M1-M9) -> publiziert PIM
-+-- pim-to-mendix-agent.ts  # Abonniert PIM (DEMO+MERODE) -> generiert Mendix-App (B1-B16)
-+-- pim-to-sql-agent.ts     # Abonniert PIM (DEMO+MERODE) -> generiert PostgreSQL-DDL (S1-S12)
-+-- api-server.ts           # HTTP-Eingang: POST /api/model (X-Input-Format: demo|merode)
++-- bus-client.ts           # MQTT client (Layers 1-3, mirrors the Go Bus architecture)
++-- agent-utils.ts          # Shared helper functions: bus configuration, Ajv validation, meta-extraction
++-- demo-publisher.ts       # Reads rent-a-car-demo.json -> publishes to the bus
++-- demo-to-pim-agent.ts    # Subscribes to the DEMO model -> transforms (A1-A12) -> publishes PIM
++-- merode-to-pim-agent.ts  # Subscribes to MERODE model -> transforms (M1-M9) -> publishes to PIM
++-- pim-to-mendix-agent.ts  # Subscribes to PIM (DEMO+MERODE) -> generates Mendix app (B1-B16)
++-- pim-to-sql-agent.ts     # Subscribes to PIM (DEMO+MERODE) -> generates PostgreSQL DDL (S1-S12)
++-- api-server.ts           # HTTP request: POST /api/model (X-Input-Format: demo|merode)
 |
 +-- schemas/
-|   +-- demo-schema.json    # JSON Schema (Draft-07) für das DEMO Fact Model (CIM)
-|   +-- merode-schema.json  # JSON Schema (Draft-07) für das MERODE Domain Model (CIM)
-|   +-- pimuml-schema.json  # JSON Schema (Draft-07) für das pimUML-Modell (PIM)
-|   +-- types.ts            # TypeScript-Interfaces, generiert aus den Schemas
+|   +-- demo-schema.json    # JSON Schema (Draft-07) for the DEMO Fact Model (CIM)
+|   +-- merode-schema.json  # JSON Schema (Draft-07) for the MERODE Domain Model (CIM)
+|   +-- pimuml-schema.json  # JSON Schema (Draft-07) for the pimUML model (PIM)
+|   +-- types.ts            # TypeScript interfaces, generated from the schemas
 |
 +-- tests/
-|   +-- rent-a-car-demo.json    # Valides DEMO-Modell (Rent-A-Car Use Case)
-|   +-- rent-a-car-merode.json  # Valides MERODE-Modell (Rent-A-Car Use Case)
-|   +-- test-transform.ts       # Offline-Smoke-Test: Teilausschnitt A3/A5/A12, kein Broker nötig
-|   +-- smoke-m9-m3.ts          # Offline-Smoke-Test für M3/M9 (EDG-Propagation), kein Broker nötig
-|   +-- test-sql-agent.ts       # Offline-Test für pim-to-sql-agent.ts
-|   +-- pim-subscriber.ts       # Bus-Subscriber: zeigt empfangenes PIM-Modell an
-|   +-- README.md               # Details + Caveats zu den Offline-Tests
+|   +-- rent-a-car-demo.json    # Valid DEMO model (Rent-A-Car use case)
+|   +-- rent-a-car-merode.json  # Valid MERODE model (Rent-A-Car use case)
+|   +-- test-transform.ts       # Offline smoke test: partial section A3/A5/A12, no broker required
+|   +-- smoke-m9-m3.ts          # Offline smoke test for M3/M9 (EDG propagation), no broker required
+|   +-- test-sql-agent.ts       # Offline test for pim-to-sql-agent.ts
+|   +-- pim-subscriber.ts       # Bus subscriber: displays the received PIM model
+|   +-- README.md               # Details and caveats regarding the offline tests
 |
-+-- output/                 # Generierte SQL-DDL-Dateien (pim-to-sql-agent.ts), git-ignored
-+-- docker-compose.yml      # Startet MQTT-Broker + alle Agenten als Services
-+-- mosquitto.conf          # Mosquitto-Konfiguration (anonymous, kein Persist)
++-- output/                 # Generated SQL DDL files (pim-to-sql-agent.ts), git-ignored
++-- docker-compose.yml      # Starts the MQTT broker and all agents as services
++-- mosquitto.conf          # Mosquitto configuration (anonymous, no persistence)
 +-- package.json
 +-- tsconfig.json
 ```
 
-> Hinweis zu den Offline-Tests: `test-transform.ts` und `smoke-m9-m3.ts` sind eigenständige,
-> handgeschriebene Teilreimplementierungen der jeweiligen Transformationslogik (nicht die
-> echten `transform()`-Funktionen aus `demo-to-pim-agent.ts`/`merode-to-pim-agent.ts`). Sie
-> eignen sich als schneller Rauchtest ohne Broker, sind aber **kein** Ersatz für einen
-> End-to-End-Lauf über den Bus (Option B unten) oder gegen die Live-Pipeline. Details in
-> `tests/README.md` und `thesis-notes/PROTOTYPE_TODOS.md`.
+> Note on the offline tests: `test-transform.ts` and `smoke-m9-m3.ts` are standalone,
+> hand-written partial reimplementations of the respective transformation logic (not the
+> actual `transform()` functions from `demo-to-pim-agent.ts`/`merode-to-pim-agent.ts`). They
+> are suitable as a quick smoke test without a broker, but are **not** a substitute for an
+> end-to-end run via the bus (Option B below) or against the live pipeline. Details in
+> `tests/README.md` and `thesis-notes/PROTOTYPE_TODOS.md`.
 
 ---
 
-## Voraussetzungen
+## Prerequisites
 
-| Tool | Version | Prüfen |
-|------|---------|--------|
-| Node.js | ≥ 18 | `node --version` |
-| npm | ≥ 9 | `npm --version` |
-| Docker Desktop | ≥ 24 | `docker --version` |
+| Tool           | Version | Check              |
+| -------------- | ------- | ------------------ |
+| Node.js        | ≥ 18    | `node --version`   |
+| npm            | ≥ 9     | `npm --version`    |
+| Docker Desktop | ≥ 24    | `docker --version` |
 
 ```bash
-# Einmalig: Dependencies installieren
+# One-off: Install dependencies
 cd mda-agents
 npm install
 ```
 
 ---
 
-## Testen
+## Testing
 
-### Option A - Offline (kein Broker nötig)
+### Option A - Offline (no broker required)
 
 ```bash
-npm run test:transform              # DEMO: Teilausschnitt A3/A5/A12
-npx ts-node tests/smoke-m9-m3.ts    # MERODE: M3/M9 (EDG-Propagation)
+npm run test:transform              # DEMO: Sub-section A3/A5/A12
+npx ts-node tests/smoke-m9-m3.ts    # MERODE: M3/M9 (EDG propagation)
 npx ts-node tests/test-sql-agent.ts # pim-to-sql-agent (S1-S12)
 ```
 
-Diese drei Skripte sind eigenständige Rauchtests ohne MQTT-Broker. Wichtig: `test-transform.ts`
-und `smoke-m9-m3.ts` sind **keine** Aufrufe der echten `transform()`-Funktionen aus
-`demo-to-pim-agent.ts`/`merode-to-pim-agent.ts`, sondern separat gepflegte Teilreimplementierungen
-zur schnellen Kontrolle einzelner Regeln. Für einen Test der tatsächlichen Produktionslogik ist
-Option B (voller Bus-Durchlauf) oder ein Lauf gegen die Live-Pipeline auf dem Pi maßgeblich.
-Details, aktuelle Fixture-Kennzahlen und bekannte Einschränkungen: `tests/README.md`.
+These three scripts are standalone smoke tests without an MQTT broker. Important: `test-transform.ts`
+and `smoke-m9-m3.ts` are **not** calls to the actual `transform()` functions from
+`demo-to-pim-agent.ts`/`merode-to-pim-agent.ts`, but separately maintained partial reimplementations
+for quickly checking individual rules. To test the actual production logic,
+Option B (full bus run-through) or a run against the live pipeline on the Pi is required.
+Details, current fixture metrics and known limitations: `tests/README.md`.
 
 ---
 
-### Option B - Volle Pipeline mit Bus (4 Terminals)
+### Option B - Full pipeline with bus (4 terminals)
 
-**Terminal 1 - MQTT-Broker starten**
+**Terminal 1 - Start the MQTT broker**
+
 ```bash
 cd mda-agents
 npm run broker:up
-# Mosquitto läuft auf localhost:1883
+# Mosquitto is running on localhost:1883
 ```
 
-**Terminal 2 - Transformer-Agent starten**
+**Terminal 2 - Start the Transformer agent**
+
 ```bash
 cd mda-agents
 npm run demo-to-pim-agent
-# Wartet auf eingehende DEMO-Modelle
+# Waits for incoming DEMO models
 ```
 
-**Terminal 3 - PIM-Subscriber starten** *(optional, zum Beobachten)*
+**Terminal 3 - Start the PIM subscriber** _(optional, for monitoring)_
+
 ```bash
 cd mda-agents
 npm run pim-subscriber
-# Wartet auf ausgehende PIM-Modelle
+# Waits for outgoing PIM models
 ```
 
-**Terminal 4 - Publisher triggern** *(löst die Pipeline aus)*
+**Terminal 4 - Trigger the publisher** _(triggers the pipeline)_
+
 ```bash
 cd mda-agents
 npm run demo-publisher
 ```
 
-**Erwarteter Ablauf:**
+**Expected flow:**
 
 ```
 Terminal 4 (Publisher)
-  -> Liest tests/rent-a-car-demo.json
-  -> Publiziert auf Topic:
+  -> Reads tests/rent-a-car-demo.json
+  -> Publishes to topic:
     big/bus-version-1.0/dev/demo-publisher/artefacts/json/model.demo.raw/demo-v1.0-v1.0/state
 
 Terminal 2 (Transformer)
-  -> Empfängt DemoModel
-  -> Validiert gegen demo-schema.json
-  -> Führt A1-A12 aus (15 Klassen, 20 Assoziationen, ...)
-  -> Validiert gegen pimuml-schema.json
-  -> Publiziert auf Topic:
+  -> Receives DemoModel
+  -> Validates against demo-schema.json
+  -> Executes A1-A12 (15 classes, 20 associations, ...)
+  -> Validates against pimuml-schema.json
+  -> Publishes to topic:
     big/bus-version-1.0/dev/demo-to-pim-agent/artefacts/json/model.pim.created/pimuml-v1.0-v1.0/state
 
 Terminal 3 (Subscriber)
-  -> Empfängt PimModel
-  -> Schreibt tests/rent-a-car-pim-from-bus.json
+  -> Receives PimModel
+  -> Writes tests/rent-a-car-pim-from-bus.json
 ```
 
-**Broker stoppen:**
+**Stop broker:**
+
 ```bash
 npm run broker:down
 ```
 
 ---
 
-## Konfiguration
+## Configuration
 
-Alle Agenten lesen ihre Verbindungsparameter aus Umgebungsvariablen:
+All agents read their connection parameters from environment variables:
 
-| Variable | Default | Bedeutung |
-|----------|---------|-----------|
-| `MQTT_BROKER` | `localhost` | Broker-Hostname |
-| `MQTT_PORT` | `1883` | Broker-Port |
-| `MQTT_USER` | `admin` | MQTT-Username |
-| `MQTT_PASSWORD` | `admin` | MQTT-Passwort |
-| `BUS_PREFIX` | `big` | Topic-Prefix |
-| `BUS_ENVIRONMENT_ID` | `dev` | Environment-ID |
-| `BUS_AGENT_ID` | *(agent-spezifisch)* | Agent-ID |
+| Variable             | Default            | Meaning         |
+| -------------------- | ------------------ | --------------- |
+| `MQTT_BROKER`        | `localhost`        | Broker hostname |
+| `MQTT_PORT`          | `1883`             | Broker port     |
+| `MQTT_USER`          | `admin`            | MQTT username   |
+| `MQTT_PASSWORD`      | `admin`            | MQTT password   |
+| `BUS_PREFIX`         | `big`              | Topic prefix    |
+| `BUS_ENVIRONMENT_ID` | `dev`              | Environment ID  |
+| `BUS_AGENT_ID`       | _(agent-specific)_ | Agent ID        |
 
-Für `pim-to-mendix-agent.ts` zusätzlich (Mendix Platform SDK, siehe `.env.example`):
+For `pim-to-mendix-agent.ts`, additionally (Mendix Platform SDK, see `.env.example`):
 `MENDIX_TOKEN`, `MENDIX_APP_ID`, `MENDIX_MODULE_NAME`, `MENDIX_BRANCH`.
 
-Beispiel mit eigenem Broker:
+Example using your own broker:
+
 ```bash
 MQTT_BROKER=my-server.example.com MQTT_USER=user MQTT_PASSWORD=pw \
   npm run demo-to-pim-agent
@@ -182,9 +188,9 @@ MQTT_BROKER=my-server.example.com MQTT_USER=user MQTT_PASSWORD=pw \
 
 ---
 
-## Mapping-Regeln
+## Mapping Rules
 
-Die vollständigen, aktuell gültigen Regeltabellen (A1-A12 für DEMO, M1-M9 für MERODE,
-B1-B16 für Mendix, S1-S12 für PostgreSQL) werden **nicht** hier dupliziert, um Doku-Drift
-zu vermeiden, sondern zentral gepflegt in `thesis-notes/MAPPING_NOTES.md`
-(siehe auch `thesis-notes/MerodeMappingRules.md` für die MERODE-spezifische Herleitung).
+The complete, currently valid rule tables (A1-A12 for DEMO, M1-M9 for MERODE,
+B1-B16 for Mendix, S1-S12 for PostgreSQL) are **not** duplicated here to avoid documentation drift,
+but are maintained centrally in `thesis-notes/MAPPING_NOTES.md`
+(see also `thesis-notes/MerodeMappingRules.md` for the MERODE-specific derivation).
