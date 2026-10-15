@@ -139,9 +139,9 @@ Terminal 4 (Publisher)
 
 Terminal 2 (Transformer)
   -> Empfängt DemoModel
-  -> OK Validiert gegen demo-schema.json
+  -> Validiert gegen demo-schema.json
   -> Führt A1-A12 aus (15 Klassen, 20 Assoziationen, ...)
-  -> OK Validiert gegen pimuml-schema.json
+  -> Validiert gegen pimuml-schema.json
   -> Publiziert auf Topic:
     big/bus-version-1.0/dev/demo-to-pim-agent/artefacts/json/model.pim.created/pimuml-v1.0-v1.0/state
 
