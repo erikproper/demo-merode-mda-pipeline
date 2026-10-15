@@ -1,129 +1,129 @@
-# Anforderungskatalog (D1)
+# Requirements Catalog (D1)
 
-Arbeitsdokument für das Anforderungskapitel der Thesis. Die Anforderungen stammen aus dem Proposal (RQ1-RQ4, Abschnitt 2.3), aus Erfahrungen beim Aufbau des Prototyps und aus der Analyse beider Quellsprachen. Ziel dieser Notizen ist es, nicht nur festzuhalten was gefordert ist, sondern auch warum und wo Literaturbelege zu finden sind.
-
----
-
-## 1. Herkunft der Anforderungen
-
-Die Forschung folgt dem Design Science Research-Ansatz (Hevner et al. [7], Peffers et al. [18]). Das bedeutet, Anforderungen müssen aus einer identifizierten Forschungslücke abgeleitet werden, bevor ein Artefakt entworfen wird. Die Lücke wurde in RQ1 über eine Systematic Mapping Study identifiziert: alle bekannten MDA-Pipelines für Enterprise-Modellierungssprachen sind monolithisch und auf genau eine CIM-Eingabesprache zugeschnitten. Eine zweite Sprache hinzuzufügen erfordert ein vollständiges Umschreiben der Pipeline.
-
-Die Anforderungen teilen sich entsprechend in zwei Gruppen. Architekturanforderungen (AR) beschreiben, welche Systemeigenschaften der Modelling Bus erfüllen muss. PIM-Strukturanforderungen (PR) legen fest, was das Zwischenmodellformat leisten muss, um als gemeinsames Ziel für paradigmatisch unterschiedliche Quellsprachen zu dienen. Beide Gruppen werden durch die Erfolgskriterien aus Abschnitt 2.3 des Proposals operationalisiert.
+Working document on the requirements for the Modeling Bus. These requirements are derived from the proposal (listed there as RQ1 - RQ4, Section 2.3), from experience gained during the development of the prototype, and from the analysis of both source languages. Here, I not only document what is required, but also why, and where the relevant references can be found.
 
 ---
 
-## 2. Architekturanforderungen
+## 1. Origin of the Requirements
 
-### AR1 - Mehrsprachige CIM-Eingabe
+The research follows the Design Science Research approach (Hevner et al. [7], Peffers et al. [18]). This means that requirements must be derived from an identified research gap before an artifact is designed. The gap was identified in RQ1 via a systematic mapping study: all known MDA pipelines for enterprise modeling languages are monolithic and tailored to exactly one CIM input language. Adding a second language requires a complete rewrite of the pipeline.
 
-Das System muss Modelle aus mindestens zwei paradigmatisch unterschiedlichen CIM-Sprachen akzeptieren. Das Wort "paradigmatisch" ist hier entscheidend: die Thesis benötigt explizit DEMO und MERODE, weil sie grundlegend verschiedene Ansätze zur Enterprise-Modellierung repräsentieren. DEMO (Dietz und Mulder [6]) ist faktbasiert und fußt auf PSI-Theorie und Enterprise Ontology. MERODE (Snoeck [21]) ist objekt-lebenszyklus-orientiert und dreht sich um Existenzabhängigkeiten und endliche Automaten. Ein System, das nur zwei Dialekte derselben Denkschule verarbeitet, würde den Extensibilitätsanspruch nicht belegen.
-
-Im aktuellen Prototyp sind beide Sprachen über separate Agenten realisiert: `demo-to-pim-agent` und `merode-to-pim-agent`. Diese Agentenarchitektur ist es, die eine Koppelung der beiden Sprachparser aneinander verhindert.
-
-### AR2 - Sprachenisolation
-
-Die Transformationslogik für jede CIM-Sprache muss in genau einem Agenten gekapselt sein. Kein CIM-spezifisches Wissen darf außerhalb dieses Agenten auftauchen. Konkret bedeutet das: der MQTT-Bus trägt ausschließlich schema-validierte PIM-Nachrichten, niemals rohe CIM-Daten. Der `pim-to-mendix-agent` darf keine Parsing-Logik für DEMO oder MERODE enthalten. Und der `demo-to-pim-agent` ist vollständig ignorant gegenüber MERODE, und umgekehrt.
-
-Das Extensibilitätsexperiment prüft diese Anforderung empirisch: der `pim-to-sql-agent` (S1-S12) wurde als dritter, unabhängiger PSM-Agent gebaut, ohne dass `demo-to-pim-agent.ts`, `merode-to-pim-agent.ts`, `pim-to-mendix-agent.ts`, `bus-client.ts`, `agent-utils.ts` oder die Bus-Infrastruktur geändert werden mussten (Nachweis mit Diff-Tabelle in `EXTENSIBILITY_EVIDENCE.md` §5). Damit ist AR2 erfüllt.
-
-### AR3 - Additive Erweiterbarkeit
-
-Das Hinzufügen einer neuen CIM-Sprache darf keine Änderungen an bestehenden Komponenten erfordern. Das ist der zentrale Anspruch der Thesis und wird in Abschnitt 2.3 des Proposals als binäres Kriterium nach ISO/IEC 25010 [8] operationalisiert.
-
-"Bestehende Komponenten" sind konkret: `bus-client.ts`, `agent-utils.ts`, `demo-to-pim-agent.ts`, `pim-to-mendix-agent.ts` in seiner Kernlogik und `pimuml-schema.json` insofern bestehende DEMO-erzeugte Felder weiterhin valide sind. Beim Hinzufügen von MERODE wurde kein bestehender Agent in seiner Transformationslogik geändert. Der `pim-to-mendix-agent.ts` hat zusätzliche B-Regeln (B13-B16) bekommen, aber der DEMO-Pfad durch diesen Agenten blieb verhaltensidentisch. Spätere Fehlerbehebungen am DEMO-Pfad (B11/B12, 2026-09-14) sind davon getrennt und keine Folge der MERODE-Integration. Die genaue Diskussion dieser Grenzziehung findet sich in EXTENSIBILITY_EVIDENCE.md.
-
-### AR4 - Schema-validiertes Zwischenformat
-
-Jede PIM-Instanz auf dem Bus muss vor der Weiterverarbeitung eine JSON-Schema-Validierung bestehen. Das Schema verwendet `additionalProperties: false`, um ein stilles Auseinanderlaufen der Feldstruktur zu verhindern. Die Metrik dafür ist die Schema Validation Rate (SVR), die für eine strukturell korrekte Pipeline 100% betragen muss.
-
-Der Prototyp validiert Eingangsmodelle gegen ihr CIM-Schema und Ausgabe-PIM-Modelle gegen `pimuml-schema.json` vor der Veröffentlichung. Ein Validierungsfehler bricht die Transformation mit einer Fehlermeldung ab und veröffentlicht nichts.
-
-### AR5 - Vollständige Automatisierung
-
-Zwischen CIM-Modelleingabe und Mendix-App-Ausgabe darf kein manueller Schritt stattfinden. Die Pipeline wird durch ein einziges HTTP-POST an `/api/model` ausgelöst. Alles Nachgelagerte passiert automatisch. Das unterscheidet den Prototyp von Bzowski [4], dessen Transformation manuell demonstriert wurde.
-
-### AR6 - Lose Kopplung über asynchrones Messaging
-
-Agenten müssen zeitlich und örtlich entkoppelt sein. Der MQTT-Broker ist die einzige geteilte Abhängigkeit. Agenten können unabhängig gestartet, gestoppt und neu gestartet werden. Die Retained-Message-Funktion von MQTT sorgt dafür, dass ein neu gestarteter Agent sofort den letzten bekannten Zustand jedes Artefakts erhält, ohne auf eine neue Veröffentlichung warten zu müssen. Das ist besonders während der Entwicklung und beim Testen wertvoll.
-
-### AR7 - Nachvollziehbarkeit (Traceability)
-
-Jedes Quellkonzept, das in die Pipeline eintritt, muss eine dokumentierte Trace-Verbindung zu seinen Zielkonzepten im PIM haben. Das `TraceEntry[]`-Array in jeder veröffentlichten PIM-Nachricht hält diese Abbildungen fest. Die Metrik ist die Traceability Coverage nach Winkler und Pilgrim [25]: der Anteil der Quellelemente mit mindestens einem dokumentierten Trace-Link im Ausgabemodell.
-
-Hilfsstrukturen wie die `__initial`- und `__final`-Pseudozustände, die beim FSM-Aufbau entstehen, zählen als "Added_justified" und sind nach den Toleranzdefinitionen aus Abschnitt 2.3 des Proposals zulässig, weil sie kein direktes semantisches Gegenstück im Quellmodell haben, aber strukturell notwendig sind.
+The requirements are accordingly divided into two groups. Architecture requirements (AR) describe which system properties the Modeling Bus must fulfill. PIM structural requirements (PR) specify what the intermediate model format must achieve in order to serve as a common target for paradigmatically different source languages. Both groups are operationalized by the success criteria from Section 2.3 of the proposal.
 
 ---
 
-## 3. PIM-Strukturanforderungen
+## 2. Architectural Requirements
 
-Das PIM ist die zentrale Designherausforderung der Thesis. Es muss ausdrucksstark genug sein, um Konzepte aus sowohl DEMO als auch MERODE zu erfassen, ohne so spezifisch für eine der Sprachen zu sein, dass es beim Hinzufügen der anderen komplett überarbeitet werden muss.
+### AR1 - Multilingual CIM Input
 
-### PR1 - Strukturelle Ausdrucksstärke
+The system must accept models from at least two paradigmatically different CIM languages. The word "paradigmatic" is crucial here: this thesis explicitly requires DEMO and MERODE because they represent fundamentally different approaches to enterprise modeling. DEMO (Dietz and Mulder [6]) is fact-based and grounded in PSI theory and enterprise ontology. MERODE (Snoeck [21]) is object-lifecycle-oriented and centers on existence dependencies and finite automata. A system that processes only two dialects of the same school of thought would not demonstrate extensibility.
 
-Das ist der unkomplizierte Teil. Beide Sprachen beschreiben Geschäftsobjekte mit Attributen und Beziehungen. pimUML deckt das bereits über Class, Property und Association ab. Die DEMO-Regeln A3, A5, A11-A12 und die MERODE-Regeln M1, M2, M4 bilden alle auf dieselben pimUML-Strukturkonstrukte ab. Das ist der Überschneidungsbereich beider Sprachen: was Snoeck als "Datenmodell-Sicht" (EDG) bezeichnet, ist strukturell vergleichbar mit dem DEMO Fact Model.
+In the current prototype, both languages are implemented via separate agents: `demo-to-pim-agent` and `merode-to-pim-agent`. It is this agent architecture that prevents the two language parsers from being coupled to one another.
 
-### PR2 - Verhaltensausdrucksstärke (Lebenszyklus-FSMs)
+### AR2 - Language Isolation
 
-Hier laufen die Sprachen auseinander. DEMO und MERODE nutzen beide endliche Automaten für Objektlebenszyklen, aber diese FSMs unterscheiden sich grundlegend.
+The transformation logic for each CIM language must be encapsulated in exactly one agent. No CIM-specific knowledge may appear outside of this agent. Specifically, this means: the MQTT bus carries only schema-validated PIM messages, never raw CIM data. The `pim-to-mendix-agent` must not contain any parsing logic for DEMO or MERODE. And the `demo-to-pim-agent` is completely unaware of MERODE, and vice versa.
 
-DEMO-FSMs (Bzowski, A6) bestehen aus orthogonalen Regionen, eine pro Ereignistyp. Jede Region hat genau zwei Zustände: `false` (Ereignis noch nicht eingetreten) und `true` (Ereignis eingetreten). Die Regionen sind voneinander unabhängig und können in beliebiger Kombination aktiv sein. Ereignisse sind monoton und können nicht rückgängig gemacht werden.
+The extensibility experiment empirically verifies this requirement: the `pim-to-sql-agent` (S1 - S12) was built as a third, independent PSM agent without requiring any changes to `demo-to-pim-agent.ts`, `merode-to-pim-agent.ts`, `pim-to-mendix-agent.ts`, `bus-client.ts`, `agent-utils.ts`, or the bus infrastructure (evidence provided via a diff table in `EXTENSIBILITY_EVIDENCE.md`, §5). Thus, AR2 is satisfied.
 
-MERODE-FSMs (Snoeck [21], Kapitel 6) bestehen aus einer einzigen sequenziellen Region mit benannten, sich gegenseitig ausschließenden Lebenszykluszuständen. Ein Objekt bewegt sich von einem Zustand zum nächsten. Beendigungsereignisse führen in einen finalen Zustand, danach sind keine weiteren Ereignisse möglich.
+### AR3 - Additive Extensibility
 
-Das PIM muss beides unterstützen. Die gewählte Lösung verwendet eine einzelne `StateMachine` mit `Region`-Elementen, wobei DEMO-Regionen ein `forEvent`-Attribut tragen (eine Region pro Ereignis, boolesches Paar) und MERODE-Regionen keins haben (eine Region pro Objekttyp, sequenzielle benannte Zustände). Das erfordert die Erweiterung von `State.kind` um `simple` und `final` sowie die Optionalisierung von `Region.forEvent`. Diese Änderungen sind in DD5 (DESIGN_DECISIONS.md) dokumentiert.
+Adding a new CIM language must not require any changes to existing components. This is the central claim of the thesis and is operationalized in Section 2.3 of the proposal as a binary criterion according to ISO/IEC 25010 [8].
 
-### PR3 - Aktivitätstypen
+Specifically, "existing components" are: `bus-client.ts`, `agent-utils.ts`, `demo-to-pim-agent.ts`, `pim-to-mendix-agent.ts` in its core logic, and `pimuml-schema.json`, provided that existing DEMO-generated fields remain valid. When MERODE was added, no existing agent's transformation logic was modified. The `pim-to-mendix-agent.ts` file was given additional B-rules (B13 - B16), but the DEMO path through this agent remained behaviorally identical. Subsequent bug fixes to the DEMO path (B11/B12, 2026-09-14) are separate from this and are not a result of the MERODE integration. A detailed discussion of this distinction can be found in EXTENSIBILITY_EVIDENCE.md.
 
-Unterschiedliche Transformationsregeln erzeugen unterschiedliche Aktivitätstypen. DEMO erzeugt `create`- und `set`-Aktivitäten. MERODE benötigt zusätzlich `end`-Aktivitäten für Beendigungsereignisse (M8). Das Feld `Activity.kind` wurde entsprechend von `{set, create}` auf `{set, create, end}` erweitert.
+### AR4 - Schema-Validated Intermediate Format
 
-### PR4 - JSON-Serialisierbarkeit
+Every PIM instance on the bus must pass a JSON schema validation before further processing. The schema uses `additionalProperties: false` to prevent silent divergence in the field structure. The metric for this is the Schema Validation Rate (SVR), which must be 100% for a structurally correct pipeline.
 
-Das PIM muss als JSON serialisierbar und durch ein JSON-Schema beschreibbar sein. Das ist Voraussetzung für Schema-Validierung (AR4) und MQTT-Transport. Das pimUML-JSON-Schema (`pimuml-schema.json`) ist die normative Definition des PIM.
+The prototype validates input models against their CIM schema and output PIM models against `pimuml-schema.json` before publication. A validation error aborts the transformation with an error message and does not publish anything.
 
-### PR5 - Rückwärtskompatibilität bei Erweiterungen
+### AR5 - Full Automation
 
-Jede Schema-Erweiterung für MERODE darf bestehende DEMO-erzeugte PIM-Instanzen nicht invalidieren. Neue Felder müssen optional sein, neue Enum-Werte dürfen nicht mit bestehenden kollidieren, und bestehende Pflichtfelder müssen Pflichtfelder bleiben. Alle drei für MERODE vorgenommenen Schema-Änderungen erfüllen diese Bedingung. Ein DEMO-erzeugtes PIM validiert gegen das erweiterte Schema ohne jede Änderung am DEMO-Agenten.
+No manual steps should occur between the CIM model input and the Mendix app output. The pipeline is triggered by a single HTTP POST to `/api/model`. Everything that follows happens automatically. This distinguishes the prototype from Bzowski [4], whose transformation was demonstrated manually.
+
+### AR6 - Loose Coupling via Asynchronous Messaging
+
+Agents must be decoupled in terms of time and location. The MQTT broker is the only shared dependency. Agents can be started, stopped, and restarted independently. MQTT's retained message feature ensures that a restarted agent immediately receives the last known state of each artifact without having to wait for a new publication. This is particularly valuable during development and testing.
+
+### AR7 - Traceability
+
+Every source concept that enters the pipeline must have a documented trace link to its target concepts in the PIM. The `TraceEntry[]` array in every published PIM message records these mappings. The metric is traceability coverage as defined by Winkler and Pilgrim [25]: the proportion of source elements with at least one documented trace link in the output model.
+
+Auxiliary structures such as the `__initial` and `__final` pseudo-states, which arise during FSM construction, are classified as "Added_justified" and are permitted according to the tolerance definitions in Section 2.3 of the proposal because they have no direct semantic counterpart in the source model but are structurally necessary.
 
 ---
 
-## 4. Qualitätsanforderungen (aus Proposal, Abschnitt 2.3)
+## 3. PIM Structural Requirements
 
-Das sind die operationalisierten Erfolgskriterien, die die Evaluation (D6, D7) prüft.
+The PIM is the central design challenge of this thesis. It must be expressive enough to capture concepts from both DEMO and MERODE without being so specific to either language that it requires a complete overhaul when the other language is added.
 
-### QR1 - Semantische Vollständigkeit (Completeness)
+### PR1 - Structural Expressiveness
 
-Anteil der Quellaussagen, die korrekt im Zielmodell ankommen. Eine Quellaussage gilt als "erhalten", wenn sie im PIM mit dem richtigen Typ und den richtigen Beziehungen zu anderen Elementen erscheint. Für DEMO sind Quellaussagen: Entitätstypen, Faktentypen, Eigenschaftstypen, Kardinalitäten und Ableitungsregeln. Für MERODE: Objekttypen, Existenzabhängigkeiten, Geschäftsereignistypen und endliche Automaten (gemäß Proposal, Abschnitt 3.3).
+This is the straightforward part. Both languages describe business objects using attributes and relationships. pimUML already covers this through Class, Property, and Association. The DEMO rules A3, A5, A11 - A12 and the MERODE rules M1, M2, M4 all map to the same pimUML structural constructs. This is the area of overlap between the two languages: what Snoeck refers to as the "data model view" (EDG) is structurally comparable to the DEMO Fact Model.
 
-Die verwendete Vierfachklassifikation ist: Correct, Missing, Incorrect, Added. Vollständigkeit ergibt sich als C / (C + M + I).
+### PR2 - Behavioral Expressiveness (Life Cycle FSMs)
 
-### QR2 - Semantische Validität
+This is where the languages diverge. DEMO and MERODE both use finite state machines for object life cycles, but these FSMs differ fundamentally.
 
-Abwesenheit falsch transformierter oder ungerechtfertigt hinzugefügter Elemente. Validität = C / (C + I + Added_unjustified). Strukturell notwendige Hilfselemente wie `__initial`-Pseudozustände zählen als "Added_justified" und werden nicht als Fehler gewertet.
+DEMO FSMs (Bzowski, A6) consist of orthogonal regions, one per event type. Each region has exactly two states: `false` (event has not yet occurred) and `true` (event has occurred). The regions are independent of one another and can be active in any combination. Events are monotonic and cannot be undone.
+
+MERODE FSMs (Snoeck [21], Chapter 6) consist of a single sequential region with named, mutually exclusive lifecycle states. An object moves from one state to the next. Termination events lead to a final state, after which no further events are possible.
+
+The PIM must support both. The chosen solution uses a single `StateMachine` with `Region` elements, where DEMO regions have a `forEvent` attribute (one region per event, Boolean pair) and MERODE regions do not (one region per object type, sequential named states). This requires extending `State.kind` to include `simple` and `final`, as well as making `Region.forEvent` optional. These changes are documented in DD5 (DESIGN_DECISIONS.md).
+
+### PR3 - Activity Types
+
+Different transformation rules generate different activity types. DEMO generates `create` and `set` activities. MERODE additionally requires `end` activities for termination events (M8). The `Activity.kind` field has been expanded accordingly from `{set, create}` to `{set, create, end}`.
+
+### PR4 - JSON Serializability
+
+The PIM must be serializable as JSON and describable by a JSON schema. This is a prerequisite for schema validation (AR4) and MQTT transport. The pimUML JSON schema (`pimuml-schema.json`) is the normative definition of the PIM.
+
+### PR5 - Backward Compatibility for Extensions
+
+Any schema extension for MERODE must not invalidate existing DEMO-generated PIM instances. New fields must be optional, new enum values must not conflict with existing ones, and existing required fields must remain required. All three schema changes made for MERODE meet this condition. A DEMO-generated PIM validates against the extended schema without any changes to the DEMO agent.
+
+---
+
+## 4. Quality Requirements (from the Proposal, Section 2.3)
+
+These are the operationalized success criteria that the evaluation (D6, D7) assesses.
+
+### QR1 - Semantic Completeness
+
+The proportion of source statements that are correctly mapped to the target model. A source statement is considered "preserved" if it appears in the PIM with the correct type and the correct relationships to other elements. For DEMO, source statements are: entity types, fact types, property types, cardinalities, and derivation rules. For MERODE: object types, existence dependencies, business event types, and finite automata (as per the proposal, Section 3.3).
+
+The four-class classification used is: Correct, Missing, Incorrect, Added. Completeness is calculated as C / (C + M + I).
+
+### QR2 - Semantic Validity
+
+Absence of incorrectly transformed or unjustifiably added elements. Validity = C / (C + I + Added_unjustified). Structurally necessary auxiliary elements such as `__initial` pseudo-states count as "Added_justified" and are not considered errors.
 
 ### QR3 - Schema Validation Rate (SVR)
 
-Muss 100% betragen. Ein einziger Validierungsfehler bedeutet, dass die Pipeline strukturell defekt ist. Das ist keine zu optimierende Metrik, sondern eine harte Bedingung.
+Must be 100%. A single validation error means that the pipeline is structurally defective. This is not a metric to be optimized, but a hard requirement.
 
 ### QR4 - Traceability Coverage
 
-Anteil der Quellelemente mit mindestens einem Trace-Link. Zielwert: 100% für alle Elemente, die ein semantisches Gegenstück haben. Explizit als NotMapped dokumentierte Elemente (z.B. durch M9 propagierte Ereignisse) werden aus dem Nenner herausgenommen.
+Percentage of source elements with at least one trace link. Target value: 100% for all elements that have a semantic counterpart. Elements explicitly documented as NotMapped (e.g., events propagated by M9) are excluded from the denominator.
 
-### QR5 - Erweiterbarkeit
+### QR5 - Extensibility
 
-Binäres Kriterium. Ein dritter CIM-Agent kann integriert werden, ohne bestehende Komponenten zu ändern. Operationalisiert als: müssen `demo-to-pim-agent.ts`, `pim-to-mendix-agent.ts`, `bus-client.ts`, `agent-utils.ts` oder `pimuml-schema.json` geändert werden? Wenn nicht (von additiven Änderungen abgesehen), ist das Kriterium erfüllt.
-
----
-
-## 5. Nicht-funktionale Anforderungen
-
-Das System muss auf Consumer-Hardware (Raspberry Pi 4) lauffähig sein. Alle Agenten müssen unter vernünftigen Speicherbeschränkungen operieren.
-
-Zur Transformationslatenz gibt es keine formale Anforderung, aber die Durchlaufzeit vom HTTP-POST bis zur Mendix-Modellaktualisierung sollte für Modelle in Fallstudiengröße im Bereich von Sekunden, nicht Minuten liegen.
-
-Die Schemas müssen maschinell lesbar sein (JSON Schema Draft-07), damit Validierung in CI automatisiert werden kann.
+Binary criterion. A third CIM agent can be integrated without modifying existing components. Operationalized as: Do `demo-to-pim-agent.ts`, `pim-to-mendix-agent.ts`, `bus-client.ts`, `agent-utils.ts`, or `pimuml-schema.json` need to be modified? If not (aside from additive changes), the criterion is met.
 
 ---
 
-## 6. Bewusst nicht im Scope
+## 5. Non-Functional Requirements
 
-Für ein Produktionssystem wären folgende Anforderungen relevant, fallen aber explizit aus dem Scope der Thesis heraus: Sicherheit (Authentifizierung, Autorisierung, TLS für MQTT), Skalierbarkeit bei gleichzeitigen Modell-Einreichungen, Fehlerwiederherstellung bei Agent-Abstürzen während der Transformation, Mendix-Plattform-Versionierung und Reverse-Engineering (Mendix-Modelle zurück zu CIM).
+The system must be capable of running on consumer hardware (Raspberry Pi 4). All agents must operate within reasonable memory constraints.
+
+There is no formal requirement regarding transformation latency, but the turnaround time from the HTTP POST request to the Mendix model update should be in the range of seconds, not minutes, for case study-sized models.
+
+The schemas must be machine-readable (JSON Schema Draft-07) so that validation can be automated in CI.
+
+---
+
+## 6. Deliberately Out of Scope
+
+The following requirements would be relevant for a production system but are explicitly outside the scope of this thesis: security (authentication, authorization, TLS for MQTT), scalability for concurrent model submissions, fault recovery in case of agent crashes during transformation, Mendix platform versioning, and reverse engineering (Mendix models back to CIM).
