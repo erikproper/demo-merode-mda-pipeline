@@ -91,6 +91,9 @@ services:
       context: ./mda-agents
       dockerfile: Dockerfile
     container_name: mda-mendix-agent
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     command: node dist/pim-to-mendix-agent.js
     environment:
       MQTT_BROKER: mqtt-broker
